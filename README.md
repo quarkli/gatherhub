@@ -1,5 +1,13 @@
-# gatheroom
+# GatherHub
+Connect, Collaborate, Communicate
 
-Note: GATHEROOM is a complete open source project. It is recommended a contributor using his/her own resources such as private email, computer, and time etc. instead of a company's resource, if the contributor is actively serving in a company, unless approved by his/her company.
+Keywords: 
+Open, On Demand, Collaboration, Communication, Conference, Shared Whiteboard, Application Casting, Screen Casting, Audio/Video Casting
+Orientation:
+Web Application (HTML5 / RoR/ JS)
+Apps (Android / IOS / Windows on PC/Tablet/Mobiles)
+Abstract:
+There are more and more distributed communities who have the needs to collaborate in real-time over Internet besides social communications. With Gatherhub, any one can host an interactive conference or live broadcasting session online. The purpose of Gatherhub is to help to improve the distributed real-time communication over Internet and is for everyone to use whenever they need.
 
-GATHEROOM is a sub-project of Project-X. The mission is to create an online conference application to support distributed teamwork.
+
+
