@@ -1,0 +1,53 @@
+在centos上安装ruby 
+参考 http://guides.ruby-china.org/getting_started.html
+1，
+ yum install ruby
+2，
+ruby -v
+ruby 1.8.7 (2011-06-30 patchlevel 352) [i386-linux]
+版本太低，下包来升级
+
+3，准备工作
+yum install zlib-devel
+yum install openssl-devel
+yum install readline-devel
+yum install patch
+
+4，下载一个ruby-2.2.3.tar.gz，放到/usr/local/src下面解压
+make 
+make install
+
+ruby -v
+ruby 2.2.3p173 (2015-08-18 revision 51636) [i686-linux]
+
+5，ruby安装完以后，需要安装rails，这是一套发布ruby的工具，通过gem工具完成。
+
+因为有墙，运行
+gem install rails会有问题，所以先要改一下 gem 的source
+执行
+gem source -l
+如果显示
+
+*** CURRENT SOURCES ***
+
+https://rubygems.org/
+
+需要remoe掉这个source，执行命令
+gem sources --remove https://rubygems.org/
+再增加国内的镜像
+gem sources -a https://ruby.taobao.org/
+
+添加成功以后，可以执行gem source检查一下
+
+再执行
+gem install rails
+
+如果没有装zlib-devel，openssl-devel，这里会出错，检查前面的步骤是否漏掉，安装完以后在重新build ruby，再运行 install rails
+
+6，
+如果安装成功，执行
+rails --version
+出现
+[root@localhost ~]# rails --version
+Rails 4.2.4
+rails算安装完成。
