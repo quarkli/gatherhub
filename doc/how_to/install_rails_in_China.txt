@@ -12,6 +12,7 @@ yum install zlib-devel
 yum install openssl-devel
 yum install readline-devel
 yum install patch
+yum install sqlite-devel
 
 4，下载一个ruby-2.2.3.tar.gz，放到/usr/local/src下面解压
 make 
@@ -51,3 +52,23 @@ rails --version
 [root@localhost ~]# rails --version
 Rails 4.2.4
 rails算安装完成。
+
+7,执行 rails new blog如果出现连接ruby服务器出错，可以把ruby镜像服务器重新设置一下
+bundle config mirror.https://rubygems.org https://ruby.taobao.org
+
+
+8，在blog目录运行rails server 时出现找不到javascript runtime，类似下面的信息
+/runtimes.rb:48:in `autodetect': Could not find a JavaScript runtime. See https://github.com/rails/execjs for a list of available runtimes. (ExecJS::RuntimeUnavailable)
+做下面的操作
+
+在blog目录的Gemfile里添加两行
+gem 'execjs'
+gem 'therubyracer'
+保存以后执行 
+bundle install
+然后运行server就可以起来了
+
+
+
+
+ 
