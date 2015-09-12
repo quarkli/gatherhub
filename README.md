@@ -51,6 +51,24 @@ $ rails server
 
 10) Open the copied link by your browser to view your gatherhub modification result.
 
+## development gatherhub on heroku
+1) register a Heroku acount on https://id.heroku.com/login
+
+2) install heroku client on your VM, it does not need in Cloud9 
+
+3) run command
+$ heroku login
+$ heroku keys:add
+to enter into your heroku account
+
+4) create directory on heroku to store application
+$ heroku create
+
+5) deploy your application
+$ git commit -m " save change before development"
+$ git push heroku master
+
+6) check the result, find the http link to verify the development.
 
 
 
