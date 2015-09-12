@@ -47,3 +47,8 @@ end
 gem 'execjs'
 gem 'therubyracer'
 
+group :production do
+ gem 'pg', '0.17.1'
+ gem 'rails_12factor', '0.0.2'
+end
+
