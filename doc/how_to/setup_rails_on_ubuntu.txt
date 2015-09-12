@@ -1,0 +1,40 @@
+Install ruby environment on Ubuntu Desktop 14/15
+ 
+1, Update Linux
+ 
+$ sudo apt-get update
+$ sudo apt-get upgrade
+ 
+2, Install necessary libs and code.
+ $ sudo apt-get install build-essential bison openssl libreadline6 libreadline6-dev curl git-core zlib1g zlib1g-dev libssl-dev libyaml-dev libsqlite3-0 libsqlite3-dev sqlite3 libxml2-dev libxslt-dev autoconf libc6-dev
+
+3,download source code of ruby, make and make install
+$ wget http://cache.ruby-lang.org/pub/ruby/ruby-2.2.3.tar.gz
+$ tar xvfz ruby-2.2.3.tar.gz
+$ cd ruby-2.2.3/
+$ ./configure
+$ make
+$ sudo make install
+
+4, check ruby version
+$ ruby -v
+check whether it is ruby 2.2.3
+
+about step 3/4, the newest ruby version might be changed, you could acess http://www.ruby-lang.org/en/downloads/ to check it. This document is based on ruby 2.2.3
+
+5, install related gem packets.
+
+5.1 change mirror site of rubygems
+$ gem sources --remove https://rubygems.org/
+$ gem sources -a https://ruby.taobao.org/
+$ gem sources -l
+*** CURRENT SOURCES ***
+
+https://ruby.taobao.org
+# 请确保只有 ruby.taobao.org
+
+5.2 install gem packets for rails
+$ gem install rails --no-ri --no-rdoc
+
+6, config bundle mirror site
+$ bundle config mirror.https://rubygems.org https://ruby.taobao.org
