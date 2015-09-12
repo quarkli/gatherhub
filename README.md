@@ -30,16 +30,16 @@ $ bundle install
 $ rails server
 
 ### 5. Use Cloud9 IDE to read, modify and test gatherhub.
-#### open cloud9 website https://c9.io/
-#### Click icon button "Sign in with GitHub", a little cat icon on the top right of webpage.
-#### Enter your account information on github and do some steps for registration.
-#### Enter your personal webpage and click "Repositories" link on the left side of webpage.
-#### Choose "gatherhub" and press the button "clone to edit"
-#### wait for some seconds, an IDE with gatherhub workspace would be create. 
-#### run "bundle install" in the terminal windows on the bottom side.  And Enjoy the IDE.
-#### when you want to try your modification, run "rails s -b $IP -p $PORT, a simple rails server could be  create. 
-#### Got the test link address by clicking the "Share" button on the right top, and copy the "application address" from the second input text widget on the jumping up frame.
-#### Open the copied link by your browser to view your gatherhub modification result.
+1) open cloud9 website https://c9.io/
+2) Click icon button "Sign in with GitHub", a little cat icon on the top right of webpage.
+3) Enter your account information on github and do some steps for registration.
+4) Enter your personal webpage and click "Repositories" link on the left side of webpage.
+5) Choose "gatherhub" and press the button "clone to edit"
+6) wait for some seconds, an IDE with gatherhub workspace would be create. 
+7) run "bundle install" in the terminal windows on the bottom side.  And Enjoy the IDE.
+8) when you want to try your modification, run "rails s -b $IP -p $PORT, a simple rails server could be  create. 
+9) Got the test link address by clicking the "Share" button on the right top, and copy the "application address" from the second input text widget on the jumping up frame.
+10) Open the copied link by your browser to view your gatherhub modification result.
 
 
 
