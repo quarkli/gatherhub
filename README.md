@@ -14,9 +14,11 @@ There are more and more distributed communities who have the needs to collaborat
 ## How to setup working environment:
 ### 1. Install ruby and rails on centos.
 If you want to modify, compile gatherhub source code on CentOs 6, you could read this document.
+https://github.com/quarkli/gatherhub/blob/master/doc/how_to/setup_rails_on_centos.txt
 
 ### 2. Install ruby and rails on ubuntu.
 If you work on Ubuntu 14/15 you could use this document to setup environment.
+https://github.com/quarkli/gatherhub/blob/master/doc/how_to/setup_rails_on_ubuntu.txt
 
 ### 3.Download source code to local VM
 $ git config --global user.name "Your Name"
