@@ -22,7 +22,9 @@ https://github.com/quarkli/gatherhub/blob/master/doc/how_to/setup_rails_on_ubunt
 
 ### 3.Download source code to local VM
 $ git config --global user.name "Your Name"
+
 $ git config --global user.email your.email@example.com
+
 $ git clone https://github.com/quarkli/gatherhub.git
 
 ### 4, Run and test rails server
@@ -50,6 +52,50 @@ $ rails server
 9) Got the test link address by clicking the "Share" button on the right top, and copy the "application address" from the second input text widget on the jumping up frame.
 
 10) Open the copied link by your browser to view your gatherhub modification result.
+
+### 6. use Gatherhub.com to modify and test code
+1) config git accout and clone
+
+$ git config --global user.name "Your Name" 
+
+$ git config --global user.email yourmail@gmail.com
+
+$ git clone https://github.com/quarkli/gatherhub.git
+
+2) install some packets in bundle
+
+$ bundle install --without production
+
+3) test the result
+
+$ rails server -p $YourPort -b 0.0.0.0
+
+note: $YourPort is the port that Quark assign to you
+
+use browser to visit www.gatherhub.com:$YourPor
+
+4) modify, commit, push into github
+add new development branch
+
+$ git checkout -b someone-dev
+
+$ git branch
+
+do moification, then same and commit
+
+$ git commit -am "[SOMEONE] reason to commit"
+
+push back to server
+
+$ git push origin someone-dev
+
+if 403 forbindden error occurs, try below command
+
+$ git remote set-url origin https://yourGitAccount@github.com/quarkli/gatherhub.git
+
+
+
+
 
 ## deploy gatherhub on heroku
 1) register a Heroku acount on https://id.heroku.com/login
