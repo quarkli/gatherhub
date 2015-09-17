@@ -50,12 +50,17 @@ font-size: 1.1em;
 line-height: 1.7em;
 }
 /* header */
+.navbar {
+  .navbar-inner {
+    background-color: #5b9bd5;
+    background-image: none;
+  }
+}
 #head {
     float: left;
     margin-right: 10px;
     font-size: 1.7em;
     color: white;
-    text-transform: uppercase;
     letter-spacing: -1px;
     padding-top: 9px;
     font-weight: bold;
