@@ -8,7 +8,7 @@ class SessionsController < ApplicationController
       #hub login and redirect to hub page
       log_in hub
       # params[:session][:remember_me] == '1' ? remember(hub) : forget(hub)
-      # remember hub
+      remember hub 
       redirect_to hub
     else
       # generate an error message
