@@ -544,3 +544,521 @@ Migrating to AddPasswordDigestToHubs (20150918032458)
   [1m[35mSQL (11.2ms)[0m  INSERT INTO "hubs" ("name", "email", "password_digest", "created_at", "updated_at") VALUES (?, ?, ?, ?, ?)  [["name", "phenix"], ["email", "1@qq.com"], ["password_digest", "$2a$10$tgPgKD2wDstNWw3w9V8P5ui53SAhq3hTQNNRRVi2LiCu6mzB7oFLi"], ["created_at", "2015-09-18 05:21:39.847786"], ["updated_at", "2015-09-18 05:21:39.847786"]]
   [1m[36m (0.1ms)[0m  [1mRELEASE SAVEPOINT active_record_1[0m
   [1m[35m (0.3ms)[0m  rollback transaction
+  [1m[36mActiveRecord::SchemaMigration Load (0.1ms)[0m  [1mSELECT "schema_migrations".* FROM "schema_migrations"[0m
+  [1m[35mActiveRecord::SchemaMigration Load (0.1ms)[0m  SELECT "schema_migrations".* FROM "schema_migrations"
+
+
+Started GET "/" for 114.252.116.0 at 2015-09-21 02:34:50 +0000
+  [1m[36mActiveRecord::SchemaMigration Load (0.1ms)[0m  [1mSELECT "schema_migrations".* FROM "schema_migrations"[0m
+Processing by StaticPagesController#home as HTML
+  Rendered static_pages/home.html.erb within layouts/application (3.2ms)
+  Rendered layouts/_header.html.erb (0.7ms)
+  Rendered layouts/_footer.html.erb (0.7ms)
+Completed 200 OK in 447ms (Views: 433.8ms | ActiveRecord: 0.0ms)
+
+
+Started GET "/" for 114.252.116.0 at 2015-09-21 02:34:51 +0000
+Processing by StaticPagesController#home as HTML
+  Rendered static_pages/home.html.erb within layouts/application (0.2ms)
+  Rendered layouts/_header.html.erb (0.2ms)
+  Rendered layouts/_footer.html.erb (0.6ms)
+Completed 200 OK in 191ms (Views: 189.8ms | ActiveRecord: 0.0ms)
+
+
+Started GET "/newhub" for 114.252.116.0 at 2015-09-21 02:34:54 +0000
+Processing by HubsController#new as HTML
+  Rendered hubs/new.html.erb within layouts/application (16.5ms)
+Completed 500 Internal Server Error in 36ms (ActiveRecord: 0.5ms)
+
+ActionView::MissingTemplate (Missing partial shared/_error_messages with {:locale=>[:en], :formats=>[:html, :xml], :variants=>[], :handlers=>[:erb, :builder, :raw, :ruby, :coffee, :jbuilder]}. Searched in:
+  * "/usr/local/rvm/gems/ruby-2.2.1/gems/web-console-2.0.0.beta3/lib/action_dispatch/templates"
+  * "/home/ubuntu/workspace/app/views"
+  * "/usr/local/rvm/gems/ruby-2.2.1/gems/web-console-2.0.0.beta3/app/views"
+):
+  app/views/hubs/new.html.erb:6:in `block in _app_views_hubs_new_html_erb___2896931997540214207_69972720954540'
+  app/views/hubs/new.html.erb:5:in `_app_views_hubs_new_html_erb___2896931997540214207_69972720954540'
+
+
+  Rendered /usr/local/rvm/gems/ruby-2.2.1/gems/web-console-2.0.0.beta3/lib/action_dispatch/templates/rescues/missing_template.html.erb within rescues/layout (0.6ms)
+
+
+Started GET "/newhub" for 114.252.116.0 at 2015-09-21 02:34:54 +0000
+Processing by HubsController#new as HTML
+  Rendered hubs/new.html.erb within layouts/application (6.7ms)
+Completed 500 Internal Server Error in 14ms (ActiveRecord: 0.0ms)
+
+ActionView::MissingTemplate (Missing partial shared/_error_messages with {:locale=>[:en], :formats=>[:html], :variants=>[], :handlers=>[:erb, :builder, :raw, :ruby, :coffee, :jbuilder]}. Searched in:
+  * "/usr/local/rvm/gems/ruby-2.2.1/gems/web-console-2.0.0.beta3/lib/action_dispatch/templates"
+  * "/home/ubuntu/workspace/app/views"
+  * "/usr/local/rvm/gems/ruby-2.2.1/gems/web-console-2.0.0.beta3/app/views"
+):
+  app/views/hubs/new.html.erb:6:in `block in _app_views_hubs_new_html_erb___2896931997540214207_69972721714020'
+  app/views/hubs/new.html.erb:5:in `_app_views_hubs_new_html_erb___2896931997540214207_69972721714020'
+
+
+  Rendered /usr/local/rvm/gems/ruby-2.2.1/gems/web-console-2.0.0.beta3/lib/action_dispatch/templates/rescues/missing_template.html.erb within rescues/layout (0.6ms)
+
+
+Started GET "/newhub" for 114.252.116.0 at 2015-09-21 02:37:14 +0000
+Processing by HubsController#new as HTML
+  Rendered shared/_error_messages.html.erb (3.9ms)
+  Rendered hubs/new.html.erb within layouts/application (31.2ms)
+  Rendered layouts/_header.html.erb (0.4ms)
+  Rendered layouts/_footer.html.erb (0.2ms)
+Completed 200 OK in 156ms (Views: 154.2ms | ActiveRecord: 0.0ms)
+
+
+Started POST "/hubs" for 114.252.116.0 at 2015-09-21 02:37:31 +0000
+Processing by HubsController#create as HTML
+  Parameters: {"utf8"=>"✓", "authenticity_token"=>"MiwI8dASfhgISUKLamgblw29YKrv7Q5Qwc8qm40qqV+7IXXALyMqIdE/bw8RxwUwMR4bCUaUl1heNf/nOzN8bA==", "hub"=>{"name"=>"ph", "email"=>"12"}, "commit"=>"Create my hub"}
+  [1m[35m (0.2ms)[0m  begin transaction
+  [1m[36mHub Exists (0.4ms)[0m  [1mSELECT  1 AS one FROM "hubs" WHERE LOWER("hubs"."email") = LOWER('12') LIMIT 1[0m
+  [1m[35m (0.1ms)[0m  rollback transaction
+  Rendered shared/_error_messages.html.erb (2.6ms)
+  Rendered hubs/new.html.erb within layouts/application (7.1ms)
+  Rendered layouts/_header.html.erb (0.2ms)
+  Rendered layouts/_footer.html.erb (0.2ms)
+Completed 200 OK in 179ms (Views: 145.1ms | ActiveRecord: 0.7ms)
+
+
+Started POST "/hubs" for 114.252.116.0 at 2015-09-21 02:37:58 +0000
+Processing by HubsController#create as HTML
+  Parameters: {"utf8"=>"✓", "authenticity_token"=>"gl3sUHmoRRa8slmF+S1Ivi+Be+UH7lnwSkomTMN9ILgLUJFhhpkRL2XEdAGCglYZEyIARq6XwPjVsPMwdWT1iw==", "hub"=>{"name"=>"phenix", "email"=>"123454321"}, "commit"=>"Create my hub"}
+  [1m[36m (0.1ms)[0m  [1mbegin transaction[0m
+  [1m[35mHub Exists (0.3ms)[0m  SELECT  1 AS one FROM "hubs" WHERE LOWER("hubs"."email") = LOWER('123454321') LIMIT 1
+  [1m[36m (0.1ms)[0m  [1mrollback transaction[0m
+  Rendered shared/_error_messages.html.erb (2.1ms)
+  Rendered hubs/new.html.erb within layouts/application (6.5ms)
+  Rendered layouts/_header.html.erb (0.3ms)
+  Rendered layouts/_footer.html.erb (0.2ms)
+Completed 200 OK in 144ms (Views: 137.0ms | ActiveRecord: 0.5ms)
+
+
+Started POST "/hubs" for 114.252.116.0 at 2015-09-21 02:38:10 +0000
+Processing by HubsController#create as HTML
+  Parameters: {"utf8"=>"✓", "authenticity_token"=>"8915Ztqe2DcNcpToN54ZMOLFqvQW/LrIeomrTaeLipN60ARXJa+MDtQEuWxMMQeX3mbRV7+FI8Dlc34xEZJfoA==", "hub"=>{"name"=>"phenix", "email"=>""}, "commit"=>"Create my hub"}
+  [1m[35m (0.2ms)[0m  begin transaction
+  [1m[36mHub Exists (0.2ms)[0m  [1mSELECT  1 AS one FROM "hubs" WHERE LOWER("hubs"."email") = LOWER('') LIMIT 1[0m
+  [1m[35m (0.1ms)[0m  rollback transaction
+  Rendered shared/_error_messages.html.erb (2.6ms)
+  Rendered hubs/new.html.erb within layouts/application (7.5ms)
+  Rendered layouts/_header.html.erb (0.2ms)
+  Rendered layouts/_footer.html.erb (0.2ms)
+Completed 200 OK in 150ms (Views: 144.5ms | ActiveRecord: 0.4ms)
+
+
+Started POST "/hubs" for 114.252.116.0 at 2015-09-21 02:38:24 +0000
+Processing by HubsController#create as HTML
+  Parameters: {"utf8"=>"✓", "authenticity_token"=>"L1OBKyZw0ADwGibkrO9G8btq3JTzC4DkVspw5XtzCGKmXvwa2UGEOSlsC2DXQFhWh8mnN1pyGezJMKWZzWrdUQ==", "hub"=>{"name"=>"phenix", "email"=>"1234321"}, "commit"=>"Create my hub"}
+  [1m[36m (0.1ms)[0m  [1mbegin transaction[0m
+  [1m[35mHub Exists (0.2ms)[0m  SELECT  1 AS one FROM "hubs" WHERE LOWER("hubs"."email") = LOWER('1234321') LIMIT 1
+  [1m[36m (0.1ms)[0m  [1mrollback transaction[0m
+  Rendered shared/_error_messages.html.erb (1.6ms)
+  Rendered hubs/new.html.erb within layouts/application (5.7ms)
+  Rendered layouts/_header.html.erb (0.3ms)
+  Rendered layouts/_footer.html.erb (0.3ms)
+Completed 200 OK in 130ms (Views: 124.1ms | ActiveRecord: 0.4ms)
+
+
+Started POST "/hubs" for 114.252.116.0 at 2015-09-21 02:38:42 +0000
+Processing by HubsController#create as HTML
+  Parameters: {"utf8"=>"✓", "authenticity_token"=>"txN1THWsB50aVr69G0nNp/TmWDSZHECEVBF9jpaHviM+Hgh9ip1TpMMgkzlg5tMAyEUjlzBl2YzL66jyIJ5rEA==", "hub"=>{"name"=>"phenix", "email"=>"12344321"}, "commit"=>"Create my hub"}
+  [1m[35m (0.1ms)[0m  begin transaction
+  [1m[36mHub Exists (0.3ms)[0m  [1mSELECT  1 AS one FROM "hubs" WHERE LOWER("hubs"."email") = LOWER('12344321') LIMIT 1[0m
+  [1m[35m (0.1ms)[0m  rollback transaction
+  Rendered shared/_error_messages.html.erb (2.7ms)
+  Rendered hubs/new.html.erb within layouts/application (7.6ms)
+  Rendered layouts/_header.html.erb (0.3ms)
+  Rendered layouts/_footer.html.erb (0.2ms)
+Completed 200 OK in 153ms (Views: 144.6ms | ActiveRecord: 0.5ms)
+
+
+Started POST "/hubs" for 114.252.116.0 at 2015-09-21 02:39:20 +0000
+Processing by HubsController#create as HTML
+  Parameters: {"utf8"=>"✓", "authenticity_token"=>"+K6tdQDHx0Qy+JoxqwwzL8fAFcKxgVJs12mim5AIxi1xo9BE//aTfeuOt7XQoy2I+2NuYRj4y2RIk3fnJhETHg==", "hub"=>{"name"=>"phenix", "email"=>"12344321"}, "commit"=>"Create my hub"}
+  [1m[36m (0.1ms)[0m  [1mbegin transaction[0m
+  [1m[35mHub Exists (0.2ms)[0m  SELECT  1 AS one FROM "hubs" WHERE LOWER("hubs"."email") = LOWER('12344321') LIMIT 1
+  [1m[36m (0.1ms)[0m  [1mrollback transaction[0m
+  Rendered shared/_error_messages.html.erb (2.2ms)
+  Rendered hubs/new.html.erb within layouts/application (6.7ms)
+  Rendered layouts/_header.html.erb (0.2ms)
+  Rendered layouts/_footer.html.erb (0.2ms)
+Completed 200 OK in 154ms (Views: 148.4ms | ActiveRecord: 0.3ms)
+
+
+Started GET "/hubs" for 114.252.116.0 at 2015-09-21 02:41:24 +0000
+
+AbstractController::ActionNotFound (The action 'index' could not be found for HubsController):
+  actionpack (4.2.4) lib/abstract_controller/base.rb:132:in `process'
+  actionview (4.2.4) lib/action_view/rendering.rb:30:in `process'
+  actionpack (4.2.4) lib/action_controller/metal.rb:196:in `dispatch'
+  actionpack (4.2.4) lib/action_controller/metal/rack_delegation.rb:13:in `dispatch'
+  actionpack (4.2.4) lib/action_controller/metal.rb:237:in `block in action'
+  actionpack (4.2.4) lib/action_dispatch/routing/route_set.rb:76:in `call'
+  actionpack (4.2.4) lib/action_dispatch/routing/route_set.rb:76:in `dispatch'
+  actionpack (4.2.4) lib/action_dispatch/routing/route_set.rb:45:in `serve'
+  actionpack (4.2.4) lib/action_dispatch/journey/router.rb:43:in `block in serve'
+  actionpack (4.2.4) lib/action_dispatch/journey/router.rb:30:in `each'
+  actionpack (4.2.4) lib/action_dispatch/journey/router.rb:30:in `serve'
+  actionpack (4.2.4) lib/action_dispatch/routing/route_set.rb:821:in `call'
+  rack (1.6.4) lib/rack/etag.rb:24:in `call'
+  rack (1.6.4) lib/rack/conditionalget.rb:25:in `call'
+  rack (1.6.4) lib/rack/head.rb:13:in `call'
+  actionpack (4.2.4) lib/action_dispatch/middleware/params_parser.rb:27:in `call'
+  actionpack (4.2.4) lib/action_dispatch/middleware/flash.rb:260:in `call'
+  rack (1.6.4) lib/rack/session/abstract/id.rb:225:in `context'
+  rack (1.6.4) lib/rack/session/abstract/id.rb:220:in `call'
+  actionpack (4.2.4) lib/action_dispatch/middleware/cookies.rb:560:in `call'
+  activerecord (4.2.4) lib/active_record/query_cache.rb:36:in `call'
+  activerecord (4.2.4) lib/active_record/connection_adapters/abstract/connection_pool.rb:653:in `call'
+  activerecord (4.2.4) lib/active_record/migration.rb:377:in `call'
+  actionpack (4.2.4) lib/action_dispatch/middleware/callbacks.rb:29:in `block in call'
+  activesupport (4.2.4) lib/active_support/callbacks.rb:88:in `__run_callbacks__'
+  activesupport (4.2.4) lib/active_support/callbacks.rb:778:in `_run_call_callbacks'
+  activesupport (4.2.4) lib/active_support/callbacks.rb:81:in `run_callbacks'
+  actionpack (4.2.4) lib/action_dispatch/middleware/callbacks.rb:27:in `call'
+  actionpack (4.2.4) lib/action_dispatch/middleware/reloader.rb:73:in `call'
+  actionpack (4.2.4) lib/action_dispatch/middleware/remote_ip.rb:78:in `call'
+  web-console (2.0.0.beta3) lib/action_dispatch/debug_exceptions.rb:18:in `middleware_call'
+  web-console (2.0.0.beta3) lib/action_dispatch/debug_exceptions.rb:13:in `call'
+  actionpack (4.2.4) lib/action_dispatch/middleware/show_exceptions.rb:30:in `call'
+  railties (4.2.4) lib/rails/rack/logger.rb:38:in `call_app'
+  railties (4.2.4) lib/rails/rack/logger.rb:20:in `block in call'
+  activesupport (4.2.4) lib/active_support/tagged_logging.rb:68:in `block in tagged'
+  activesupport (4.2.4) lib/active_support/tagged_logging.rb:26:in `tagged'
+  activesupport (4.2.4) lib/active_support/tagged_logging.rb:68:in `tagged'
+  railties (4.2.4) lib/rails/rack/logger.rb:20:in `call'
+  actionpack (4.2.4) lib/action_dispatch/middleware/request_id.rb:21:in `call'
+  rack (1.6.4) lib/rack/methodoverride.rb:22:in `call'
+  rack (1.6.4) lib/rack/runtime.rb:18:in `call'
+  activesupport (4.2.4) lib/active_support/cache/strategy/local_cache_middleware.rb:28:in `call'
+  rack (1.6.4) lib/rack/lock.rb:17:in `call'
+  actionpack (4.2.4) lib/action_dispatch/middleware/static.rb:116:in `call'
+  rack (1.6.4) lib/rack/sendfile.rb:113:in `call'
+  railties (4.2.4) lib/rails/engine.rb:518:in `call'
+  railties (4.2.4) lib/rails/application.rb:165:in `call'
+  rack (1.6.4) lib/rack/lock.rb:17:in `call'
+  rack (1.6.4) lib/rack/content_length.rb:15:in `call'
+  rack (1.6.4) lib/rack/handler/webrick.rb:88:in `service'
+  /usr/local/rvm/rubies/ruby-2.2.1/lib/ruby/2.2.0/webrick/httpserver.rb:138:in `service'
+  /usr/local/rvm/rubies/ruby-2.2.1/lib/ruby/2.2.0/webrick/httpserver.rb:94:in `run'
+  /usr/local/rvm/rubies/ruby-2.2.1/lib/ruby/2.2.0/webrick/server.rb:294:in `block in start_thread'
+
+
+  Rendered /usr/local/rvm/gems/ruby-2.2.1/gems/web-console-2.0.0.beta3/lib/action_dispatch/templates/rescues/unknown_action.html.erb within rescues/layout (0.7ms)
+
+
+Started GET "/" for 114.252.116.0 at 2015-09-21 02:41:30 +0000
+Processing by StaticPagesController#home as HTML
+  Rendered static_pages/home.html.erb within layouts/application (0.3ms)
+  Rendered layouts/_header.html.erb (0.3ms)
+  Rendered layouts/_footer.html.erb (0.1ms)
+Completed 200 OK in 135ms (Views: 134.4ms | ActiveRecord: 0.0ms)
+
+
+Started GET "/newhub" for 114.252.116.0 at 2015-09-21 02:41:33 +0000
+Processing by HubsController#new as HTML
+  Rendered shared/_error_messages.html.erb (0.9ms)
+  Rendered hubs/new.html.erb within layouts/application (9.2ms)
+  Rendered layouts/_header.html.erb (0.7ms)
+  Rendered layouts/_footer.html.erb (0.5ms)
+Completed 200 OK in 183ms (Views: 182.0ms | ActiveRecord: 0.0ms)
+
+
+Started POST "/hubs" for 114.252.116.0 at 2015-09-21 02:41:54 +0000
+Processing by HubsController#create as HTML
+  Parameters: {"utf8"=>"✓", "authenticity_token"=>"HgQB4kJBuu6T8BdtuDzH3oqWPtPtGJSjI0hKf3fFa0WXCXzTvXDu10qGOunDk9l5tjVFcERhDau8sp8Dwdy+dg==", "hub"=>{"name"=>"phenix", "email"=>"pcai@qq.com", "password"=>"[FILTERED]"}, "commit"=>"Create my hub"}
+  [1m[35m (0.1ms)[0m  begin transaction
+  [1m[36mHub Exists (0.4ms)[0m  [1mSELECT  1 AS one FROM "hubs" WHERE LOWER("hubs"."email") = LOWER('pcai@qq.com') LIMIT 1[0m
+  [1m[35mSQL (0.4ms)[0m  INSERT INTO "hubs" ("name", "email", "password_digest", "created_at", "updated_at") VALUES (?, ?, ?, ?, ?)  [["name", "phenix"], ["email", "pcai@qq.com"], ["password_digest", "$2a$10$8lAwrwD3i52TLDASeUkhwuG8TgZooQ8MzGD/UFdyhyYVZy65JiLwy"], ["created_at", "2015-09-21 02:41:55.072918"], ["updated_at", "2015-09-21 02:41:55.072918"]]
+  [1m[36m (10.9ms)[0m  [1mcommit transaction[0m
+Redirected to https://gatherhub-phenix2014-1.c9.io/hubs/1
+Completed 302 Found in 92ms (ActiveRecord: 11.9ms)
+
+
+Started GET "/hubs/1" for 114.252.116.0 at 2015-09-21 02:41:55 +0000
+Processing by HubsController#show as HTML
+  Parameters: {"id"=>"1"}
+  [1m[35mHub Load (0.3ms)[0m  SELECT  "hubs".* FROM "hubs" WHERE "hubs"."id" = ? LIMIT 1  [["id", 1]]
+Completed 500 Internal Server Error in 20ms (ActiveRecord: 0.3ms)
+
+ActionView::MissingTemplate (Missing template hubs/show, application/show with {:locale=>[:en], :formats=>[:html], :variants=>[], :handlers=>[:erb, :builder, :raw, :ruby, :coffee, :jbuilder]}. Searched in:
+  * "/usr/local/rvm/gems/ruby-2.2.1/gems/web-console-2.0.0.beta3/lib/action_dispatch/templates"
+  * "/home/ubuntu/workspace/app/views"
+  * "/usr/local/rvm/gems/ruby-2.2.1/gems/web-console-2.0.0.beta3/app/views"
+):
+  actionview (4.2.4) lib/action_view/path_set.rb:46:in `find'
+  actionview (4.2.4) lib/action_view/lookup_context.rb:121:in `find'
+  actionview (4.2.4) lib/action_view/renderer/abstract_renderer.rb:18:in `find_template'
+  actionview (4.2.4) lib/action_view/renderer/template_renderer.rb:40:in `determine_template'
+  actionview (4.2.4) lib/action_view/renderer/template_renderer.rb:8:in `render'
+  actionview (4.2.4) lib/action_view/renderer/renderer.rb:42:in `render_template'
+  actionview (4.2.4) lib/action_view/renderer/renderer.rb:23:in `render'
+  actionview (4.2.4) lib/action_view/rendering.rb:100:in `_render_template'
+  actionpack (4.2.4) lib/action_controller/metal/streaming.rb:217:in `_render_template'
+  actionview (4.2.4) lib/action_view/rendering.rb:83:in `render_to_body'
+  actionpack (4.2.4) lib/action_controller/metal/rendering.rb:32:in `render_to_body'
+  actionpack (4.2.4) lib/action_controller/metal/renderers.rb:37:in `render_to_body'
+  actionpack (4.2.4) lib/abstract_controller/rendering.rb:25:in `render'
+  actionpack (4.2.4) lib/action_controller/metal/rendering.rb:16:in `render'
+  actionpack (4.2.4) lib/action_controller/metal/instrumentation.rb:44:in `block (2 levels) in render'
+  activesupport (4.2.4) lib/active_support/core_ext/benchmark.rb:12:in `block in ms'
+  /usr/local/rvm/rubies/ruby-2.2.1/lib/ruby/2.2.0/benchmark.rb:303:in `realtime'
+  activesupport (4.2.4) lib/active_support/core_ext/benchmark.rb:12:in `ms'
+  actionpack (4.2.4) lib/action_controller/metal/instrumentation.rb:44:in `block in render'
+  actionpack (4.2.4) lib/action_controller/metal/instrumentation.rb:87:in `cleanup_view_runtime'
+  activerecord (4.2.4) lib/active_record/railties/controller_runtime.rb:25:in `cleanup_view_runtime'
+  actionpack (4.2.4) lib/action_controller/metal/instrumentation.rb:43:in `render'
+  actionpack (4.2.4) lib/action_controller/metal/implicit_render.rb:10:in `default_render'
+  actionpack (4.2.4) lib/action_controller/metal/implicit_render.rb:5:in `send_action'
+  actionpack (4.2.4) lib/abstract_controller/base.rb:198:in `process_action'
+  actionpack (4.2.4) lib/action_controller/metal/rendering.rb:10:in `process_action'
+  actionpack (4.2.4) lib/abstract_controller/callbacks.rb:20:in `block in process_action'
+  activesupport (4.2.4) lib/active_support/callbacks.rb:117:in `call'
+  activesupport (4.2.4) lib/active_support/callbacks.rb:117:in `call'
+  activesupport (4.2.4) lib/active_support/callbacks.rb:555:in `block (2 levels) in compile'
+  activesupport (4.2.4) lib/active_support/callbacks.rb:505:in `call'
+  activesupport (4.2.4) lib/active_support/callbacks.rb:505:in `call'
+  activesupport (4.2.4) lib/active_support/callbacks.rb:92:in `__run_callbacks__'
+  activesupport (4.2.4) lib/active_support/callbacks.rb:778:in `_run_process_action_callbacks'
+  activesupport (4.2.4) lib/active_support/callbacks.rb:81:in `run_callbacks'
+  actionpack (4.2.4) lib/abstract_controller/callbacks.rb:19:in `process_action'
+  actionpack (4.2.4) lib/action_controller/metal/rescue.rb:29:in `process_action'
+  actionpack (4.2.4) lib/action_controller/metal/instrumentation.rb:32:in `block in process_action'
+  activesupport (4.2.4) lib/active_support/notifications.rb:164:in `block in instrument'
+  activesupport (4.2.4) lib/active_support/notifications/instrumenter.rb:20:in `instrument'
+  activesupport (4.2.4) lib/active_support/notifications.rb:164:in `instrument'
+  actionpack (4.2.4) lib/action_controller/metal/instrumentation.rb:30:in `process_action'
+  actionpack (4.2.4) lib/action_controller/metal/params_wrapper.rb:250:in `process_action'
+  activerecord (4.2.4) lib/active_record/railties/controller_runtime.rb:18:in `process_action'
+  actionpack (4.2.4) lib/abstract_controller/base.rb:137:in `process'
+  actionview (4.2.4) lib/action_view/rendering.rb:30:in `process'
+  actionpack (4.2.4) lib/action_controller/metal.rb:196:in `dispatch'
+  actionpack (4.2.4) lib/action_controller/metal/rack_delegation.rb:13:in `dispatch'
+  actionpack (4.2.4) lib/action_controller/metal.rb:237:in `block in action'
+  actionpack (4.2.4) lib/action_dispatch/routing/route_set.rb:76:in `call'
+  actionpack (4.2.4) lib/action_dispatch/routing/route_set.rb:76:in `dispatch'
+  actionpack (4.2.4) lib/action_dispatch/routing/route_set.rb:45:in `serve'
+  actionpack (4.2.4) lib/action_dispatch/journey/router.rb:43:in `block in serve'
+  actionpack (4.2.4) lib/action_dispatch/journey/router.rb:30:in `each'
+  actionpack (4.2.4) lib/action_dispatch/journey/router.rb:30:in `serve'
+  actionpack (4.2.4) lib/action_dispatch/routing/route_set.rb:821:in `call'
+  rack (1.6.4) lib/rack/etag.rb:24:in `call'
+  rack (1.6.4) lib/rack/conditionalget.rb:25:in `call'
+  rack (1.6.4) lib/rack/head.rb:13:in `call'
+  actionpack (4.2.4) lib/action_dispatch/middleware/params_parser.rb:27:in `call'
+  actionpack (4.2.4) lib/action_dispatch/middleware/flash.rb:260:in `call'
+  rack (1.6.4) lib/rack/session/abstract/id.rb:225:in `context'
+  rack (1.6.4) lib/rack/session/abstract/id.rb:220:in `call'
+  actionpack (4.2.4) lib/action_dispatch/middleware/cookies.rb:560:in `call'
+  activerecord (4.2.4) lib/active_record/query_cache.rb:36:in `call'
+  activerecord (4.2.4) lib/active_record/connection_adapters/abstract/connection_pool.rb:653:in `call'
+  activerecord (4.2.4) lib/active_record/migration.rb:377:in `call'
+  actionpack (4.2.4) lib/action_dispatch/middleware/callbacks.rb:29:in `block in call'
+  activesupport (4.2.4) lib/active_support/callbacks.rb:88:in `__run_callbacks__'
+  activesupport (4.2.4) lib/active_support/callbacks.rb:778:in `_run_call_callbacks'
+  activesupport (4.2.4) lib/active_support/callbacks.rb:81:in `run_callbacks'
+  actionpack (4.2.4) lib/action_dispatch/middleware/callbacks.rb:27:in `call'
+  actionpack (4.2.4) lib/action_dispatch/middleware/reloader.rb:73:in `call'
+  actionpack (4.2.4) lib/action_dispatch/middleware/remote_ip.rb:78:in `call'
+  web-console (2.0.0.beta3) lib/action_dispatch/debug_exceptions.rb:18:in `middleware_call'
+  web-console (2.0.0.beta3) lib/action_dispatch/debug_exceptions.rb:13:in `call'
+  actionpack (4.2.4) lib/action_dispatch/middleware/show_exceptions.rb:30:in `call'
+  railties (4.2.4) lib/rails/rack/logger.rb:38:in `call_app'
+  railties (4.2.4) lib/rails/rack/logger.rb:20:in `block in call'
+  activesupport (4.2.4) lib/active_support/tagged_logging.rb:68:in `block in tagged'
+  activesupport (4.2.4) lib/active_support/tagged_logging.rb:26:in `tagged'
+  activesupport (4.2.4) lib/active_support/tagged_logging.rb:68:in `tagged'
+  railties (4.2.4) lib/rails/rack/logger.rb:20:in `call'
+  actionpack (4.2.4) lib/action_dispatch/middleware/request_id.rb:21:in `call'
+  rack (1.6.4) lib/rack/methodoverride.rb:22:in `call'
+  rack (1.6.4) lib/rack/runtime.rb:18:in `call'
+  activesupport (4.2.4) lib/active_support/cache/strategy/local_cache_middleware.rb:28:in `call'
+  rack (1.6.4) lib/rack/lock.rb:17:in `call'
+  actionpack (4.2.4) lib/action_dispatch/middleware/static.rb:116:in `call'
+  rack (1.6.4) lib/rack/sendfile.rb:113:in `call'
+  railties (4.2.4) lib/rails/engine.rb:518:in `call'
+  railties (4.2.4) lib/rails/application.rb:165:in `call'
+  rack (1.6.4) lib/rack/lock.rb:17:in `call'
+  rack (1.6.4) lib/rack/content_length.rb:15:in `call'
+  rack (1.6.4) lib/rack/handler/webrick.rb:88:in `service'
+  /usr/local/rvm/rubies/ruby-2.2.1/lib/ruby/2.2.0/webrick/httpserver.rb:138:in `service'
+  /usr/local/rvm/rubies/ruby-2.2.1/lib/ruby/2.2.0/webrick/httpserver.rb:94:in `run'
+  /usr/local/rvm/rubies/ruby-2.2.1/lib/ruby/2.2.0/webrick/server.rb:294:in `block in start_thread'
+
+
+  Rendered /usr/local/rvm/gems/ruby-2.2.1/gems/web-console-2.0.0.beta3/lib/action_dispatch/templates/rescues/missing_template.html.erb within rescues/layout (0.8ms)
+
+
+Started GET "/hubs/1" for 114.252.116.0 at 2015-09-21 02:46:58 +0000
+Processing by HubsController#show as HTML
+  Parameters: {"id"=>"1"}
+  [1m[36mHub Load (0.2ms)[0m  [1mSELECT  "hubs".* FROM "hubs" WHERE "hubs"."id" = ? LIMIT 1[0m  [["id", 1]]
+  Rendered hubs/show.html.erb within layouts/application (22.2ms)
+Completed 500 Internal Server Error in 39ms (ActiveRecord: 0.9ms)
+
+NoMethodError (undefined method `gravatar_for' for #<#<Class:0x000000029440d8>:0x000000029308d0>):
+  app/views/hubs/show.html.erb:6:in `_app_views_hubs_show_html_erb___1645522322545760999_21555480'
+
+
+  Rendered /usr/local/rvm/gems/ruby-2.2.1/gems/web-console-2.0.0.beta3/lib/action_dispatch/templates/rescues/_source.erb (7.5ms)
+  Rendered /usr/local/rvm/gems/ruby-2.2.1/gems/web-console-2.0.0.beta3/lib/action_dispatch/templates/rescues/_trace.html.erb (4.2ms)
+  Rendered /usr/local/rvm/gems/ruby-2.2.1/gems/web-console-2.0.0.beta3/lib/action_dispatch/templates/rescues/_request_and_response.html.erb (1.8ms)
+  Rendered /usr/local/rvm/gems/ruby-2.2.1/gems/web-console-2.0.0.beta3/lib/action_dispatch/templates/rescues/_web_console.html.erb (1.1ms)
+  Rendered /usr/local/rvm/gems/ruby-2.2.1/gems/web-console-2.0.0.beta3/lib/action_dispatch/templates/rescues/diagnostics.html.erb within rescues/layout (82.6ms)
+
+
+Started GET "/hubs/1" for 114.252.116.0 at 2015-09-21 02:47:22 +0000
+Processing by HubsController#show as HTML
+  Parameters: {"id"=>"1"}
+  [1m[35mHub Load (0.2ms)[0m  SELECT  "hubs".* FROM "hubs" WHERE "hubs"."id" = ? LIMIT 1  [["id", 1]]
+  Rendered hubs/show.html.erb within layouts/application (0.5ms)
+  Rendered layouts/_header.html.erb (0.5ms)
+  Rendered layouts/_footer.html.erb (0.2ms)
+Completed 200 OK in 2241ms (Views: 2239.2ms | ActiveRecord: 0.2ms)
+
+
+Started GET "/assets/custom.self-015521c98a3dae2afc56c1e4ffd3fa86791b125d64b18a88bed76d181c5d4a54.css?body=1" for 114.252.116.0 at 2015-09-21 02:47:25 +0000
+
+
+Started GET "/hubs/1" for 114.252.116.0 at 2015-09-21 02:48:54 +0000
+Processing by HubsController#show as HTML
+  Parameters: {"id"=>"1"}
+  [1m[36mHub Load (0.2ms)[0m  [1mSELECT  "hubs".* FROM "hubs" WHERE "hubs"."id" = ? LIMIT 1[0m  [["id", 1]]
+  Rendered hubs/show.html.erb within layouts/application (0.7ms)
+  Rendered layouts/_header.html.erb (0.3ms)
+  Rendered layouts/_footer.html.erb (0.2ms)
+Completed 200 OK in 151ms (Views: 149.4ms | ActiveRecord: 0.2ms)
+
+
+Started GET "/" for 114.252.116.0 at 2015-09-21 03:22:35 +0000
+Processing by StaticPagesController#home as HTML
+  Rendered static_pages/home.html.erb within layouts/application (1.1ms)
+  Rendered layouts/_header.html.erb (0.2ms)
+  Rendered layouts/_footer.html.erb (0.2ms)
+Completed 200 OK in 140ms (Views: 138.8ms | ActiveRecord: 0.0ms)
+
+
+Started GET "/newhub" for 114.252.116.0 at 2015-09-21 03:22:37 +0000
+Processing by HubsController#new as HTML
+  Rendered shared/_error_messages.html.erb (0.1ms)
+  Rendered hubs/new.html.erb within layouts/application (7.8ms)
+  Rendered layouts/_header.html.erb (0.4ms)
+  Rendered layouts/_footer.html.erb (0.2ms)
+Completed 200 OK in 199ms (Views: 183.7ms | ActiveRecord: 0.9ms)
+
+
+Started POST "/hubs" for 114.252.116.0 at 2015-09-21 03:22:50 +0000
+Processing by HubsController#create as HTML
+  Parameters: {"utf8"=>"✓", "authenticity_token"=>"zNP+s9ZbGNLXybp9tSOBSLgX9DolIC2YlhWmqTMXJ3lF3oOCKWpM6w6/l/nOjJ/vhLSPmYxZtJAJ73PVhQ7ySg==", "hub"=>{"name"=>"gao", "email"=>"gg@qq.com", "password"=>"[FILTERED]"}, "commit"=>"Create my hub"}
+  [1m[35m (0.2ms)[0m  begin transaction
+  [1m[36mHub Exists (0.2ms)[0m  [1mSELECT  1 AS one FROM "hubs" WHERE LOWER("hubs"."email") = LOWER('gg@qq.com') LIMIT 1[0m
+  [1m[35mSQL (0.3ms)[0m  INSERT INTO "hubs" ("name", "email", "password_digest", "created_at", "updated_at") VALUES (?, ?, ?, ?, ?)  [["name", "gao"], ["email", "gg@qq.com"], ["password_digest", "$2a$10$IVjgR/4shrqIJCqv14V40./fViO01HZ0oRpZOFOPNABx2ffQuuecC"], ["created_at", "2015-09-21 03:22:50.992483"], ["updated_at", "2015-09-21 03:22:50.992483"]]
+  [1m[36m (20.9ms)[0m  [1mcommit transaction[0m
+Completed 500 Internal Server Error in 110ms (ActiveRecord: 21.6ms)
+
+ActionView::MissingTemplate (Missing template https://gatherhub-phenix2014-1.c9.io/hubs/2 with {:locale=>[:en], :formats=>[:html], :variants=>[], :handlers=>[:erb, :builder, :raw, :ruby, :coffee, :jbuilder]}. Searched in:
+  * "/usr/local/rvm/gems/ruby-2.2.1/gems/web-console-2.0.0.beta3/lib/action_dispatch/templates"
+  * "/home/ubuntu/workspace/app/views"
+  * "/usr/local/rvm/gems/ruby-2.2.1/gems/web-console-2.0.0.beta3/app/views"
+):
+  app/controllers/hubs_controller.rb:20:in `create'
+
+
+  Rendered /usr/local/rvm/gems/ruby-2.2.1/gems/web-console-2.0.0.beta3/lib/action_dispatch/templates/rescues/missing_template.html.erb within rescues/layout (0.7ms)
+
+
+Started GET "/hubs" for 114.252.116.0 at 2015-09-21 03:23:22 +0000
+
+AbstractController::ActionNotFound (The action 'index' could not be found for HubsController):
+  actionpack (4.2.4) lib/abstract_controller/base.rb:132:in `process'
+  actionview (4.2.4) lib/action_view/rendering.rb:30:in `process'
+  actionpack (4.2.4) lib/action_controller/metal.rb:196:in `dispatch'
+  actionpack (4.2.4) lib/action_controller/metal/rack_delegation.rb:13:in `dispatch'
+  actionpack (4.2.4) lib/action_controller/metal.rb:237:in `block in action'
+  actionpack (4.2.4) lib/action_dispatch/routing/route_set.rb:76:in `call'
+  actionpack (4.2.4) lib/action_dispatch/routing/route_set.rb:76:in `dispatch'
+  actionpack (4.2.4) lib/action_dispatch/routing/route_set.rb:45:in `serve'
+  actionpack (4.2.4) lib/action_dispatch/journey/router.rb:43:in `block in serve'
+  actionpack (4.2.4) lib/action_dispatch/journey/router.rb:30:in `each'
+  actionpack (4.2.4) lib/action_dispatch/journey/router.rb:30:in `serve'
+  actionpack (4.2.4) lib/action_dispatch/routing/route_set.rb:821:in `call'
+  rack (1.6.4) lib/rack/etag.rb:24:in `call'
+  rack (1.6.4) lib/rack/conditionalget.rb:25:in `call'
+  rack (1.6.4) lib/rack/head.rb:13:in `call'
+  actionpack (4.2.4) lib/action_dispatch/middleware/params_parser.rb:27:in `call'
+  actionpack (4.2.4) lib/action_dispatch/middleware/flash.rb:260:in `call'
+  rack (1.6.4) lib/rack/session/abstract/id.rb:225:in `context'
+  rack (1.6.4) lib/rack/session/abstract/id.rb:220:in `call'
+  actionpack (4.2.4) lib/action_dispatch/middleware/cookies.rb:560:in `call'
+  activerecord (4.2.4) lib/active_record/query_cache.rb:36:in `call'
+  activerecord (4.2.4) lib/active_record/connection_adapters/abstract/connection_pool.rb:653:in `call'
+  activerecord (4.2.4) lib/active_record/migration.rb:377:in `call'
+  actionpack (4.2.4) lib/action_dispatch/middleware/callbacks.rb:29:in `block in call'
+  activesupport (4.2.4) lib/active_support/callbacks.rb:88:in `__run_callbacks__'
+  activesupport (4.2.4) lib/active_support/callbacks.rb:778:in `_run_call_callbacks'
+  activesupport (4.2.4) lib/active_support/callbacks.rb:81:in `run_callbacks'
+  actionpack (4.2.4) lib/action_dispatch/middleware/callbacks.rb:27:in `call'
+  actionpack (4.2.4) lib/action_dispatch/middleware/reloader.rb:73:in `call'
+  actionpack (4.2.4) lib/action_dispatch/middleware/remote_ip.rb:78:in `call'
+  web-console (2.0.0.beta3) lib/action_dispatch/debug_exceptions.rb:18:in `middleware_call'
+  web-console (2.0.0.beta3) lib/action_dispatch/debug_exceptions.rb:13:in `call'
+  actionpack (4.2.4) lib/action_dispatch/middleware/show_exceptions.rb:30:in `call'
+  railties (4.2.4) lib/rails/rack/logger.rb:38:in `call_app'
+  railties (4.2.4) lib/rails/rack/logger.rb:20:in `block in call'
+  activesupport (4.2.4) lib/active_support/tagged_logging.rb:68:in `block in tagged'
+  activesupport (4.2.4) lib/active_support/tagged_logging.rb:26:in `tagged'
+  activesupport (4.2.4) lib/active_support/tagged_logging.rb:68:in `tagged'
+  railties (4.2.4) lib/rails/rack/logger.rb:20:in `call'
+  actionpack (4.2.4) lib/action_dispatch/middleware/request_id.rb:21:in `call'
+  rack (1.6.4) lib/rack/methodoverride.rb:22:in `call'
+  rack (1.6.4) lib/rack/runtime.rb:18:in `call'
+  activesupport (4.2.4) lib/active_support/cache/strategy/local_cache_middleware.rb:28:in `call'
+  rack (1.6.4) lib/rack/lock.rb:17:in `call'
+  actionpack (4.2.4) lib/action_dispatch/middleware/static.rb:116:in `call'
+  rack (1.6.4) lib/rack/sendfile.rb:113:in `call'
+  railties (4.2.4) lib/rails/engine.rb:518:in `call'
+  railties (4.2.4) lib/rails/application.rb:165:in `call'
+  rack (1.6.4) lib/rack/lock.rb:17:in `call'
+  rack (1.6.4) lib/rack/content_length.rb:15:in `call'
+  rack (1.6.4) lib/rack/handler/webrick.rb:88:in `service'
+  /usr/local/rvm/rubies/ruby-2.2.1/lib/ruby/2.2.0/webrick/httpserver.rb:138:in `service'
+  /usr/local/rvm/rubies/ruby-2.2.1/lib/ruby/2.2.0/webrick/httpserver.rb:94:in `run'
+  /usr/local/rvm/rubies/ruby-2.2.1/lib/ruby/2.2.0/webrick/server.rb:294:in `block in start_thread'
+
+
+  Rendered /usr/local/rvm/gems/ruby-2.2.1/gems/web-console-2.0.0.beta3/lib/action_dispatch/templates/rescues/unknown_action.html.erb within rescues/layout (0.6ms)
+
+
+Started POST "/hubs" for 114.252.116.0 at 2015-09-21 03:23:38 +0000
+Processing by HubsController#create as HTML
+  Parameters: {"utf8"=>"✓", "authenticity_token"=>"i+VW1F3SRA3VMS5EfaPppLbPzItExGhuNoAjc8CUZJEC6CvlouMQNAxHA8AGDPcDimy3KO298WapevYPdo2xog==", "hub"=>{"name"=>"gao", "email"=>"gg@qq.com", "password"=>"[FILTERED]"}, "commit"=>"Create my hub"}
+  [1m[35m (0.5ms)[0m  begin transaction
+  [1m[36mHub Exists (0.2ms)[0m  [1mSELECT  1 AS one FROM "hubs" WHERE LOWER("hubs"."email") = LOWER('gg@qq.com') LIMIT 1[0m
+  [1m[35m (0.1ms)[0m  rollback transaction
+  Rendered shared/_error_messages.html.erb (0.9ms)
+  Rendered hubs/new.html.erb within layouts/application (6.2ms)
+  Rendered layouts/_header.html.erb (0.3ms)
+  Rendered layouts/_footer.html.erb (0.2ms)
+Completed 200 OK in 249ms (Views: 156.8ms | ActiveRecord: 1.6ms)
+
+
+Started POST "/hubs" for 114.252.116.0 at 2015-09-21 03:23:49 +0000
+Processing by HubsController#create as HTML
+  Parameters: {"utf8"=>"✓", "authenticity_token"=>"3O2A+wSdGvL86KxZTpNTrMBBr9gUmWBa428f5XX0lgNV4P3K+6xOyyWegd01PE0L/OLUe73g+VJ8lcqZw+1DMA==", "hub"=>{"name"=>"gao1", "email"=>"gg1@qq.com", "password"=>"[FILTERED]"}, "commit"=>"Create my hub"}
+  [1m[36m (0.2ms)[0m  [1mbegin transaction[0m
+  [1m[35mHub Exists (0.3ms)[0m  SELECT  1 AS one FROM "hubs" WHERE LOWER("hubs"."email") = LOWER('gg1@qq.com') LIMIT 1
+  [1m[36mSQL (0.5ms)[0m  [1mINSERT INTO "hubs" ("name", "email", "password_digest", "created_at", "updated_at") VALUES (?, ?, ?, ?, ?)[0m  [["name", "gao1"], ["email", "gg1@qq.com"], ["password_digest", "$2a$10$aCdtuYrsM1lirFG0QhDP9OZeyiUJm5k0vmiBP2vGB3uqh1PCH8okO"], ["created_at", "2015-09-21 03:23:49.704316"], ["updated_at", "2015-09-21 03:23:49.704316"]]
+  [1m[35m (11.5ms)[0m  commit transaction
+Redirected to https://gatherhub-phenix2014-1.c9.io/hubs/3
+Completed 302 Found in 91ms (ActiveRecord: 12.5ms)
+
+
+Started GET "/hubs/3" for 114.252.116.0 at 2015-09-21 03:23:49 +0000
+Processing by HubsController#show as HTML
+  Parameters: {"id"=>"3"}
+  [1m[36mHub Load (0.4ms)[0m  [1mSELECT  "hubs".* FROM "hubs" WHERE "hubs"."id" = ? LIMIT 1[0m  [["id", 3]]
+  Rendered hubs/show.html.erb within layouts/application (0.1ms)
+  Rendered layouts/_header.html.erb (0.3ms)
+  Rendered layouts/_footer.html.erb (0.4ms)
+Completed 200 OK in 145ms (Views: 142.7ms | ActiveRecord: 0.4ms)

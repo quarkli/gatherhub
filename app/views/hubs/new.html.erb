@@ -1,12 +1,18 @@
 <% provide(:title, 'Create A Hub') %>
-<h1>Sign up</h1>
+<h1>Create A Hub</h1>
 <div class="row">
   <div class="col-md-6 col-md-offset-3">
     <%= form_for(@hub) do |f| %>
+      <%= render 'shared/error_messages' %>
       <%= f.label :name %>
       <%= f.text_field :name, class: 'form-control' %>
+      
       <%= f.label :email %>
       <%= f.text_field :email , class: 'form-control'%>
+      
+      <%= f.label :password %>
+      <%= f.password_field :password , class: 'form-control'%>
+     
       <%= f.submit "Create my hub", class: "btn btn-primary" %>
     <% end %>
   </div>
