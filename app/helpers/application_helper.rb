@@ -7,4 +7,9 @@ module ApplicationHelper
       "#{page_title} | #{base_title}"
     end
   end
+
+  # def log_in(hub)
+  #   session[:user_id] = hub.id
+  # end
+  
 end

@@ -1062,3 +1062,651 @@ Processing by HubsController#show as HTML
   Rendered layouts/_header.html.erb (0.3ms)
   Rendered layouts/_footer.html.erb (0.4ms)
 Completed 200 OK in 145ms (Views: 142.7ms | ActiveRecord: 0.4ms)
+
+
+Started GET "/" for 114.252.116.0 at 2015-09-21 06:03:06 +0000
+Processing by StaticPagesController#home as HTML
+  Rendered static_pages/home.html.erb within layouts/application (27.6ms)
+  Rendered layouts/_header.html.erb (1.3ms)
+  Rendered layouts/_footer.html.erb (7.7ms)
+Completed 200 OK in 6240ms (Views: 6164.2ms | ActiveRecord: 0.0ms)
+
+
+Started GET "/" for 114.252.116.0 at 2015-09-21 06:03:15 +0000
+Processing by StaticPagesController#home as HTML
+  Rendered static_pages/home.html.erb within layouts/application (0.4ms)
+  Rendered layouts/_header.html.erb (0.4ms)
+  Rendered layouts/_footer.html.erb (1.4ms)
+Completed 200 OK in 318ms (Views: 316.1ms | ActiveRecord: 0.0ms)
+
+
+Started GET "/" for 114.252.116.0 at 2015-09-21 06:03:15 +0000
+Processing by StaticPagesController#home as HTML
+  Rendered static_pages/home.html.erb within layouts/application (0.3ms)
+  Rendered layouts/_header.html.erb (0.3ms)
+  Rendered layouts/_footer.html.erb (1.3ms)
+Completed 200 OK in 585ms (Views: 581.6ms | ActiveRecord: 0.0ms)
+
+
+Started GET "/" for 114.252.116.0 at 2015-09-21 06:03:16 +0000
+Processing by StaticPagesController#home as HTML
+  Rendered static_pages/home.html.erb within layouts/application (0.4ms)
+  Rendered layouts/_header.html.erb (0.4ms)
+  Rendered layouts/_footer.html.erb (1.5ms)
+Completed 200 OK in 2725ms (Views: 2718.4ms | ActiveRecord: 0.0ms)
+
+
+Started GET "/assets/sessions.self-e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855.css?body=1" for 114.252.116.0 at 2015-09-21 06:03:19 +0000
+
+
+Started GET "/assets/sessions.self-877aef30ae1b040ab8a3aba4e3e309a11d7f2612f44dde450b5c157aa5f95c05.js?body=1" for 114.252.116.0 at 2015-09-21 06:03:19 +0000
+
+
+Started GET "/newhub" for 114.252.116.0 at 2015-09-21 06:12:59 +0000
+Processing by HubsController#new as HTML
+  Rendered shared/_error_messages.html.erb (7.9ms)
+  Rendered hubs/new.html.erb within layouts/application (146.3ms)
+  Rendered layouts/_header.html.erb (0.3ms)
+  Rendered layouts/_footer.html.erb (2.1ms)
+Completed 200 OK in 4191ms (Views: 3917.3ms | ActiveRecord: 22.3ms)
+
+
+Started POST "/hubs" for 114.252.116.0 at 2015-09-21 06:13:16 +0000
+Processing by HubsController#create as HTML
+  Parameters: {"utf8"=>"✓", "authenticity_token"=>"7gr+K10Lb7w1vd+HN3qidl9EufvYN/6TxatsT7xiTpBnB4Maojo7hezL8gNM1bzRY+fCWHFOZ5taUbkzCnubow==", "hub"=>{"name"=>"mm", "email"=>"mm@qq.com", "password"=>"[FILTERED]"}, "commit"=>"Create my hub"}
+  [1m[35m (7.7ms)[0m  begin transaction
+  [1m[36mHub Exists (0.4ms)[0m  [1mSELECT  1 AS one FROM "hubs" WHERE LOWER("hubs"."email") = LOWER('mm@qq.com') LIMIT 1[0m
+  [1m[35mSQL (2.9ms)[0m  INSERT INTO "hubs" ("name", "email", "password_digest", "created_at", "updated_at") VALUES (?, ?, ?, ?, ?)  [["name", "mm"], ["email", "mm@qq.com"], ["password_digest", "$2a$10$MdAffyh.F4/0hQGAnyPLt.ntVmY9gD8wNBqRm2ObxK466rR24tFxy"], ["created_at", "2015-09-21 06:13:17.670044"], ["updated_at", "2015-09-21 06:13:17.670044"]]
+  [1m[36m (35.9ms)[0m  [1mcommit transaction[0m
+Redirected to https://gatherhub-phenix2014-1.c9.io/hubs/4
+Completed 302 Found in 1119ms (ActiveRecord: 46.9ms)
+
+
+Started GET "/hubs/4" for 114.252.116.0 at 2015-09-21 06:13:17 +0000
+Processing by HubsController#show as HTML
+  Parameters: {"id"=>"4"}
+  [1m[35mHub Load (0.4ms)[0m  SELECT  "hubs".* FROM "hubs" WHERE "hubs"."id" = ? LIMIT 1  [["id", 4]]
+  Rendered hubs/show.html.erb within layouts/application (1.6ms)
+  Rendered layouts/_header.html.erb (0.4ms)
+  Rendered layouts/_footer.html.erb (0.3ms)
+Completed 200 OK in 270ms (Views: 253.0ms | ActiveRecord: 0.4ms)
+
+
+Started GET "/" for 114.252.116.0 at 2015-09-21 06:13:55 +0000
+Processing by StaticPagesController#home as HTML
+  Rendered static_pages/home.html.erb within layouts/application (5.1ms)
+  Rendered layouts/_header.html.erb (0.4ms)
+  Rendered layouts/_footer.html.erb (1.2ms)
+Completed 200 OK in 2829ms (Views: 2825.4ms | ActiveRecord: 0.0ms)
+
+
+Started GET "/" for 114.252.116.0 at 2015-09-21 06:20:27 +0000
+Processing by StaticPagesController#home as HTML
+  Rendered static_pages/home.html.erb within layouts/application (22.7ms)
+  Rendered layouts/_header.html.erb (1.2ms)
+  Rendered layouts/_footer.html.erb (2.0ms)
+Completed 200 OK in 580ms (Views: 570.7ms | ActiveRecord: 0.0ms)
+
+
+Started GET "/login" for 114.252.116.0 at 2015-09-21 06:20:40 +0000
+Processing by SessionsController#new as HTML
+  Rendered sessions/new.html.erb within layouts/application (13.5ms)
+  Rendered layouts/_header.html.erb (0.2ms)
+  Rendered layouts/_footer.html.erb (0.2ms)
+Completed 200 OK in 222ms (Views: 217.9ms | ActiveRecord: 0.0ms)
+
+
+Started POST "/login" for 114.252.116.0 at 2015-09-21 06:20:45 +0000
+Processing by SessionsController#create as HTML
+  Parameters: {"utf8"=>"✓", "authenticity_token"=>"NujRivy42CTDZF/ecE/UOgoZjRZam3FCTln+lKLcboO/5ay7A4mMHRoScloL4MqdNrr2tfPi6ErRoyvoFMW7sA==", "session"=>{"email"=>"", "password"=>"[FILTERED]"}, "commit"=>"Enter in"}
+  Rendered sessions/new.html.erb within layouts/application (11.9ms)
+  Rendered layouts/_header.html.erb (0.4ms)
+  Rendered layouts/_footer.html.erb (0.3ms)
+Completed 200 OK in 195ms (Views: 193.6ms | ActiveRecord: 0.0ms)
+
+
+Started GET "/newhub" for 114.252.116.0 at 2015-09-21 06:20:59 +0000
+Processing by HubsController#new as HTML
+  Rendered shared/_error_messages.html.erb (0.1ms)
+  Rendered hubs/new.html.erb within layouts/application (5.7ms)
+  Rendered layouts/_header.html.erb (0.2ms)
+  Rendered layouts/_footer.html.erb (0.3ms)
+Completed 200 OK in 203ms (Views: 184.6ms | ActiveRecord: 1.8ms)
+
+
+Started POST "/login" for 114.252.116.0 at 2015-09-21 06:21:03 +0000
+Processing by SessionsController#create as HTML
+  Parameters: {"utf8"=>"✓", "authenticity_token"=>"SDnU4F8bXSTAt93cFlqeOOIbG1nEo2S7TEPL+uXM4uPBNKnRoCoJHRnB8Fht9YCf3rhg+m3a/bPTuR6GU9U30A==", "session"=>{"email"=>"", "password"=>"[FILTERED]"}, "commit"=>"Enter in"}
+  Rendered sessions/new.html.erb within layouts/application (1.9ms)
+  Rendered layouts/_header.html.erb (0.2ms)
+  Rendered layouts/_footer.html.erb (0.3ms)
+Completed 200 OK in 125ms (Views: 124.0ms | ActiveRecord: 0.0ms)
+
+
+Started POST "/login" for 114.252.116.0 at 2015-09-21 06:21:05 +0000
+Processing by SessionsController#create as HTML
+  Parameters: {"utf8"=>"✓", "authenticity_token"=>"sDxozDrt3z3Bd+Mqc+/ZGMDVkHdv5vkgqv+wMBROW+45MRX9xdyLBBgBzq4IQMe//Hbr1MafYCg1BWVMoleO3Q==", "session"=>{"email"=>"", "password"=>"[FILTERED]"}, "commit"=>"Enter in"}
+  Rendered sessions/new.html.erb within layouts/application (1.0ms)
+  Rendered layouts/_header.html.erb (0.3ms)
+  Rendered layouts/_footer.html.erb (0.2ms)
+Completed 200 OK in 122ms (Views: 121.3ms | ActiveRecord: 0.0ms)
+
+
+Started GET "/newhub" for 114.252.116.0 at 2015-09-21 06:23:42 +0000
+Processing by HubsController#new as HTML
+  Rendered shared/_error_messages.html.erb (0.1ms)
+  Rendered hubs/new.html.erb within layouts/application (3.9ms)
+  Rendered layouts/_header.html.erb (0.3ms)
+  Rendered layouts/_footer.html.erb (0.2ms)
+Completed 200 OK in 162ms (Views: 151.9ms | ActiveRecord: 0.8ms)
+
+
+Started POST "/hubs" for 114.252.116.0 at 2015-09-21 06:23:44 +0000
+Processing by HubsController#create as HTML
+  Parameters: {"utf8"=>"✓", "authenticity_token"=>"KR8U3LGfS2cY8hhjzhpi5YHFkkYQJ1QjUar/KcRaFUKgEmntTq4fXsGENee1tXxCvWbp5blezSvOUCpVckPAcQ==", "hub"=>{"name"=>"", "email"=>"", "password"=>"[FILTERED]"}, "commit"=>"Create my hub"}
+  Rendered hubs/new.html.erb within layouts/application (2.4ms)
+Completed 500 Internal Server Error in 8ms (ActiveRecord: 0.0ms)
+
+ArgumentError (First argument in form cannot contain nil or be empty):
+  app/views/hubs/new.html.erb:5:in `_app_views_hubs_new_html_erb___2896931997540214207_69972670747340'
+  app/controllers/hubs_controller.rb:15:in `create'
+
+
+  Rendered /usr/local/rvm/gems/ruby-2.2.1/gems/web-console-2.0.0.beta3/lib/action_dispatch/templates/rescues/_source.erb (24.8ms)
+  Rendered /usr/local/rvm/gems/ruby-2.2.1/gems/web-console-2.0.0.beta3/lib/action_dispatch/templates/rescues/_trace.html.erb (19.2ms)
+  Rendered /usr/local/rvm/gems/ruby-2.2.1/gems/web-console-2.0.0.beta3/lib/action_dispatch/templates/rescues/_request_and_response.html.erb (18.0ms)
+  Rendered /usr/local/rvm/gems/ruby-2.2.1/gems/web-console-2.0.0.beta3/lib/action_dispatch/templates/rescues/_web_console.html.erb (2.3ms)
+  Rendered /usr/local/rvm/gems/ruby-2.2.1/gems/web-console-2.0.0.beta3/lib/action_dispatch/templates/rescues/diagnostics.html.erb within rescues/layout (124.1ms)
+
+
+Started POST "/hubs" for 114.252.116.0 at 2015-09-21 06:24:50 +0000
+Processing by HubsController#create as HTML
+  Parameters: {"utf8"=>"✓", "authenticity_token"=>"KR8U3LGfS2cY8hhjzhpi5YHFkkYQJ1QjUar/KcRaFUKgEmntTq4fXsGENee1tXxCvWbp5blezSvOUCpVckPAcQ==", "hub"=>{"name"=>"", "email"=>"", "password"=>"[FILTERED]"}, "commit"=>"Create my hub"}
+  Rendered hubs/new.html.erb within layouts/application (2.9ms)
+Completed 500 Internal Server Error in 10ms (ActiveRecord: 0.0ms)
+
+ArgumentError (First argument in form cannot contain nil or be empty):
+  app/views/hubs/new.html.erb:5:in `_app_views_hubs_new_html_erb___2896931997540214207_69972670747340'
+  app/controllers/hubs_controller.rb:15:in `create'
+
+
+  Rendered /usr/local/rvm/gems/ruby-2.2.1/gems/web-console-2.0.0.beta3/lib/action_dispatch/templates/rescues/_source.erb (14.9ms)
+  Rendered /usr/local/rvm/gems/ruby-2.2.1/gems/web-console-2.0.0.beta3/lib/action_dispatch/templates/rescues/_trace.html.erb (9.0ms)
+  Rendered /usr/local/rvm/gems/ruby-2.2.1/gems/web-console-2.0.0.beta3/lib/action_dispatch/templates/rescues/_request_and_response.html.erb (1.8ms)
+  Rendered /usr/local/rvm/gems/ruby-2.2.1/gems/web-console-2.0.0.beta3/lib/action_dispatch/templates/rescues/_web_console.html.erb (1.6ms)
+  Rendered /usr/local/rvm/gems/ruby-2.2.1/gems/web-console-2.0.0.beta3/lib/action_dispatch/templates/rescues/diagnostics.html.erb within rescues/layout (79.5ms)
+
+
+Started GET "/" for 114.252.116.0 at 2015-09-21 06:25:05 +0000
+Processing by StaticPagesController#home as HTML
+  Rendered static_pages/home.html.erb within layouts/application (0.6ms)
+  Rendered layouts/_header.html.erb (0.4ms)
+  Rendered layouts/_footer.html.erb (0.3ms)
+Completed 200 OK in 176ms (Views: 174.4ms | ActiveRecord: 0.0ms)
+
+
+Started GET "/newhub" for 114.252.116.0 at 2015-09-21 06:25:06 +0000
+Processing by HubsController#new as HTML
+  Rendered shared/_error_messages.html.erb (0.1ms)
+  Rendered hubs/new.html.erb within layouts/application (5.5ms)
+  Rendered layouts/_header.html.erb (0.4ms)
+  Rendered layouts/_footer.html.erb (0.2ms)
+Completed 200 OK in 174ms (Views: 162.8ms | ActiveRecord: 1.0ms)
+
+
+Started POST "/hubs" for 114.252.116.0 at 2015-09-21 06:25:08 +0000
+Processing by HubsController#create as HTML
+  Parameters: {"utf8"=>"✓", "authenticity_token"=>"aB0Eoih3c8/2+wXXUbOu3HkOYMy3zSEYfjr1KC1uXAHhEHmT10Yn9i+NKFMqHLB7Ra0bbx60uBDhwCBUm3eJMg==", "hub"=>{"name"=>"", "email"=>"", "password"=>"[FILTERED]"}, "commit"=>"Create my hub"}
+  Rendered hubs/new.html.erb within layouts/application (3.4ms)
+Completed 500 Internal Server Error in 11ms (ActiveRecord: 0.0ms)
+
+ArgumentError (First argument in form cannot contain nil or be empty):
+  app/views/hubs/new.html.erb:5:in `_app_views_hubs_new_html_erb___2896931997540214207_69972670747340'
+  app/controllers/hubs_controller.rb:15:in `create'
+
+
+  Rendered /usr/local/rvm/gems/ruby-2.2.1/gems/web-console-2.0.0.beta3/lib/action_dispatch/templates/rescues/_source.erb (14.6ms)
+  Rendered /usr/local/rvm/gems/ruby-2.2.1/gems/web-console-2.0.0.beta3/lib/action_dispatch/templates/rescues/_trace.html.erb (9.4ms)
+  Rendered /usr/local/rvm/gems/ruby-2.2.1/gems/web-console-2.0.0.beta3/lib/action_dispatch/templates/rescues/_request_and_response.html.erb (1.8ms)
+  Rendered /usr/local/rvm/gems/ruby-2.2.1/gems/web-console-2.0.0.beta3/lib/action_dispatch/templates/rescues/_web_console.html.erb (1.4ms)
+  Rendered /usr/local/rvm/gems/ruby-2.2.1/gems/web-console-2.0.0.beta3/lib/action_dispatch/templates/rescues/diagnostics.html.erb within rescues/layout (72.8ms)
+
+
+Started POST "/hubs" for 114.252.116.0 at 2015-09-21 06:25:53 +0000
+Processing by HubsController#create as HTML
+  Parameters: {"utf8"=>"✓", "authenticity_token"=>"lXQLNe3O/lmDXNvckD1T5kqmJdar6BQ/Nvk6X7cn7icceXYEEv+qYFoq9ljrkk1BdgVedQKRjTepA+8jAT47FA==", "hub"=>{"name"=>"", "email"=>"", "password"=>"[FILTERED]"}, "commit"=>"Create my hub"}
+  Rendered shared/_error_messages.html.erb (0.1ms)
+  Rendered hubs/new.html.erb within layouts/application (5.1ms)
+  Rendered layouts/_header.html.erb (0.3ms)
+  Rendered layouts/_footer.html.erb (0.2ms)
+Completed 200 OK in 155ms (Views: 141.8ms | ActiveRecord: 1.0ms)
+
+
+Started GET "/" for 114.252.116.0 at 2015-09-21 06:26:26 +0000
+Processing by StaticPagesController#home as HTML
+  Rendered static_pages/home.html.erb within layouts/application (1.1ms)
+  Rendered layouts/_header.html.erb (0.2ms)
+  Rendered layouts/_footer.html.erb (0.3ms)
+Completed 200 OK in 129ms (Views: 127.4ms | ActiveRecord: 0.0ms)
+
+
+Started GET "/login" for 114.252.116.0 at 2015-09-21 06:26:28 +0000
+Processing by SessionsController#new as HTML
+  Rendered sessions/new.html.erb within layouts/application (2.0ms)
+  Rendered layouts/_header.html.erb (0.3ms)
+  Rendered layouts/_footer.html.erb (0.3ms)
+Completed 200 OK in 213ms (Views: 211.8ms | ActiveRecord: 0.0ms)
+
+
+Started GET "/login" for 114.252.116.0 at 2015-09-21 06:34:47 +0000
+Processing by SessionsController#new as HTML
+  Rendered sessions/new.html.erb within layouts/application (4.0ms)
+  Rendered layouts/_header.html.erb (0.3ms)
+  Rendered layouts/_footer.html.erb (0.2ms)
+Completed 200 OK in 145ms (Views: 144.3ms | ActiveRecord: 0.0ms)
+
+
+Started POST "/login" for 114.252.116.0 at 2015-09-21 06:38:36 +0000
+Processing by SessionsController#create as HTML
+  Parameters: {"utf8"=>"✓", "authenticity_token"=>"CXIjwYf8sWgxxSIeboTybbm5llCJbD8+T1cR+xhzPM2Af17weM3lUeizD5oVK+zKhRrt8yAVpjbQrcSHrmrp/g==", "session"=>{"id"=>"3", "password"=>"[FILTERED]"}, "commit"=>"Enter in"}
+  [1m[36mHub Load (0.3ms)[0m  [1mSELECT  "hubs".* FROM "hubs" WHERE "hubs"."id" = ? LIMIT 1[0m  [["id", 3]]
+Redirected to https://gatherhub-phenix2014-1.c9.io/hubs/3
+Completed 302 Found in 98ms (ActiveRecord: 1.3ms)
+
+
+Started GET "/hubs/3" for 114.252.116.0 at 2015-09-21 06:38:37 +0000
+Processing by HubsController#show as HTML
+  Parameters: {"id"=>"3"}
+  [1m[35mHub Load (0.2ms)[0m  SELECT  "hubs".* FROM "hubs" WHERE "hubs"."id" = ? LIMIT 1  [["id", 3]]
+  Rendered hubs/show.html.erb within layouts/application (0.2ms)
+  Rendered layouts/_header.html.erb (0.5ms)
+  Rendered layouts/_footer.html.erb (0.3ms)
+Completed 200 OK in 212ms (Views: 207.9ms | ActiveRecord: 0.2ms)
+
+
+Started GET "/hubs/3" for 114.252.116.0 at 2015-09-21 06:39:48 +0000
+Processing by HubsController#show as HTML
+  Parameters: {"id"=>"3"}
+  [1m[36mHub Load (0.2ms)[0m  [1mSELECT  "hubs".* FROM "hubs" WHERE "hubs"."id" = ? LIMIT 1[0m  [["id", 3]]
+  Rendered hubs/show.html.erb within layouts/application (2.0ms)
+  Rendered layouts/_header.html.erb (0.3ms)
+  Rendered layouts/_footer.html.erb (0.3ms)
+Completed 200 OK in 168ms (Views: 166.4ms | ActiveRecord: 0.2ms)
+
+
+Started GET "/hubs/3" for 114.252.116.0 at 2015-09-21 06:40:14 +0000
+Processing by HubsController#show as HTML
+  Parameters: {"id"=>"3"}
+  [1m[35mHub Load (0.2ms)[0m  SELECT  "hubs".* FROM "hubs" WHERE "hubs"."id" = ? LIMIT 1  [["id", 3]]
+  Rendered hubs/show.html.erb within layouts/application (6.0ms)
+  Rendered layouts/_header.html.erb (0.3ms)
+  Rendered layouts/_footer.html.erb (0.2ms)
+Completed 200 OK in 139ms (Views: 136.9ms | ActiveRecord: 0.2ms)
+
+
+Started GET "/" for 114.252.116.0 at 2015-09-21 07:09:36 +0000
+Processing by StaticPagesController#home as HTML
+  Rendered static_pages/home.html.erb within layouts/application (0.4ms)
+  Rendered layouts/_header.html.erb (0.2ms)
+  Rendered layouts/_footer.html.erb (0.5ms)
+Completed 200 OK in 144ms (Views: 143.2ms | ActiveRecord: 0.0ms)
+
+
+Started GET "/" for 114.252.116.0 at 2015-09-21 07:09:36 +0000
+Processing by StaticPagesController#home as HTML
+  Rendered static_pages/home.html.erb within layouts/application (0.4ms)
+  Rendered layouts/_header.html.erb (0.2ms)
+  Rendered layouts/_footer.html.erb (0.2ms)
+Completed 200 OK in 139ms (Views: 137.8ms | ActiveRecord: 0.0ms)
+
+
+Started GET "/login" for 114.252.116.0 at 2015-09-21 07:09:38 +0000
+Processing by SessionsController#new as HTML
+  Rendered sessions/new.html.erb within layouts/application (3.6ms)
+  Rendered layouts/_header.html.erb (0.3ms)
+  Rendered layouts/_footer.html.erb (0.3ms)
+Completed 200 OK in 130ms (Views: 128.4ms | ActiveRecord: 0.0ms)
+
+
+Started POST "/login" for 114.252.116.0 at 2015-09-21 07:09:44 +0000
+Processing by SessionsController#create as HTML
+  Parameters: {"utf8"=>"✓", "authenticity_token"=>"6ASenFk8kBGHgV+gD4Gzo9YmvZMSszdnxipAOM6bRCJhCeOtpg3EKF73ciR0Lq0E6oXGMLvKrm9Z0JVEeIKREQ==", "session"=>{"id"=>"3", "password"=>"[FILTERED]"}, "commit"=>"Enter in"}
+  [1m[36mHub Load (0.3ms)[0m  [1mSELECT  "hubs".* FROM "hubs" WHERE "hubs"."id" = ? LIMIT 1[0m  [["id", 3]]
+Redirected to https://gatherhub-phenix2014-1.c9.io/hubs/3
+Completed 302 Found in 90ms (ActiveRecord: 1.2ms)
+
+
+Started GET "/hubs/3" for 114.252.116.0 at 2015-09-21 07:09:44 +0000
+Processing by HubsController#show as HTML
+  Parameters: {"id"=>"3"}
+  [1m[35mHub Load (0.2ms)[0m  SELECT  "hubs".* FROM "hubs" WHERE "hubs"."id" = ? LIMIT 1  [["id", 3]]
+  Rendered hubs/show.html.erb within layouts/application (0.3ms)
+  Rendered layouts/_header.html.erb (0.3ms)
+  Rendered layouts/_footer.html.erb (0.2ms)
+Completed 200 OK in 148ms (Views: 124.5ms | ActiveRecord: 0.2ms)
+
+
+Started GET "/" for 114.252.116.0 at 2015-09-21 07:10:32 +0000
+Processing by StaticPagesController#home as HTML
+  Rendered static_pages/home.html.erb within layouts/application (0.3ms)
+  Rendered layouts/_header.html.erb (0.3ms)
+  Rendered layouts/_footer.html.erb (0.3ms)
+Completed 200 OK in 154ms (Views: 153.0ms | ActiveRecord: 0.0ms)
+
+
+Started GET "/login" for 114.252.116.0 at 2015-09-21 07:10:34 +0000
+Processing by SessionsController#new as HTML
+  Rendered sessions/new.html.erb within layouts/application (1.4ms)
+  Rendered layouts/_header.html.erb (0.2ms)
+  Rendered layouts/_footer.html.erb (0.4ms)
+Completed 200 OK in 135ms (Views: 133.9ms | ActiveRecord: 0.0ms)
+
+
+Started POST "/login" for 114.252.116.0 at 2015-09-21 07:10:43 +0000
+Processing by SessionsController#create as HTML
+  Parameters: {"utf8"=>"✓", "authenticity_token"=>"zONb7hLar/0a29d+78EJlSv9GJV2j42djveVAdAER5dF7ibf7ev7xMOt+vqUbhcyF15jNt/2FJURDUB9Zh2SpA==", "session"=>{"id"=>"3", "password"=>"[FILTERED]"}, "commit"=>"Enter in"}
+  [1m[36mHub Load (0.3ms)[0m  [1mSELECT  "hubs".* FROM "hubs" WHERE "hubs"."id" = ? LIMIT 1[0m  [["id", 3]]
+Redirected to https://gatherhub-phenix2014-1.c9.io/hubs/3
+Completed 302 Found in 87ms (ActiveRecord: 1.1ms)
+
+
+Started GET "/hubs/3" for 114.252.116.0 at 2015-09-21 07:10:43 +0000
+Processing by HubsController#show as HTML
+  Parameters: {"id"=>"3"}
+  [1m[35mHub Load (0.2ms)[0m  SELECT  "hubs".* FROM "hubs" WHERE "hubs"."id" = ? LIMIT 1  [["id", 3]]
+  Rendered hubs/show.html.erb within layouts/application (0.2ms)
+  Rendered layouts/_header.html.erb (0.5ms)
+  Rendered layouts/_footer.html.erb (0.1ms)
+Completed 200 OK in 160ms (Views: 157.0ms | ActiveRecord: 0.2ms)
+  [1m[36mHub Load (9.4ms)[0m  [1mSELECT "hubs".* FROM "hubs"[0m
+  [1m[35mHub Load (1.5ms)[0m  SELECT  "hubs".* FROM "hubs" WHERE "hubs"."id" = ? LIMIT 1  [["id", 1]]
+
+
+Started GET "/" for 114.252.116.0 at 2015-09-21 07:38:17 +0000
+Processing by StaticPagesController#home as HTML
+  Rendered static_pages/home.html.erb within layouts/application (68.4ms)
+  Rendered layouts/_header.html.erb (455.7ms)
+Completed 500 Internal Server Error in 4295ms (ActiveRecord: 0.0ms)
+
+NameError (uninitialized constant SessionsHelper::User):
+  app/helpers/sessions_helper.rb:8:in `current_hub'
+  app/helpers/sessions_helper.rb:13:in `logged_in?'
+  app/views/layouts/_header.html.erb:4:in `_app_views_layouts__header_html_erb___3882318325676041557_69972721611620'
+  app/views/layouts/application.html.erb:10:in `_app_views_layouts_application_html_erb__200914340739210607_21284840'
+
+
+  Rendered /usr/local/rvm/gems/ruby-2.2.1/gems/web-console-2.0.0.beta3/lib/action_dispatch/templates/rescues/_source.erb (124.5ms)
+  Rendered /usr/local/rvm/gems/ruby-2.2.1/gems/web-console-2.0.0.beta3/lib/action_dispatch/templates/rescues/_trace.html.erb (83.0ms)
+  Rendered /usr/local/rvm/gems/ruby-2.2.1/gems/web-console-2.0.0.beta3/lib/action_dispatch/templates/rescues/_request_and_response.html.erb (42.6ms)
+  Rendered /usr/local/rvm/gems/ruby-2.2.1/gems/web-console-2.0.0.beta3/lib/action_dispatch/templates/rescues/_web_console.html.erb (50.9ms)
+  Rendered /usr/local/rvm/gems/ruby-2.2.1/gems/web-console-2.0.0.beta3/lib/action_dispatch/templates/rescues/diagnostics.html.erb within rescues/layout (473.0ms)
+
+
+Started GET "/" for 114.252.116.0 at 2015-09-21 07:38:31 +0000
+Processing by StaticPagesController#home as HTML
+  Rendered static_pages/home.html.erb within layouts/application (2.4ms)
+  Rendered layouts/_header.html.erb (79.6ms)
+Completed 500 Internal Server Error in 1415ms (ActiveRecord: 0.0ms)
+
+NameError (uninitialized constant SessionsHelper::User):
+  app/helpers/sessions_helper.rb:8:in `current_hub'
+  app/helpers/sessions_helper.rb:13:in `logged_in?'
+  app/views/layouts/_header.html.erb:4:in `_app_views_layouts__header_html_erb___3882318325676041557_69972721611620'
+  app/views/layouts/application.html.erb:10:in `_app_views_layouts_application_html_erb__200914340739210607_21284840'
+
+
+  Rendered /usr/local/rvm/gems/ruby-2.2.1/gems/web-console-2.0.0.beta3/lib/action_dispatch/templates/rescues/_source.erb (33.1ms)
+  Rendered /usr/local/rvm/gems/ruby-2.2.1/gems/web-console-2.0.0.beta3/lib/action_dispatch/templates/rescues/_trace.html.erb (38.9ms)
+  Rendered /usr/local/rvm/gems/ruby-2.2.1/gems/web-console-2.0.0.beta3/lib/action_dispatch/templates/rescues/_request_and_response.html.erb (3.5ms)
+  Rendered /usr/local/rvm/gems/ruby-2.2.1/gems/web-console-2.0.0.beta3/lib/action_dispatch/templates/rescues/_web_console.html.erb (7.0ms)
+  Rendered /usr/local/rvm/gems/ruby-2.2.1/gems/web-console-2.0.0.beta3/lib/action_dispatch/templates/rescues/diagnostics.html.erb within rescues/layout (126.3ms)
+
+
+Started GET "/" for 114.252.116.0 at 2015-09-21 07:38:34 +0000
+Processing by StaticPagesController#home as HTML
+  Rendered static_pages/home.html.erb within layouts/application (4.1ms)
+  Rendered layouts/_header.html.erb (56.3ms)
+Completed 500 Internal Server Error in 563ms (ActiveRecord: 0.0ms)
+
+NameError (uninitialized constant SessionsHelper::User):
+  app/helpers/sessions_helper.rb:8:in `current_hub'
+  app/helpers/sessions_helper.rb:13:in `logged_in?'
+  app/views/layouts/_header.html.erb:4:in `_app_views_layouts__header_html_erb___3882318325676041557_69972669926060'
+  app/views/layouts/application.html.erb:10:in `_app_views_layouts_application_html_erb__200914340739210607_21284840'
+
+
+  Rendered /usr/local/rvm/gems/ruby-2.2.1/gems/web-console-2.0.0.beta3/lib/action_dispatch/templates/rescues/_source.erb (50.5ms)
+  Rendered /usr/local/rvm/gems/ruby-2.2.1/gems/web-console-2.0.0.beta3/lib/action_dispatch/templates/rescues/_trace.html.erb (9.4ms)
+  Rendered /usr/local/rvm/gems/ruby-2.2.1/gems/web-console-2.0.0.beta3/lib/action_dispatch/templates/rescues/_request_and_response.html.erb (3.5ms)
+  Rendered /usr/local/rvm/gems/ruby-2.2.1/gems/web-console-2.0.0.beta3/lib/action_dispatch/templates/rescues/_web_console.html.erb (2.4ms)
+  Rendered /usr/local/rvm/gems/ruby-2.2.1/gems/web-console-2.0.0.beta3/lib/action_dispatch/templates/rescues/diagnostics.html.erb within rescues/layout (149.1ms)
+
+
+Started GET "/" for 114.252.116.0 at 2015-09-21 07:39:19 +0000
+Processing by StaticPagesController#home as HTML
+  Rendered static_pages/home.html.erb within layouts/application (0.5ms)
+  [1m[36mHub Load (4.0ms)[0m  [1mSELECT  "hubs".* FROM "hubs" WHERE "hubs"."id" = ? LIMIT 1[0m  [["id", 3]]
+  Rendered layouts/_header.html.erb (328.4ms)
+  Rendered layouts/_footer.html.erb (0.2ms)
+Completed 200 OK in 798ms (Views: 789.4ms | ActiveRecord: 7.5ms)
+
+
+Started GET "/" for 114.252.116.0 at 2015-09-21 07:45:21 +0000
+Processing by StaticPagesController#home as HTML
+  Rendered static_pages/home.html.erb within layouts/application (0.5ms)
+  [1m[35mHub Load (0.2ms)[0m  SELECT  "hubs".* FROM "hubs" WHERE "hubs"."id" = ? LIMIT 1  [["id", 3]]
+  Rendered layouts/_header.html.erb (11.0ms)
+  Rendered layouts/_footer.html.erb (0.4ms)
+Completed 200 OK in 480ms (Views: 474.7ms | ActiveRecord: 0.2ms)
+
+
+Started GET "/" for 114.252.116.0 at 2015-09-21 07:45:58 +0000
+Processing by StaticPagesController#home as HTML
+  Rendered static_pages/home.html.erb within layouts/application (0.3ms)
+  [1m[36mHub Load (0.2ms)[0m  [1mSELECT  "hubs".* FROM "hubs" WHERE "hubs"."id" = ? LIMIT 1[0m  [["id", 3]]
+  Rendered layouts/_header.html.erb (8.1ms)
+  Rendered layouts/_footer.html.erb (2.0ms)
+Completed 200 OK in 375ms (Views: 373.1ms | ActiveRecord: 0.2ms)
+
+
+Started DELETE "/logout" for 114.252.116.0 at 2015-09-21 07:46:01 +0000
+
+AbstractController::ActionNotFound (The action 'destroy' could not be found for SessionsController):
+  actionpack (4.2.4) lib/abstract_controller/base.rb:132:in `process'
+  actionview (4.2.4) lib/action_view/rendering.rb:30:in `process'
+  actionpack (4.2.4) lib/action_controller/metal.rb:196:in `dispatch'
+  actionpack (4.2.4) lib/action_controller/metal/rack_delegation.rb:13:in `dispatch'
+  actionpack (4.2.4) lib/action_controller/metal.rb:237:in `block in action'
+  actionpack (4.2.4) lib/action_dispatch/routing/route_set.rb:76:in `call'
+  actionpack (4.2.4) lib/action_dispatch/routing/route_set.rb:76:in `dispatch'
+  actionpack (4.2.4) lib/action_dispatch/routing/route_set.rb:45:in `serve'
+  actionpack (4.2.4) lib/action_dispatch/journey/router.rb:43:in `block in serve'
+  actionpack (4.2.4) lib/action_dispatch/journey/router.rb:30:in `each'
+  actionpack (4.2.4) lib/action_dispatch/journey/router.rb:30:in `serve'
+  actionpack (4.2.4) lib/action_dispatch/routing/route_set.rb:821:in `call'
+  rack (1.6.4) lib/rack/etag.rb:24:in `call'
+  rack (1.6.4) lib/rack/conditionalget.rb:38:in `call'
+  rack (1.6.4) lib/rack/head.rb:13:in `call'
+  actionpack (4.2.4) lib/action_dispatch/middleware/params_parser.rb:27:in `call'
+  actionpack (4.2.4) lib/action_dispatch/middleware/flash.rb:260:in `call'
+  rack (1.6.4) lib/rack/session/abstract/id.rb:225:in `context'
+  rack (1.6.4) lib/rack/session/abstract/id.rb:220:in `call'
+  actionpack (4.2.4) lib/action_dispatch/middleware/cookies.rb:560:in `call'
+  activerecord (4.2.4) lib/active_record/query_cache.rb:36:in `call'
+  activerecord (4.2.4) lib/active_record/connection_adapters/abstract/connection_pool.rb:653:in `call'
+  activerecord (4.2.4) lib/active_record/migration.rb:377:in `call'
+  actionpack (4.2.4) lib/action_dispatch/middleware/callbacks.rb:29:in `block in call'
+  activesupport (4.2.4) lib/active_support/callbacks.rb:88:in `__run_callbacks__'
+  activesupport (4.2.4) lib/active_support/callbacks.rb:778:in `_run_call_callbacks'
+  activesupport (4.2.4) lib/active_support/callbacks.rb:81:in `run_callbacks'
+  actionpack (4.2.4) lib/action_dispatch/middleware/callbacks.rb:27:in `call'
+  actionpack (4.2.4) lib/action_dispatch/middleware/reloader.rb:73:in `call'
+  actionpack (4.2.4) lib/action_dispatch/middleware/remote_ip.rb:78:in `call'
+  web-console (2.0.0.beta3) lib/action_dispatch/debug_exceptions.rb:18:in `middleware_call'
+  web-console (2.0.0.beta3) lib/action_dispatch/debug_exceptions.rb:13:in `call'
+  actionpack (4.2.4) lib/action_dispatch/middleware/show_exceptions.rb:30:in `call'
+  railties (4.2.4) lib/rails/rack/logger.rb:38:in `call_app'
+  railties (4.2.4) lib/rails/rack/logger.rb:20:in `block in call'
+  activesupport (4.2.4) lib/active_support/tagged_logging.rb:68:in `block in tagged'
+  activesupport (4.2.4) lib/active_support/tagged_logging.rb:26:in `tagged'
+  activesupport (4.2.4) lib/active_support/tagged_logging.rb:68:in `tagged'
+  railties (4.2.4) lib/rails/rack/logger.rb:20:in `call'
+  actionpack (4.2.4) lib/action_dispatch/middleware/request_id.rb:21:in `call'
+  rack (1.6.4) lib/rack/methodoverride.rb:22:in `call'
+  rack (1.6.4) lib/rack/runtime.rb:18:in `call'
+  activesupport (4.2.4) lib/active_support/cache/strategy/local_cache_middleware.rb:28:in `call'
+  rack (1.6.4) lib/rack/lock.rb:17:in `call'
+  actionpack (4.2.4) lib/action_dispatch/middleware/static.rb:116:in `call'
+  rack (1.6.4) lib/rack/sendfile.rb:113:in `call'
+  railties (4.2.4) lib/rails/engine.rb:518:in `call'
+  railties (4.2.4) lib/rails/application.rb:165:in `call'
+  rack (1.6.4) lib/rack/lock.rb:17:in `call'
+  rack (1.6.4) lib/rack/content_length.rb:15:in `call'
+  rack (1.6.4) lib/rack/handler/webrick.rb:88:in `service'
+  /usr/local/rvm/rubies/ruby-2.2.1/lib/ruby/2.2.0/webrick/httpserver.rb:138:in `service'
+  /usr/local/rvm/rubies/ruby-2.2.1/lib/ruby/2.2.0/webrick/httpserver.rb:94:in `run'
+  /usr/local/rvm/rubies/ruby-2.2.1/lib/ruby/2.2.0/webrick/server.rb:294:in `block in start_thread'
+
+
+  Rendered /usr/local/rvm/gems/ruby-2.2.1/gems/web-console-2.0.0.beta3/lib/action_dispatch/templates/rescues/unknown_action.html.erb within rescues/layout (9.6ms)
+
+
+Started DELETE "/logout" for 114.252.116.0 at 2015-09-21 07:48:31 +0000
+Processing by SessionsController#destroy as HTML
+  Parameters: {"authenticity_token"=>"9x+h7QLn0ASR23GZmxxv9ZvQ03J4ikV27aH2/OlWBBl+Etzc/daEPUitXB3gs3FSp3Oo0dHz3H5yWyOAX0/RKg=="}
+  [1m[35mHub Load (0.2ms)[0m  SELECT  "hubs".* FROM "hubs" WHERE "hubs"."id" = ? LIMIT 1  [["id", 3]]
+Redirected to https://gatherhub-phenix2014-1.c9.io/
+Completed 302 Found in 19ms (ActiveRecord: 0.9ms)
+
+
+Started GET "/" for 114.252.116.0 at 2015-09-21 07:48:31 +0000
+Processing by StaticPagesController#home as HTML
+  Rendered static_pages/home.html.erb within layouts/application (0.4ms)
+  Rendered layouts/_header.html.erb (0.3ms)
+  Rendered layouts/_footer.html.erb (0.1ms)
+Completed 200 OK in 127ms (Views: 125.7ms | ActiveRecord: 0.0ms)
+
+
+Started GET "/login" for 114.252.116.0 at 2015-09-21 07:48:35 +0000
+Processing by SessionsController#new as HTML
+  Rendered sessions/new.html.erb within layouts/application (21.3ms)
+  Rendered layouts/_header.html.erb (4.5ms)
+  Rendered layouts/_footer.html.erb (3.9ms)
+Completed 200 OK in 170ms (Views: 169.0ms | ActiveRecord: 0.0ms)
+
+
+Started GET "/login" for 114.252.116.0 at 2015-09-21 07:48:38 +0000
+Processing by SessionsController#new as HTML
+  Rendered sessions/new.html.erb within layouts/application (1.3ms)
+  Rendered layouts/_header.html.erb (0.4ms)
+  Rendered layouts/_footer.html.erb (0.2ms)
+Completed 200 OK in 155ms (Views: 153.8ms | ActiveRecord: 0.0ms)
+
+
+Started POST "/login" for 114.252.116.0 at 2015-09-21 07:48:44 +0000
+Processing by SessionsController#create as HTML
+  Parameters: {"utf8"=>"✓", "authenticity_token"=>"W99EOCQwXMtPxhygJLqWfjGP71RpZ/FZ1XsQsvLuF2TS0jkJ2wEI8pawMSRfFYjZDSyU98AeaFFKgcXORPfCVw==", "session"=>{"id"=>"3", "password"=>"[FILTERED]"}, "commit"=>"Enter in"}
+  [1m[36mHub Load (0.3ms)[0m  [1mSELECT  "hubs".* FROM "hubs" WHERE "hubs"."id" = ? LIMIT 1[0m  [["id", 3]]
+Redirected to https://gatherhub-phenix2014-1.c9.io/hubs/3
+Completed 302 Found in 107ms (ActiveRecord: 0.3ms)
+
+
+Started GET "/hubs/3" for 114.252.116.0 at 2015-09-21 07:48:45 +0000
+Processing by HubsController#show as HTML
+  Parameters: {"id"=>"3"}
+  [1m[35mHub Load (0.2ms)[0m  SELECT  "hubs".* FROM "hubs" WHERE "hubs"."id" = ? LIMIT 1  [["id", 3]]
+  Rendered hubs/show.html.erb within layouts/application (0.2ms)
+  [1m[36mHub Load (0.2ms)[0m  [1mSELECT  "hubs".* FROM "hubs" WHERE "hubs"."id" = ? LIMIT 1[0m  [["id", 3]]
+  Rendered layouts/_header.html.erb (1.5ms)
+  Rendered layouts/_footer.html.erb (0.2ms)
+Completed 200 OK in 151ms (Views: 148.2ms | ActiveRecord: 0.3ms)
+
+
+Started GET "/" for 114.252.116.0 at 2015-09-21 07:48:47 +0000
+Processing by StaticPagesController#home as HTML
+  Rendered static_pages/home.html.erb within layouts/application (0.4ms)
+  [1m[35mHub Load (0.3ms)[0m  SELECT  "hubs".* FROM "hubs" WHERE "hubs"."id" = ? LIMIT 1  [["id", 3]]
+  Rendered layouts/_header.html.erb (1.3ms)
+  Rendered layouts/_footer.html.erb (0.4ms)
+Completed 200 OK in 141ms (Views: 139.5ms | ActiveRecord: 0.3ms)
+
+
+Started DELETE "/logout" for 114.252.116.0 at 2015-09-21 07:48:49 +0000
+Processing by SessionsController#destroy as HTML
+  Parameters: {"authenticity_token"=>"4wos0QrxV/e20E3nenaddyuYUNrvIi8rt9dG2WP6LEpqB1Hg9cADzm+mYGMB2YPQFzsreUZbtiMoLZOl1eP5eQ=="}
+  [1m[36mHub Load (0.2ms)[0m  [1mSELECT  "hubs".* FROM "hubs" WHERE "hubs"."id" = ? LIMIT 1[0m  [["id", 3]]
+Redirected to https://gatherhub-phenix2014-1.c9.io/
+Completed 302 Found in 2ms (ActiveRecord: 0.2ms)
+
+
+Started GET "/" for 114.252.116.0 at 2015-09-21 07:48:49 +0000
+Processing by StaticPagesController#home as HTML
+  Rendered static_pages/home.html.erb within layouts/application (0.3ms)
+  Rendered layouts/_header.html.erb (0.3ms)
+  Rendered layouts/_footer.html.erb (0.2ms)
+Completed 200 OK in 134ms (Views: 133.0ms | ActiveRecord: 0.0ms)
+
+
+Started GET "/login" for 114.252.116.0 at 2015-09-21 07:50:42 +0000
+Processing by SessionsController#new as HTML
+  Rendered sessions/new.html.erb within layouts/application (2.2ms)
+  Rendered layouts/_header.html.erb (7.4ms)
+  Rendered layouts/_footer.html.erb (0.3ms)
+Completed 200 OK in 159ms (Views: 152.4ms | ActiveRecord: 0.0ms)
+
+
+Started POST "/login" for 114.252.116.0 at 2015-09-21 07:50:53 +0000
+Processing by SessionsController#create as HTML
+  Parameters: {"utf8"=>"✓", "authenticity_token"=>"AI+m1xeskHzR3jOlYcIWX8Hbw1xQQo1JTDWIMaZdm/qJgtvm6J3ERQioHiEabQj4/Xi4//k7FEHTz11NEEROyQ==", "session"=>{"id"=>"3", "password"=>"[FILTERED]"}, "commit"=>"Enter in"}
+  [1m[35mHub Load (0.3ms)[0m  SELECT  "hubs".* FROM "hubs" WHERE "hubs"."id" = ? LIMIT 1  [["id", 3]]
+Redirected to https://gatherhub-phenix2014-1.c9.io/hubs/3
+Completed 302 Found in 74ms (ActiveRecord: 0.3ms)
+
+
+Started GET "/hubs/3" for 114.252.116.0 at 2015-09-21 07:50:53 +0000
+Processing by HubsController#show as HTML
+  Parameters: {"id"=>"3"}
+  [1m[36mHub Load (0.2ms)[0m  [1mSELECT  "hubs".* FROM "hubs" WHERE "hubs"."id" = ? LIMIT 1[0m  [["id", 3]]
+  Rendered hubs/show.html.erb within layouts/application (0.2ms)
+  [1m[35mHub Load (0.2ms)[0m  SELECT  "hubs".* FROM "hubs" WHERE "hubs"."id" = ? LIMIT 1  [["id", 3]]
+  Rendered layouts/_header.html.erb (4.6ms)
+  Rendered layouts/_footer.html.erb (0.3ms)
+Completed 200 OK in 131ms (Views: 128.9ms | ActiveRecord: 0.4ms)
+
+
+Started GET "/hubs/3" for 114.252.116.0 at 2015-09-21 07:57:07 +0000
+Processing by HubsController#show as HTML
+  Parameters: {"id"=>"3"}
+  [1m[36mHub Load (0.2ms)[0m  [1mSELECT  "hubs".* FROM "hubs" WHERE "hubs"."id" = ? LIMIT 1[0m  [["id", 3]]
+  Rendered hubs/show.html.erb within layouts/application (0.2ms)
+  [1m[35mHub Load (0.2ms)[0m  SELECT  "hubs".* FROM "hubs" WHERE "hubs"."id" = ? LIMIT 1  [["id", 3]]
+  Rendered layouts/_header.html.erb (20.0ms)
+  Rendered layouts/_footer.html.erb (0.2ms)
+Completed 200 OK in 205ms (Views: 203.2ms | ActiveRecord: 0.4ms)
+
+
+Started GET "/hubs/3" for 114.252.116.0 at 2015-09-21 07:58:25 +0000
+Processing by HubsController#show as HTML
+  Parameters: {"id"=>"3"}
+  [1m[36mHub Load (0.2ms)[0m  [1mSELECT  "hubs".* FROM "hubs" WHERE "hubs"."id" = ? LIMIT 1[0m  [["id", 3]]
+  Rendered hubs/show.html.erb within layouts/application (0.2ms)
+  [1m[35mHub Load (0.1ms)[0m  SELECT  "hubs".* FROM "hubs" WHERE "hubs"."id" = ? LIMIT 1  [["id", 3]]
+  Rendered layouts/_header.html.erb (4.6ms)
+  Rendered layouts/_footer.html.erb (0.2ms)
+Completed 200 OK in 144ms (Views: 142.8ms | ActiveRecord: 0.3ms)
+
+
+Started DELETE "/logout" for 114.252.116.0 at 2015-09-21 07:58:28 +0000
+Processing by SessionsController#destroy as HTML
+  Parameters: {"authenticity_token"=>"bwGfRwM4LtptO6WxT8ttm6agZ+7xd32foEQZSCVujY3mDOJ2/Al647RNiDU0ZHM8mgMcTVgO5Jc/vsw0k3dYvg=="}
+  [1m[36mHub Load (0.2ms)[0m  [1mSELECT  "hubs".* FROM "hubs" WHERE "hubs"."id" = ? LIMIT 1[0m  [["id", 3]]
+Redirected to https://gatherhub-phenix2014-1.c9.io/
+Completed 302 Found in 3ms (ActiveRecord: 0.2ms)
+
+
+Started GET "/" for 114.252.116.0 at 2015-09-21 07:58:28 +0000
+Processing by StaticPagesController#home as HTML
+  Rendered static_pages/home.html.erb within layouts/application (0.7ms)
+  Rendered layouts/_header.html.erb (0.7ms)
+  Rendered layouts/_footer.html.erb (0.3ms)
+Completed 200 OK in 192ms (Views: 191.6ms | ActiveRecord: 0.0ms)

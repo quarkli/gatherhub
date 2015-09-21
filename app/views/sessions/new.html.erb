@@ -1,0 +1,17 @@
+<% provide(:title, "Enter a Hub") %>
+<h1>Enter Hub ID</h1>
+<div class="row">
+  <div class="col-md-6 col-md-offset-3">
+    <%= form_for(:session, url: login_path) do |f| %>
+      <%= f.label :id %>
+      <%= f.text_field :id %>
+      
+      <%= f.label :password %>
+      <%= f.password_field :password %>
+      
+     
+      <%= f.submit "Enter in", class: "btn btn-primary" %>
+    <% end %>
+  <p>New hub? <%= link_to "Create a new hub", newhub_path %></p>
+  </div>
+</div>

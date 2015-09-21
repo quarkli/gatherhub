@@ -1,13 +1,22 @@
 <header class="navbar navbar-fixed-top navbar-inverse">
-    <nav class="navbar-inner">
-        <div class="container">
-            <big id="head">Enter a hub ID</big>
-            <nav>
-                <ul class="nav navbar-nav pull-right">
-                    <li><%= link_to "Home", root_path %></li>
-                    <li><%= link_to "Help", help_path %></li>
-                </ul>
-            </nav>
-        </div>
-    </nav>
+  <nav class="navbar-inner">
+    <div class="container">
+      <% if logged_in?%>
+        <big id="head">Current hub ID is <%= current_hub.id %></big>
+      <% else %>
+        <%= link_to "Enter a hub ID", login_path, id: "head" %>
+      <% end %>
+      <nav>
+        <ul class="nav navbar-nav pull-right">
+          <li><%= link_to "Home", root_path %></li>
+          <li><%= link_to "Help", help_path %></li>
+          <% if logged_in?%>
+            <li>
+              <%= link_to "Leave", logout_path, method: "delete" %>
+            </li>
+          <% end %>
+        </ul>
+      </nav>
+    </div>
+  </nav>
 </header>

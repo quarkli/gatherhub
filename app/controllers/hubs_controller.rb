@@ -14,12 +14,12 @@ class HubsController < ApplicationController
   def create
     @hub = Hub.new(hub_params) 
     if @hub.save
-      #log_in @hub
+      log_in @hub
       flash[:success] = "Welcome to the Your Hub!"
       #redirect_to @hub
       redirect_to hub_url(@hub)
     else
-     render 'new'
+    render 'new'
     end
   end
 
