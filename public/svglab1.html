@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<!--
+To change this license header, choose License Headers in Project Properties.
+To change this template file, choose Tools | Templates
+and open the template in the editor.
+-->
+<html>
+    <head>
+        <title>SVG Lab1</title>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    </head>
+    <body>
+		<div id="whiteboard">
+			<svg id="svgboard" width="640" height="480">
+				<rect width="640" height="480" stroke-width="5" stroke="#000000" fill="none"/>
+			</svg>
+		</div>
+		<div id="toolbar">
+			<button onclick="setColor('black')">K</button>
+			<button onclick="setColor('red')">R</button>
+			<button onclick="setColor('green')">G</button>
+			<button onclick="setColor('blue')">B</button>
+			<button onclick="setColor('white')">W</button>
+			<button onclick="setWidth('1')">1</button>
+			<button onclick="setWidth('5')">5</button>
+			<button onclick="setWidth('9')">9</button>
+			<button onclick="setWidth('18')">18</button>
+			<button onclick="setPin('rect')">方</button>
+			<button onclick="setPin('round')">圆</button>
+			<button onclick="undo()">Undo</button>
+			<button onclick="redo()">Redo</button>
+			<button onclick="undoAll()">Clear</button>
+		</div>
+    </body>
+<script>
+var svg = document.getElementById("svgboard");
+var svgCache = document.createElementNS("http://www.w3.org/2000/svg","svg");
+var mPath = null;
+var curPath = -1;
+var penColor = "black";
+var penWidth = "5";
+var penPin = "rect";
+var clientId = 0 | Math.random()*100000000;
+
+svg.onmousedown = drawStart;
+svg.onmousemove = drawPath;
+svg.onmouseup = drawEnd;
+svg.onmouseleave = drawEnd;
+svg.addEventListener("touchstart",drawStart);
+svg.addEventListener("touchmove",drawPath);
+svg.addEventListener("touchend",drawEnd);
+
+var url = "ws://gatherhub.com:3005/";
+var ws = new WebSocket(url);
+ws.onopen = function(){ws.send(JSON.stringify({id: clientId, action: "connect"}));};
+ws.onmessage = function(msg){
+	if (msg.data.match("path")){
+		var ctx = JSON.parse(msg.data);
+		if (ctx.id != clientId){
+			console.log("id:"+ctx.id+" stroke:"+ctx.stroke+" stroke-width:"+ctx.strokeWidth+" fill:"+ctx.fill);
+			console.log("d:"+ctx.d);
+			mPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
+			mPath.setAttribute("stroke-width", ctx.strokeWidth);
+			mPath.setAttribute("stroke", ctx.stroke);
+			mPath.setAttribute("fill", ctx.fill);
+			mPath.setAttribute("d", ctx.d);
+			svg.appendChild(mPath);
+			mPath = null;
+		}
+	}
+	else {
+		console.log(msg.data);
+	}
+};
+ws.onclose = function(){console.log("Connection closed!")};
+window.onbeforeunload  = function(){ws.close()};
+
+function setColor(c){
+	penColor = c;
+}
+
+function setWidth(w){
+	penWidth = w;
+}
+
+function setPin(p){
+	penPin = p;
+}
+
+function drawStart(e){
+	var x,y;
+	if (e.changedTouches) {
+		x = e.changedTouches[0].pageX;
+		y = e.changedTouches[0].pageY;
+	}
+	else {
+		x = e.pageX;
+		y = e.pageY;
+	}
+	mPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
+	mPath.setAttribute("stroke-width", penWidth);
+	mPath.setAttribute("stroke-linecap", penPin);
+	mPath.setAttribute("stroke", penColor);
+	mPath.setAttribute("fill", "none");
+	mPath.setAttribute("d", "M"+(x-penWidth)+","+(y-penWidth)+"L"+(x-penWidth)+","+(y-penWidth));
+	svg.appendChild(mPath);
+	curPath = svg.childNodes.length -1;
+	e.preventDefault();
+}
+
+function drawPath(e){
+	var x,y;
+	if (e.changedTouches) {
+		x = e.changedTouches[0].pageX;
+		y = e.changedTouches[0].pageY;
+	}
+	else {
+		x = e.pageX;
+		y = e.pageY;
+	}
+	if (curPath > 0) {
+		svg.childNodes[curPath].setAttribute("d",svg.childNodes[curPath].getAttribute("d")+"L"+(x-penWidth)+","+(y-penWidth));
+	}
+	e.preventDefault();
+}
+
+function drawEnd(e){
+	if (curPath > 0 && svg.childNodes[curPath]) {
+		var dVal = svg.childNodes[curPath].getAttribute("d");
+		var strokeVal = svg.childNodes[curPath].getAttribute("stroke");
+		var strokeWdVal = svg.childNodes[curPath].getAttribute("stroke-width");
+		var fillVal = svg.childNodes[curPath].getAttribute("fill");
+		
+		ws.send(JSON.stringify({id: clientId, action: "path", 
+			stroke: strokeVal,
+			strokeWidth: strokeWdVal,
+			fill: fillVal,
+			d: dVal}));
+		curPath = -1;
+		mPath = null;
+		e.preventDefault();
+	}
+}
+
+function undo(){
+	var node = svg.childNodes[svg.childNodes.length-1];
+	if (node.tagName == "path") {
+		svgCache.appendChild(node);
+		return true;
+	}
+	return false;
+}
+
+function redo(){
+	if (svgCache.childNodes.length > 0) {
+		var node = svgCache.childNodes[svgCache.childNodes.length-1];
+		if (node.tagName == "path") svg.appendChild(node);
+	}
+}
+
+function undoAll(){
+	while (undo()) {};
+	while (svgCache.childNodes.length > 0) svgCache.removeChild(svgCache.childNodes[svgCache.childNodes.length-1]);
+}
+</script>
+</html>
