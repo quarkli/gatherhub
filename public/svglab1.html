@@ -12,9 +12,7 @@ and open the template in the editor.
     </head>
     <body>
 		<div id="whiteboard">
-			<svg id="svgboard" width="640" height="480" viewBox="0 0 640 480">
-				<rect width="640" height="480" stroke-width="5" stroke="#000000" fill="none"/>
-			</svg>
+			<svg id="svgboard" width="640" height="480" viewBox="0 0 640 480"><svg>
 		</div>
 		<div id="toolbar">
 			<button onclick="setColor('black')">K</button>
@@ -30,7 +28,7 @@ and open the template in the editor.
 			<button onclick="setPin('round')">圆</button>
 			<button onclick="undo()">Undo</button>
 			<button onclick="redo()">Redo</button>
-			<button onclick="undoAll()">Clear</button>
+			<button onclick="reset()">Reset</button>
 		</div>
     </body>
 <script>
@@ -49,15 +47,17 @@ var wsReady = false;
 var tLbtn=false, tMbtn=false, tRbtn=false;
 var viewX=0, viewY=0, viewW=640, viewH=480;
 var startX=0, startY=0;
+var touchDist = 0, touchDistDelta = 0;
 
 svg.onmousedown = mousedownHandler;
 svg.onmousemove = mousemoveHandler;
 svg.onmouseup = mouseupHandler;
 svg.onmouseleave = mouseleaveHandler;
 svg.oncontextmenu = function(){return false;};
-svg.addEventListener("touchstart",function(e){tLbtn=true;drawStart(e);});
-svg.addEventListener("touchend",function(e){tLbtn=false;drawEnd(e);});
-svg.addEventListener("touchmove",drawPath);
+svg.addEventListener("touchstart", touchstartHandler);
+svg.addEventListener("touchend", mouseleaveHandler);
+svg.addEventListener("touchmove", touchmoveHandler);
+svg.addEventListener("mousewheel", scrollHandler);
 
 var url = "ws://gatherhub.com:3005/";
 var ws = new WebSocket(url);
@@ -104,28 +104,64 @@ function setPin(p){
 	penPin = p;
 }
 
+function scrollHandler(e){
+	e.preventDefault();
+	if (e.wheelDelta > 0){
+		svgSizeup(true);
+	}
+	else {
+		svgSizeup(false);
+	}
+}
+
+function svgSizeup(t){
+	if (t){
+		viewW/=1.1;
+		viewH/=1.1;
+	}
+	else{
+		viewW*=1.1;
+		viewH*=1.1;
+	}
+
+	svg.setAttribute("viewBox", viewX+" "+viewY+" "+viewW+" "+viewH);
+}
+
+function svgShift(x, y){
+	viewX += (startX - x);
+	viewY += (startY - y);
+	svg.setAttribute("viewBox", viewX+" "+viewY+" "+viewW+" "+viewH);
+	startX = x;
+	startY = y;
+}
+
 function mousedownHandler(e){
+	var x, y;
+
+	e.preventDefault();
 	if (e.button==0) tLbtn = true;
 	if (e.button==1) tMbtn = true;
 	if (e.button==2) tRbtn = true;
 	startX = e.pageX;
 	startY = e.pageY;
-	e.preventDefault();
 	
 	if (!tLbtn || tMbtn || tRbtn) return;
-	drawStart(e);
+	x = e.pageX*viewW/640 + viewX;
+	y = e.pageY*viewH/480 + viewY;
+	drawStart(x, y);
 }
 
 function mousemoveHandler(e){
+	var x, y;
+
+	e.preventDefault();
 	if (tMbtn || (tLbtn && tRbtn)) {
-		viewX += (startX - e.pageX);
-		viewY += (startY - e.pageY);
-		svg.setAttribute("viewBox", viewX+" "+viewY+" "+viewW+" "+viewH);
-		startX = e.pageX;
-		startY = e.pageY;
+		svgShift(e.pageX, e.pageY);
 	}
 	else {
-		drawPath(e);
+		x = e.pageX*viewW/640 + viewX;
+		y = e.pageY*viewH/480 + viewY;
+		drawPath(x, y);
 	}
 }
 
@@ -134,28 +170,72 @@ function mouseupHandler(e) {
 	if (e.button==1) tMbtn = false;
 	if (e.button==2) tRbtn = false;
 
-	if (curPath > 0 && svg.childNodes[curPath]) drawEnd(e);
 	e.preventDefault();
+	if (curPath > 0 && svg.childNodes[curPath]) drawEnd();
 }
 
 function mouseleaveHandler(e) {
-	tLbtn = tMbtn = tRbtn = false;
-	if (curPath > 0 && svg.childNodes[curPath]) drawEnd(e);
 	e.preventDefault();	
+	tLbtn = tMbtn = tRbtn = false;
+	touchDist = touchDistDelta = 0;
+	if (curPath > 0 && svg.childNodes[curPath]) drawEnd();
 }
 
-function drawStart(e){
+function touchstartHandler(e){
 	var x,y;
-	if (e.changedTouches) {
-		x = e.changedTouches[0].pageX + viewX;
-		y = e.changedTouches[0].pageY + viewY;
-		tLbtn = true;
-	}
-	else {
-		x = e.pageX + viewX;
-		y = e.pageY + viewY;
-	}
 	
+	e.preventDefault();
+	if (e.touches){
+		var t = e.touches;
+		if (curPath < 0 &&  t.length == 1) {
+			x = t[0].pageX * viewW / 640 + viewX;
+			y = t[0].pageY * viewH / 480 + viewY;
+			tLbtn = true;
+			drawStart(x, y);
+		}
+		else if (t.length == 2){
+			touchDist = (t[0].pageX - t[1].pageX) ^ 2 + (t[0].pageY -t[1].pageY) ^ 2;
+			mouseleaveHandler(e);
+		}
+		else if (t.length == 3){
+			startX = t[0].pageX;
+			startY = t[0].pageY;
+		}
+	}
+}
+
+function touchmoveHandler(e){
+	var x,y, tmpDist;
+	
+	e.preventDefault();
+	if (e.touches){
+		var t = e.touches;
+		if (t.length == 1) {
+			x = t[0].pageX * viewW / 640 + viewX;
+			y = t[0].pageY * viewH / 480 + viewY;
+			tLbtn = true;
+			drawPath(x, y);
+		}
+		else if (t.length == 2){
+			tmpDist = Math.pow(t[0].pageX - t[1].pageX, 2) + Math.pow(t[0].pageY - t[1].pageY, 2);
+			touchDistDelta += (tmpDist - touchDist);
+			touchDist = tmpDist;
+			if (touchDistDelta > 14400){
+				svgSizeup(true);
+				touchDistDelta = 0;
+			}
+			if (touchDistDelta < -14400){
+				svgSizeup(false);
+				touchDistDelta = 0;
+			}
+		}
+		else if (t.length == 3){
+			svgShift(t[0].pageX,  t[0].pageY);
+		}
+	}
+}
+
+function drawStart(x, y){
 	mPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
 	mPath.setAttribute("stroke-width", penWidth);
 	mPath.setAttribute("stroke-linecap", penPin);
@@ -166,23 +246,14 @@ function drawStart(e){
 	curPath = svg.childNodes.length -1;
 }
 
-function drawPath(e){
+function drawPath(x, y){
 	if (curPath > 0) {
-		var x,y;
-		if (e.changedTouches) {
-			x = e.changedTouches[0].pageX + viewX;
-			y = e.changedTouches[0].pageY + viewY;
-		}
-		else {
-			x = e.pageX + viewX;
-			y = e.pageY + viewY;
-		}
-		svg.childNodes[curPath].setAttribute("d",svg.childNodes[curPath].getAttribute("d")+"L"+(x-penWidth/2)+","+(y-penWidth/2));
-		e.preventDefault();
+		var node = svg.childNodes[curPath];
+		node.setAttribute("d", node.getAttribute("d") + "L" + (x-penWidth/2) + "," + (y-penWidth/2));
 	}
 }
 
-function drawEnd(e){
+function drawEnd(){
 	if (wsReady) {
 		var dVal = svg.childNodes[curPath].getAttribute("d");
 		var strokeVal = svg.childNodes[curPath].getAttribute("stroke");
@@ -216,10 +287,15 @@ function redo(){
 	}
 }
 
-function undoAll(){
+function reset(){
 	var nodes = svgCache.childNodes;
 	while (undo()) {};
-	while (nodes.length > 0) svgCache.removeChild(nodes[bodes.length-1]);
+	while (nodes.length > 0) svgCache.removeChild(nodes[nodes.length-1]);
+
+	viewX = viewY =0;
+	viewW = 640;
+	viewH = 480;
+	svg.setAttribute("viewBox", viewX+" "+viewY+" "+viewW+" "+viewH);
 }
 </script>
 </html>
