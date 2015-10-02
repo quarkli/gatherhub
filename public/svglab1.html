@@ -12,7 +12,7 @@ and open the template in the editor.
     </head>
     <body>
 		<div id="whiteboard">
-			<svg id="svgboard" width="640" height="480">
+			<svg id="svgboard" width="640" height="480" viewBox="0 0 640 480">
 				<rect width="640" height="480" stroke-width="5" stroke="#000000" fill="none"/>
 			</svg>
 		</div>
@@ -45,19 +45,26 @@ var penWidth = "5";
 var penPin = "rect";
 var clientId = 0 | Math.random()*100000000;
 var keepAliveMsg = null;
-var wsReady = true;
+var wsReady = false;
+var tLbtn=false, tMbtn=false, tRbtn=false;
+var viewX=0, viewY=0, viewW=640, viewH=480;
+var startX=0, startY=0;
 
-svg.onmousedown = drawStart;
-svg.onmousemove = drawPath;
-svg.onmouseup = drawEnd;
-svg.onmouseleave = drawEnd;
-svg.addEventListener("touchstart",drawStart);
+svg.onmousedown = mousedownHandler;
+svg.onmousemove = mousemoveHandler;
+svg.onmouseup = mouseupHandler;
+svg.onmouseleave = mouseleaveHandler;
+svg.oncontextmenu = function(){return false;};
+svg.addEventListener("touchstart",function(e){tLbtn=true;drawStart(e);});
+svg.addEventListener("touchend",function(e){tLbtn=false;drawEnd(e);});
 svg.addEventListener("touchmove",drawPath);
-svg.addEventListener("touchend",drawEnd);
 
 var url = "ws://gatherhub.com:3005/";
 var ws = new WebSocket(url);
-ws.onopen = function(){ws.send(JSON.stringify({id: clientId, action: "connect"}));};
+ws.onopen = function(){
+	ws.send(JSON.stringify({id: clientId, action: "connect"}));
+	wsReady = true;
+};
 ws.onmessage = function(msg){
 	if (msg.data.match("path")){
 		var ctx = JSON.parse(msg.data);
@@ -97,61 +104,99 @@ function setPin(p){
 	penPin = p;
 }
 
+function mousedownHandler(e){
+	if (e.button==0) tLbtn = true;
+	if (e.button==1) tMbtn = true;
+	if (e.button==2) tRbtn = true;
+	startX = e.pageX;
+	startY = e.pageY;
+	e.preventDefault();
+	
+	if (!tLbtn || tMbtn || tRbtn) return;
+	drawStart(e);
+}
+
+function mousemoveHandler(e){
+	if (tMbtn || (tLbtn && tRbtn)) {
+		viewX += (startX - e.pageX);
+		viewY += (startY - e.pageY);
+		svg.setAttribute("viewBox", viewX+" "+viewY+" "+viewW+" "+viewH);
+		startX = e.pageX;
+		startY = e.pageY;
+	}
+	else {
+		drawPath(e);
+	}
+}
+
+function mouseupHandler(e) {
+	if (e.button==0) tLbtn = false;
+	if (e.button==1) tMbtn = false;
+	if (e.button==2) tRbtn = false;
+
+	if (curPath > 0 && svg.childNodes[curPath]) drawEnd(e);
+	e.preventDefault();
+}
+
+function mouseleaveHandler(e) {
+	tLbtn = tMbtn = tRbtn = false;
+	if (curPath > 0 && svg.childNodes[curPath]) drawEnd(e);
+	e.preventDefault();	
+}
+
 function drawStart(e){
 	var x,y;
 	if (e.changedTouches) {
-		x = e.changedTouches[0].pageX;
-		y = e.changedTouches[0].pageY;
+		x = e.changedTouches[0].pageX + viewX;
+		y = e.changedTouches[0].pageY + viewY;
+		tLbtn = true;
 	}
 	else {
-		x = e.pageX;
-		y = e.pageY;
+		x = e.pageX + viewX;
+		y = e.pageY + viewY;
 	}
+	
 	mPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
 	mPath.setAttribute("stroke-width", penWidth);
 	mPath.setAttribute("stroke-linecap", penPin);
 	mPath.setAttribute("stroke", penColor);
 	mPath.setAttribute("fill", "none");
-	mPath.setAttribute("d", "M"+(x-penWidth)+","+(y-penWidth)+"L"+(x-penWidth)+","+(y-penWidth));
+	mPath.setAttribute("d", "M"+(x-penWidth/2)+","+(y-penWidth/2)+"L"+(x-penWidth/2)+","+(y-penWidth/2));
 	svg.appendChild(mPath);
 	curPath = svg.childNodes.length -1;
-	e.preventDefault();
 }
 
 function drawPath(e){
-	var x,y;
-	if (e.changedTouches) {
-		x = e.changedTouches[0].pageX;
-		y = e.changedTouches[0].pageY;
-	}
-	else {
-		x = e.pageX;
-		y = e.pageY;
-	}
 	if (curPath > 0) {
-		svg.childNodes[curPath].setAttribute("d",svg.childNodes[curPath].getAttribute("d")+"L"+(x-penWidth)+","+(y-penWidth));
+		var x,y;
+		if (e.changedTouches) {
+			x = e.changedTouches[0].pageX + viewX;
+			y = e.changedTouches[0].pageY + viewY;
+		}
+		else {
+			x = e.pageX + viewX;
+			y = e.pageY + viewY;
+		}
+		svg.childNodes[curPath].setAttribute("d",svg.childNodes[curPath].getAttribute("d")+"L"+(x-penWidth/2)+","+(y-penWidth/2));
+		e.preventDefault();
 	}
-	e.preventDefault();
 }
 
 function drawEnd(e){
-	if (curPath > 0 && svg.childNodes[curPath]) {
-		if (wsReady) {
-			var dVal = svg.childNodes[curPath].getAttribute("d");
-			var strokeVal = svg.childNodes[curPath].getAttribute("stroke");
-			var strokeWdVal = svg.childNodes[curPath].getAttribute("stroke-width");
-			var fillVal = svg.childNodes[curPath].getAttribute("fill");
-			
-			ws.send(JSON.stringify({id: clientId, action: "path", 
-				stroke: strokeVal,
-				strokeWidth: strokeWdVal,
-				fill: fillVal,
-				d: dVal}));
-		}
-		curPath = -1;
-		mPath = null;
-		e.preventDefault();
+	if (wsReady) {
+		var dVal = svg.childNodes[curPath].getAttribute("d");
+		var strokeVal = svg.childNodes[curPath].getAttribute("stroke");
+		var strokeWdVal = svg.childNodes[curPath].getAttribute("stroke-width");
+		var fillVal = svg.childNodes[curPath].getAttribute("fill");
+		
+		ws.send(JSON.stringify({id: clientId, action: "path", 
+			stroke: strokeVal,
+			strokeWidth: strokeWdVal,
+			fill: fillVal,
+			d: dVal}));
 	}
+	curPath = -1;
+	mPath = null;
 }
 
 function undo(){
@@ -164,15 +209,17 @@ function undo(){
 }
 
 function redo(){
-	if (svgCache.childNodes.length > 0) {
-		var node = svgCache.childNodes[svgCache.childNodes.length-1];
+	var nodes = svgCache.childNodes;
+	if (nodes.length > 0) {
+		var node = nodes[nodes.length-1];
 		if (node.tagName == "path") svg.appendChild(node);
 	}
 }
 
 function undoAll(){
+	var nodes = svgCache.childNodes;
 	while (undo()) {};
-	while (svgCache.childNodes.length > 0) svgCache.removeChild(svgCache.childNodes[svgCache.childNodes.length-1]);
+	while (nodes.length > 0) svgCache.removeChild(nodes[bodes.length-1]);
 }
 </script>
 </html>
