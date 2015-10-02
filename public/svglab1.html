@@ -34,6 +34,8 @@ and open the template in the editor.
 		</div>
     </body>
 <script>
+console.log("w="+window.screen.width+",h="+window.screen.height);
+console.log("x="+window.innerWidth+",y="+window.innerHeight)
 var svg = document.getElementById("svgboard");
 var svgCache = document.createElementNS("http://www.w3.org/2000/svg","svg");
 var mPath = null;
@@ -42,6 +44,8 @@ var penColor = "black";
 var penWidth = "5";
 var penPin = "rect";
 var clientId = 0 | Math.random()*100000000;
+var keepAliveMsg = null;
+var wsReady = true;
 
 svg.onmousedown = drawStart;
 svg.onmousemove = drawPath;
@@ -73,8 +77,13 @@ ws.onmessage = function(msg){
 		console.log(msg.data);
 	}
 };
-ws.onclose = function(){console.log("Connection closed!")};
-window.onbeforeunload  = function(){ws.close()};
+ws.onclose = function(){
+	console.log("Connection closed!");
+	clearInterval(keepAliveMsg);
+	wsReady = false;
+};
+window.onbeforeunload  = function(){if (wsReady) ws.close();};
+keepAliveMsg = setInterval(function(){ ws.send(""); }, 30000);
 
 function setColor(c){
 	penColor = c;
@@ -127,16 +136,18 @@ function drawPath(e){
 
 function drawEnd(e){
 	if (curPath > 0 && svg.childNodes[curPath]) {
-		var dVal = svg.childNodes[curPath].getAttribute("d");
-		var strokeVal = svg.childNodes[curPath].getAttribute("stroke");
-		var strokeWdVal = svg.childNodes[curPath].getAttribute("stroke-width");
-		var fillVal = svg.childNodes[curPath].getAttribute("fill");
-		
-		ws.send(JSON.stringify({id: clientId, action: "path", 
-			stroke: strokeVal,
-			strokeWidth: strokeWdVal,
-			fill: fillVal,
-			d: dVal}));
+		if (wsReady) {
+			var dVal = svg.childNodes[curPath].getAttribute("d");
+			var strokeVal = svg.childNodes[curPath].getAttribute("stroke");
+			var strokeWdVal = svg.childNodes[curPath].getAttribute("stroke-width");
+			var fillVal = svg.childNodes[curPath].getAttribute("fill");
+			
+			ws.send(JSON.stringify({id: clientId, action: "path", 
+				stroke: strokeVal,
+				strokeWidth: strokeWdVal,
+				fill: fillVal,
+				d: dVal}));
+		}
 		curPath = -1;
 		mPath = null;
 		e.preventDefault();
