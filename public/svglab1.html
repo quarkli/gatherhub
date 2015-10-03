@@ -32,14 +32,14 @@ and open the template in the editor.
 		</div>
     </body>
 <script>
-var enableLog = false; // Set 'true' to turn on log message;
+var enableLog = true; // Set 'true' to turn on log message;
 
 var penColor = "black", penWidth = "5", penPin = "rect";
 
-var wMargin=20, hMargin=60;
-var svgW=window.innerWidth-wMargin, svgH=window.innerHeight-hMargin;
-var viewX=0, viewY=0, viewW=svgW, viewH=svgH;
-var startX=0, startY=0;
+var wMargin = 20, hMargin = 60;
+var svgW = window.innerWidth - wMargin, svgH = window.innerHeight - hMargin;
+var viewX = 0, viewY = 0, viewW = svgW, viewH = svgH;
+var startX = 0, startY = 0;
 
 var cursorDiff = 8;
 var tLbtn=false, tMbtn=false, tRbtn=false;
@@ -47,7 +47,7 @@ var touchDist = 0, touchDistDelta = 0;
 
 var mPath = null;
 var curPath = -1;
-var svgCache = document.createElementNS("http://www.w3.org/2000/svg","svg");
+var svgCache = document.createElementNS("http://www.w3.org/2000/svg", "svg");
 
 var svg = document.getElementById("svgboard");
 svg.onmousedown = mousedownHandler;
@@ -60,12 +60,12 @@ svg.addEventListener("touchend", mouseleaveHandler);
 svg.addEventListener("touchmove", touchmoveHandler);
 svg.addEventListener("mousewheel", mousewheelHandler);
 
-showDebug("AvailW="+window.innerWidth+",AvailH="+window.innerHeight);
+showDebug("AvailW=" + window.innerWidth + ",AvailH=" + window.innerHeight);
 setSvgArea(svgW, svgH);
 setSvgViewbox(viewX, viewY, viewW, viewH);
 
 var url = "ws://gatherhub.com:3005/";
-var clientId = 0 | Math.random()*100000000;
+var clientId = 0 | Math.random() * 100000000;
 var wsReady = false;
 var keepAliveMsg = null;
 
@@ -78,8 +78,8 @@ ws.onmessage = function(msg){
 	if (msg.data.match("path")){
 		var ctx = JSON.parse(msg.data);
 		if (ctx.id != clientId){
-			showDebug("id:"+ctx.id+" stroke:"+ctx.stroke+" stroke-width:"+ctx.strokeWidth+" fill:"+ctx.fill);
-			showDebug("d:"+ctx.d);
+			showDebug("id:" + ctx.id + " stroke:" + ctx.stroke + " stroke-width:" + ctx.strokeWidth + " fill:" + ctx.fill);
+			showDebug("d:" + ctx.d);
 			mPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
 			mPath.setAttribute("stroke-width", ctx.strokeWidth);
 			mPath.setAttribute("stroke", ctx.stroke);
@@ -101,15 +101,15 @@ ws.onclose = function(){
 
 window.onbeforeunload  = function(){if (wsReady) ws.close();};
 window.onresize = svgResize;
-keepAliveMsg = setInterval(function(){ ws.send(""); }, 30000);
+keepAliveMsg = setInterval(function(){ws.send("");}, 30000);
 
 function showDebug(msg){
 	if (enableLog) console.log(msg);
 }
 
 function setSvgArea(w, h){
-	svg.setAttribute("width",w);
-	svg.setAttribute("height",h);
+	svg.setAttribute("width", w);
+	svg.setAttribute("height", h);
 }
 
 function setSvgViewbox(x, y, w, h){
@@ -117,38 +117,38 @@ function setSvgViewbox(x, y, w, h){
 	viewY = y;
 	viewW = w;
 	viewH = h;
-	svg.setAttribute("viewBox", viewX+" "+viewY+" "+viewW+" "+viewH);
-	showDebug("ViewX="+viewX+",ViewY="+viewY+",ViewW="+viewW+",ViewH="+viewH);
+	svg.setAttribute("viewBox", viewX + " " + viewY + " " + viewW + " " + viewH);
+	showDebug("ViewX=" + viewX + ",ViewY=" + viewY + ",ViewW=" + viewW + ",ViewH=" + viewH);
 }
 
 function setColor(c){
 	penColor = c;
-	showDebug("Pen-color="+penColor);
+	showDebug("Pen-color=" + penColor);
 }
 
 function setWidth(w){
 	penWidth = w;
-	showDebug("Pen-width="+penWidth);
+	showDebug("Pen-width=" + penWidth);
 }
 
 function setPin(p){
 	penPin = p;
-	showDebug("Pen-shape="+penPin);
+	showDebug("Pen-shape=" + penPin);
 }
 
 function svgSizeup(t){
-	var r = (1/32);
+	var r = (1 / 32);
 	if (t){
-		viewX+=(viewW*r/2);
-		viewY+=(viewH*r/2);
-		viewW/=(1+r);
-		viewH/=(1+r);
+		viewX += (viewW * r / 2);
+		viewY += (viewH * r / 2);
+		viewW /= (1 + r);
+		viewH /= (1 + r);
 	}
 	else{
-		viewX-=(viewW*r/2);
-		viewY-=(viewH*r/2);
-		viewW*=(1+r);
-		viewH*=(1+r);
+		viewX -= (viewW * r / 2);
+		viewY -= (viewH * r / 2);
+		viewW *= (1 + r);
+		viewH *= (1 + r);
 	}
 	setSvgViewbox(viewX, viewY, viewW, viewH);
 }
@@ -172,8 +172,8 @@ function mousedownHandler(e){
 	startY = e.pageY;
 	
 	if (!tLbtn || tMbtn || tRbtn) return;
-	x = e.pageX*viewW/svgW + viewX;
-	y = e.pageY*viewH/svgH + viewY;
+	x = e.pageX * viewW / svgW + viewX;
+	y = e.pageY * viewH / svgH + viewY;
 	drawStart(x, y);
 }
 
@@ -185,8 +185,8 @@ function mousemoveHandler(e){
 		svgShift(e.pageX, e.pageY);
 	}
 	else {
-		x = e.pageX*viewW/svgW + viewX;
-		y = e.pageY*viewH/svgH + viewY;
+		x = e.pageX * viewW / svgW + viewX;
+		y = e.pageY * viewH / svgH + viewY;
 		drawPath(x, y);
 	}
 }
@@ -230,7 +230,7 @@ function touchstartHandler(e){
 			drawStart(x, y);
 		}
 		else if (t.length == 2){
-			touchDist = (t[0].pageX - t[1].pageX) ^ 2 + (t[0].pageY -t[1].pageY) ^ 2;
+			touchDist = Math.pow(t[0].pageX - t[1].pageX, 2) + Math.pow(t[0].pageY -t[1].pageY, 2);
 			mouseleaveHandler(e);
 		}
 		else if (t.length == 3){
@@ -266,28 +266,28 @@ function touchmoveHandler(e){
 			}
 		}
 		else if (t.length == 3){
-			svgShift(t[0].pageX,  t[0].pageY);
+			svgShift(t[0].pageX, t[0].pageY);
 		}
 	}
 }
 
 function drawStart(x, y){
-	x-=(cursorDiff/penWidth);
-	y-=(cursorDiff/penWidth);
+	x -= (cursorDiff / penWidth);
+	y -= (cursorDiff / penWidth);
 	mPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
 	mPath.setAttribute("stroke-width", penWidth);
 	mPath.setAttribute("stroke-linecap", penPin);
 	mPath.setAttribute("stroke", penColor);
 	mPath.setAttribute("fill", "none");
-	mPath.setAttribute("d", "M"+(x-penWidth/2)+","+(y-penWidth/2)+"L"+(x-penWidth/2)+","+(y-penWidth/2));
+	mPath.setAttribute("d", "M" + (x-penWidth / 2) + "," + (y-penWidth / 2) + "L" + (x-penWidth / 2) + "," + (y-penWidth / 2));
 	svg.appendChild(mPath);
 	curPath = svg.childNodes.length -1;
 }
 
 function drawPath(x, y){
 	if (curPath > 0) {
-		x-=(cursorDiff/penWidth);
-		y-=(cursorDiff/penWidth);
+		x -= (cursorDiff / penWidth);
+		y -= (cursorDiff / penWidth);
 		var node = svg.childNodes[curPath];
 		node.setAttribute("d", node.getAttribute("d") + "L" + (x-penWidth/2) + "," + (y-penWidth/2));
 	}
@@ -311,7 +311,7 @@ function drawEnd(){
 }
 
 function undo(){
-	var node = svg.childNodes[svg.childNodes.length-1];
+	var node = svg.childNodes[svg.childNodes.length - 1];
 	if (node.tagName == "path") {
 		svgCache.appendChild(node);
 		return true;
@@ -322,7 +322,7 @@ function undo(){
 function redo(){
 	var nodes = svgCache.childNodes;
 	if (nodes.length > 0) {
-		var node = nodes[nodes.length-1];
+		var node = nodes[nodes.length - 1];
 		if (node.tagName == "path") svg.appendChild(node);
 	}
 }
@@ -340,7 +340,7 @@ function svgResize(){
 function reset(){
 	var nodes = svgCache.childNodes;
 	while (undo()) {};
-	while (nodes.length > 0) svgCache.removeChild(nodes[nodes.length-1]);
+	while (nodes.length > 0) svgCache.removeChild(nodes[nodes.length - 1]);
 	svgResize();
 }
 </script>
