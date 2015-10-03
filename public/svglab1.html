@@ -20,10 +20,10 @@ and open the template in the editor.
 			<button onclick="setColor('green')">G</button>
 			<button onclick="setColor('blue')">B</button>
 			<button onclick="setColor('white')">W</button>
-			<button onclick="setWidth('1')">1</button>
-			<button onclick="setWidth('5')">5</button>
-			<button onclick="setWidth('9')">9</button>
-			<button onclick="setWidth('18')">18</button>
+			<button onclick="setWidth(this.innerHTML)">1</button>
+			<button onclick="setWidth(this.innerHTML)">5</button>
+			<button onclick="setWidth(this.innerHTML)">9</button>
+			<button onclick="setWidth(this.innerHTML)">21</button>
 			<button onclick="setPin('rect')">方</button>
 			<button onclick="setPin('round')">圆</button>
 			<button onclick="undo()">Undo</button>
@@ -101,13 +101,15 @@ ws.onclose = function(){
 
 window.onbeforeunload  = function(){if (wsReady) ws.close();};
 window.onresize = svgResize;
-keepAliveMsg = setInterval(function(){ws.send("");}, 30000);
+keepAliveMsg = setInterval(function(){if (wsReady) ws.send("");}, 30000);
 
 function showDebug(msg){
 	if (enableLog) console.log(msg);
 }
 
 function setSvgArea(w, h){
+	svgW = w;
+	svgH = h;
 	svg.setAttribute("width", w);
 	svg.setAttribute("height", h);
 }
@@ -117,8 +119,8 @@ function setSvgViewbox(x, y, w, h){
 	viewY = y;
 	viewW = w;
 	viewH = h;
-	svg.setAttribute("viewBox", viewX + " " + viewY + " " + viewW + " " + viewH);
-	showDebug("ViewX=" + viewX + ",ViewY=" + viewY + ",ViewW=" + viewW + ",ViewH=" + viewH);
+	svg.setAttribute("viewBox", x + " " + y + " " + w + " " + h);
+	showDebug("ViewX=" + x + ",ViewY=" + y + ",ViewW=" + w + ",ViewH=" + h);
 }
 
 function setColor(c){
@@ -156,14 +158,12 @@ function svgSizeup(t){
 function svgShift(x, y){
 	viewX += (startX - x);
 	viewY += (startY - y);
-	setSvgViewbox(viewX, viewY, viewW, viewH);
 	startX = x;
 	startY = y;
+	setSvgViewbox(viewX, viewY, viewW, viewH);
 }
 
 function mousedownHandler(e){
-	var x, y;
-
 	e.preventDefault();
 	if (e.button==0) tLbtn = true;
 	if (e.button==1) tMbtn = true;
@@ -172,22 +172,16 @@ function mousedownHandler(e){
 	startY = e.pageY;
 	
 	if (!tLbtn || tMbtn || tRbtn) return;
-	x = e.pageX * viewW / svgW + viewX;
-	y = e.pageY * viewH / svgH + viewY;
-	drawStart(x, y);
+	drawStart(startX, startY);
 }
 
 function mousemoveHandler(e){
-	var x, y;
-
 	e.preventDefault();
 	if (tMbtn || (tLbtn && tRbtn)) {
 		svgShift(e.pageX, e.pageY);
 	}
 	else {
-		x = e.pageX * viewW / svgW + viewX;
-		y = e.pageY * viewH / svgH + viewY;
-		drawPath(x, y);
+		drawPath(e.pageX, e.pageY);
 	}
 }
 
@@ -218,42 +212,34 @@ function mousewheelHandler(e){
 }
 
 function touchstartHandler(e){
-	var x,y;
-	
 	e.preventDefault();
 	if (e.touches){
 		var t = e.touches;
-		if (curPath < 0 &&  t.length == 1) {
-			x = t[0].pageX * viewW / svgW + viewX;
-			y = t[0].pageY * viewH / svgH + viewY;
-			tLbtn = true;
-			drawStart(x, y);
-		}
-		else if (t.length == 2){
-			touchDist = Math.pow(t[0].pageX - t[1].pageX, 2) + Math.pow(t[0].pageY -t[1].pageY, 2);
+		if (t.length == 2){
 			mouseleaveHandler(e);
+			touchDist = Math.pow(t[0].pageX - t[1].pageX, 2) + Math.pow(t[0].pageY -t[1].pageY, 2);
 		}
-		else if (t.length == 3){
+		else {
 			startX = t[0].pageX;
 			startY = t[0].pageY;
+			if (curPath < 0 &&  t.length == 1) {
+				tLbtn = true;
+				drawStart(startX, startY);
+			}
 		}
 	}
 }
 
 function touchmoveHandler(e){
-	var x,y, tmpDist;
-	
 	e.preventDefault();
 	if (e.touches){
 		var t = e.touches;
 		if (t.length == 1) {
-			x = t[0].pageX * viewW / svgW + viewX;
-			y = t[0].pageY * viewH / svgH + viewY;
 			tLbtn = true;
-			drawPath(x, y);
+			drawPath(t[0].pageX, t[0].pageY);
 		}
 		else if (t.length == 2){
-			tmpDist = Math.pow(t[0].pageX - t[1].pageX, 2) + Math.pow(t[0].pageY - t[1].pageY, 2);
+			var tmpDist = Math.pow(t[0].pageX - t[1].pageX, 2) + Math.pow(t[0].pageY - t[1].pageY, 2);
 			touchDistDelta += (tmpDist - touchDist);
 			touchDist = tmpDist;
 			if (touchDistDelta > 14400){
@@ -272,24 +258,35 @@ function touchmoveHandler(e){
 }
 
 function drawStart(x, y){
-	x -= (cursorDiff / penWidth);
-	y -= (cursorDiff / penWidth);
+	x = x * viewW / svgW + viewX;
+	y = y * viewH / svgH + viewY;
+
+	var diffPenW = Math.round(penWidth / 2);
+	var diffCurW = Math.round(cursorDiff / penWidth);
+	var diffTotal = diffPenW + diffCurW;
+	x -= diffTotal;
+	y -= diffTotal;
 	mPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
 	mPath.setAttribute("stroke-width", penWidth);
 	mPath.setAttribute("stroke-linecap", penPin);
 	mPath.setAttribute("stroke", penColor);
 	mPath.setAttribute("fill", "none");
-	mPath.setAttribute("d", "M" + (x-penWidth / 2) + "," + (y-penWidth / 2) + "L" + (x-penWidth / 2) + "," + (y-penWidth / 2));
+	mPath.setAttribute("d", "M" + x + "," + y + "L" + x + "," + y);
 	svg.appendChild(mPath);
-	curPath = svg.childNodes.length -1;
+	curPath = svg.childNodes.length - 1;
 }
 
 function drawPath(x, y){
 	if (curPath > 0) {
-		x -= (cursorDiff / penWidth);
-		y -= (cursorDiff / penWidth);
+		x = x * viewW / svgW + viewX;
+		y = y * viewH / svgH + viewY;
+		var diffPenW = Math.round(penWidth / 2);
+		var diffCurW = Math.round(cursorDiff / penWidth);
+		var diffTotal = diffPenW + diffCurW;
+		x -= diffTotal;
+		y -= diffTotal;
 		var node = svg.childNodes[curPath];
-		node.setAttribute("d", node.getAttribute("d") + "L" + (x-penWidth/2) + "," + (y-penWidth/2));
+		node.setAttribute("d", node.getAttribute("d") + "L" + x + "," + y);
 	}
 }
 
@@ -327,21 +324,16 @@ function redo(){
 	}
 }
 
-function svgResize(){
-	svgW = window.innerWidth - wMargin;
-	svgH = window.innerHeight - hMargin;
-	viewX = viewY =0;
-	viewW = svgW;
-	viewH = svgH;
-	setSvgArea(svgW, svgH);
-	setSvgViewbox(viewX, viewY, viewW, viewH);
-}
-
 function reset(){
 	var nodes = svgCache.childNodes;
 	while (undo()) {};
 	while (nodes.length > 0) svgCache.removeChild(nodes[nodes.length - 1]);
 	svgResize();
+}
+
+function svgResize(){
+	setSvgArea(window.innerWidth - wMargin, window.innerHeight - hMargin);
+	setSvgViewbox(0, 0, svgW, svgH);
 }
 </script>
 </html>
