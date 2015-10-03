@@ -28,7 +28,8 @@ and open the template in the editor.
 			<button onclick="setPin('round')">圆</button>
 			<button onclick="undo()">Undo</button>
 			<button onclick="redo()">Redo</button>
-			<button onclick="reset()">Reset</button>
+			<button onclick="resetSvg()">Reset</button>
+			<button onclick="clearSvg()">Clear</button>
 		</div>
     </body>
 <script>
@@ -43,7 +44,7 @@ var startX = 0, startY = 0;
 
 var cursorDiff = 8;
 var tLbtn=false, tMbtn=false, tRbtn=false;
-var touchDist = 0, touchDistDelta = 0;
+var touchDist = 0, touchDistDelta = 0, pinchDelta = 60;
 
 var mPath = null;
 var curPath = -1;
@@ -100,7 +101,7 @@ ws.onclose = function(){
 };
 
 window.onbeforeunload  = function(){if (wsReady) ws.close();};
-window.onresize = svgResize;
+window.onresize = resetSvg;
 keepAliveMsg = setInterval(function(){if (wsReady) ws.send("");}, 30000);
 
 function showDebug(msg){
@@ -139,7 +140,7 @@ function setPin(p){
 }
 
 function svgSizeup(t){
-	var r = (1 / 32);
+	var r = (1 / 16);
 	if (t){
 		viewX += (viewW * r / 2);
 		viewY += (viewH * r / 2);
@@ -242,11 +243,11 @@ function touchmoveHandler(e){
 			var tmpDist = Math.pow(t[0].pageX - t[1].pageX, 2) + Math.pow(t[0].pageY - t[1].pageY, 2);
 			touchDistDelta += (tmpDist - touchDist);
 			touchDist = tmpDist;
-			if (touchDistDelta > 14400){
+			if (touchDistDelta > Math.pow(pinchDelta, 2)){
 				svgSizeup(true);
 				touchDistDelta = 0;
 			}
-			if (touchDistDelta < -14400){
+			if (touchDistDelta < -Math.pow(pinchDelta, 2)){
 				svgSizeup(false);
 				touchDistDelta = 0;
 			}
@@ -324,16 +325,16 @@ function redo(){
 	}
 }
 
-function reset(){
+function resetSvg(){
+	setSvgArea(window.innerWidth - wMargin, window.innerHeight - hMargin);
+	setSvgViewbox(0, 0, svgW, svgH);
+}
+
+function clearSvg(){
 	var nodes = svgCache.childNodes;
 	while (undo()) {};
 	while (nodes.length > 0) svgCache.removeChild(nodes[nodes.length - 1]);
-	svgResize();
-}
-
-function svgResize(){
-	setSvgArea(window.innerWidth - wMargin, window.innerHeight - hMargin);
-	setSvgViewbox(0, 0, svgW, svgH);
+	resetSvg();
 }
 </script>
 </html>
