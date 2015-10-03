@@ -12,7 +12,7 @@ and open the template in the editor.
     </head>
     <body>
 		<div id="whiteboard">
-			<svg id="svgboard" width="640" height="480" viewBox="0 0 640 480"><svg>
+			<svg id="svgboard"><svg>
 		</div>
 		<div id="toolbar">
 			<button onclick="setColor('black')">K</button>
@@ -32,13 +32,17 @@ and open the template in the editor.
 		</div>
     </body>
 <script>
-var enableLog = true; // turn on/off debug message
+var enableLog = false; // Set 'true' to turn on log message;
 
 var penColor = "black", penWidth = "5", penPin = "rect";
 
-var tLbtn=false, tMbtn=false, tRbtn=false;
-var viewX=0, viewY=0, viewW=640, viewH=480;
+var wMargin=20, hMargin=60;
+var svgW=window.innerWidth-wMargin, svgH=window.innerHeight-hMargin;
+var viewX=0, viewY=0, viewW=svgW, viewH=svgH;
 var startX=0, startY=0;
+
+var cursorDiff = 8;
+var tLbtn=false, tMbtn=false, tRbtn=false;
 var touchDist = 0, touchDistDelta = 0;
 
 var mPath = null;
@@ -54,7 +58,11 @@ svg.oncontextmenu = function(){return false;};
 svg.addEventListener("touchstart", touchstartHandler);
 svg.addEventListener("touchend", mouseleaveHandler);
 svg.addEventListener("touchmove", touchmoveHandler);
-svg.addEventListener("mousewheel", scrollHandler);
+svg.addEventListener("mousewheel", mousewheelHandler);
+
+showDebug("AvailW="+window.innerWidth+",AvailH="+window.innerHeight);
+setSvgArea(svgW, svgH);
+setSvgViewbox(viewX, viewY, viewW, viewH);
 
 var url = "ws://gatherhub.com:3005/";
 var clientId = 0 | Math.random()*100000000;
@@ -92,12 +100,25 @@ ws.onclose = function(){
 };
 
 window.onbeforeunload  = function(){if (wsReady) ws.close();};
+window.onresize = svgResize;
 keepAliveMsg = setInterval(function(){ ws.send(""); }, 30000);
-
-showDebug("AvailW="+window.innerWidth+",AvailH="+window.innerHeight)
 
 function showDebug(msg){
 	if (enableLog) console.log(msg);
+}
+
+function setSvgArea(w, h){
+	svg.setAttribute("width",w);
+	svg.setAttribute("height",h);
+}
+
+function setSvgViewbox(x, y, w, h){
+	viewX = x;
+	viewY = y;
+	viewW = w;
+	viewH = h;
+	svg.setAttribute("viewBox", viewX+" "+viewY+" "+viewW+" "+viewH);
+	showDebug("ViewX="+viewX+",ViewY="+viewY+",ViewW="+viewW+",ViewH="+viewH);
 }
 
 function setColor(c){
@@ -115,16 +136,6 @@ function setPin(p){
 	showDebug("Pen-shape="+penPin);
 }
 
-function scrollHandler(e){
-	e.preventDefault();
-	if (e.wheelDelta > 0){
-		svgSizeup(true);
-	}
-	else {
-		svgSizeup(false);
-	}
-}
-
 function svgSizeup(t){
 	var r = (1/32);
 	if (t){
@@ -139,19 +150,15 @@ function svgSizeup(t){
 		viewW*=(1+r);
 		viewH*=(1+r);
 	}
-	svg.setAttribute("viewBox", viewX+" "+viewY+" "+viewW+" "+viewH);
-	
-	showDebug("ViewX="+viewX+",ViewY="+viewY+",ViewW="+viewW+",ViewH="+viewH);
+	setSvgViewbox(viewX, viewY, viewW, viewH);
 }
 
 function svgShift(x, y){
 	viewX += (startX - x);
 	viewY += (startY - y);
-	svg.setAttribute("viewBox", viewX+" "+viewY+" "+viewW+" "+viewH);
+	setSvgViewbox(viewX, viewY, viewW, viewH);
 	startX = x;
 	startY = y;
-	
-	showDebug("ViewX="+viewX+",ViewY="+viewY+",ViewW="+viewW+",ViewH="+viewH);
 }
 
 function mousedownHandler(e){
@@ -165,8 +172,8 @@ function mousedownHandler(e){
 	startY = e.pageY;
 	
 	if (!tLbtn || tMbtn || tRbtn) return;
-	x = e.pageX*viewW/640 + viewX;
-	y = e.pageY*viewH/480 + viewY;
+	x = e.pageX*viewW/svgW + viewX;
+	y = e.pageY*viewH/svgH + viewY;
 	drawStart(x, y);
 }
 
@@ -178,8 +185,8 @@ function mousemoveHandler(e){
 		svgShift(e.pageX, e.pageY);
 	}
 	else {
-		x = e.pageX*viewW/640 + viewX;
-		y = e.pageY*viewH/480 + viewY;
+		x = e.pageX*viewW/svgW + viewX;
+		y = e.pageY*viewH/svgH + viewY;
 		drawPath(x, y);
 	}
 }
@@ -200,6 +207,16 @@ function mouseleaveHandler(e) {
 	if (curPath > 0 && svg.childNodes[curPath]) drawEnd();
 }
 
+function mousewheelHandler(e){
+	e.preventDefault();
+	if (e.wheelDelta > 0){
+		svgSizeup(true);
+	}
+	else {
+		svgSizeup(false);
+	}
+}
+
 function touchstartHandler(e){
 	var x,y;
 	
@@ -207,8 +224,8 @@ function touchstartHandler(e){
 	if (e.touches){
 		var t = e.touches;
 		if (curPath < 0 &&  t.length == 1) {
-			x = t[0].pageX * viewW / 640 + viewX;
-			y = t[0].pageY * viewH / 480 + viewY;
+			x = t[0].pageX * viewW / svgW + viewX;
+			y = t[0].pageY * viewH / svgH + viewY;
 			tLbtn = true;
 			drawStart(x, y);
 		}
@@ -230,8 +247,8 @@ function touchmoveHandler(e){
 	if (e.touches){
 		var t = e.touches;
 		if (t.length == 1) {
-			x = t[0].pageX * viewW / 640 + viewX;
-			y = t[0].pageY * viewH / 480 + viewY;
+			x = t[0].pageX * viewW / svgW + viewX;
+			y = t[0].pageY * viewH / svgH + viewY;
 			tLbtn = true;
 			drawPath(x, y);
 		}
@@ -255,6 +272,8 @@ function touchmoveHandler(e){
 }
 
 function drawStart(x, y){
+	x-=(cursorDiff/penWidth);
+	y-=(cursorDiff/penWidth);
 	mPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
 	mPath.setAttribute("stroke-width", penWidth);
 	mPath.setAttribute("stroke-linecap", penPin);
@@ -267,6 +286,8 @@ function drawStart(x, y){
 
 function drawPath(x, y){
 	if (curPath > 0) {
+		x-=(cursorDiff/penWidth);
+		y-=(cursorDiff/penWidth);
 		var node = svg.childNodes[curPath];
 		node.setAttribute("d", node.getAttribute("d") + "L" + (x-penWidth/2) + "," + (y-penWidth/2));
 	}
@@ -306,15 +327,21 @@ function redo(){
 	}
 }
 
+function svgResize(){
+	svgW = window.innerWidth - wMargin;
+	svgH = window.innerHeight - hMargin;
+	viewX = viewY =0;
+	viewW = svgW;
+	viewH = svgH;
+	setSvgArea(svgW, svgH);
+	setSvgViewbox(viewX, viewY, viewW, viewH);
+}
+
 function reset(){
 	var nodes = svgCache.childNodes;
 	while (undo()) {};
 	while (nodes.length > 0) svgCache.removeChild(nodes[nodes.length-1]);
-
-	viewX = viewY =0;
-	viewW = 640;
-	viewH = 480;
-	svg.setAttribute("viewBox", viewX+" "+viewY+" "+viewW+" "+viewH);
+	svgResize();
 }
 </script>
 </html>
