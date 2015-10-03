@@ -261,11 +261,11 @@ function drawStart(x, y){
 	x = x * viewW / svgW + viewX;
 	y = y * viewH / svgH + viewY;
 
-	var diffPenW = Math.round(penWidth / 2);
-	var diffCurW = Math.round(cursorDiff / penWidth);
-	var diffTotal = diffPenW + diffCurW;
-	x -= diffTotal;
-	y -= diffTotal;
+	var diffPenW = penWidth / 2;
+	var diffCurX = (cursorDiff / penWidth) * (viewW/ svgW);
+	var diffCurY = (cursorDiff / penWidth) * (viewH / svgH);
+	x -= Math.round(diffPenW + diffCurX);
+	y -= Math.round(diffPenW + diffCurY);
 	mPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
 	mPath.setAttribute("stroke-width", penWidth);
 	mPath.setAttribute("stroke-linecap", penPin);
@@ -280,11 +280,11 @@ function drawPath(x, y){
 	if (curPath > 0) {
 		x = x * viewW / svgW + viewX;
 		y = y * viewH / svgH + viewY;
-		var diffPenW = Math.round(penWidth / 2);
-		var diffCurW = Math.round(cursorDiff / penWidth);
-		var diffTotal = diffPenW + diffCurW;
-		x -= diffTotal;
-		y -= diffTotal;
+		var diffPenW = penWidth / 2;
+		var diffCurX = (cursorDiff / penWidth) * (viewW / svgW);
+		var diffCurY = (cursorDiff / penWidth) * (viewH / svgH);
+		x -= Math.round(diffPenW + diffCurX);
+		y -= Math.round(diffPenW + diffCurY);
 		var node = svg.childNodes[curPath];
 		node.setAttribute("d", node.getAttribute("d") + "L" + x + "," + y);
 	}
