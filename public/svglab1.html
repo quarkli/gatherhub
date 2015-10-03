@@ -32,23 +32,20 @@ and open the template in the editor.
 		</div>
     </body>
 <script>
-console.log("w="+window.screen.width+",h="+window.screen.height);
-console.log("x="+window.innerWidth+",y="+window.innerHeight)
-var svg = document.getElementById("svgboard");
-var svgCache = document.createElementNS("http://www.w3.org/2000/svg","svg");
-var mPath = null;
-var curPath = -1;
-var penColor = "black";
-var penWidth = "5";
-var penPin = "rect";
-var clientId = 0 | Math.random()*100000000;
-var keepAliveMsg = null;
-var wsReady = false;
+var enableLog = true; // turn on/off debug message
+
+var penColor = "black", penWidth = "5", penPin = "rect";
+
 var tLbtn=false, tMbtn=false, tRbtn=false;
 var viewX=0, viewY=0, viewW=640, viewH=480;
 var startX=0, startY=0;
 var touchDist = 0, touchDistDelta = 0;
 
+var mPath = null;
+var curPath = -1;
+var svgCache = document.createElementNS("http://www.w3.org/2000/svg","svg");
+
+var svg = document.getElementById("svgboard");
 svg.onmousedown = mousedownHandler;
 svg.onmousemove = mousemoveHandler;
 svg.onmouseup = mouseupHandler;
@@ -60,6 +57,10 @@ svg.addEventListener("touchmove", touchmoveHandler);
 svg.addEventListener("mousewheel", scrollHandler);
 
 var url = "ws://gatherhub.com:3005/";
+var clientId = 0 | Math.random()*100000000;
+var wsReady = false;
+var keepAliveMsg = null;
+
 var ws = new WebSocket(url);
 ws.onopen = function(){
 	ws.send(JSON.stringify({id: clientId, action: "connect"}));
@@ -69,8 +70,8 @@ ws.onmessage = function(msg){
 	if (msg.data.match("path")){
 		var ctx = JSON.parse(msg.data);
 		if (ctx.id != clientId){
-			console.log("id:"+ctx.id+" stroke:"+ctx.stroke+" stroke-width:"+ctx.strokeWidth+" fill:"+ctx.fill);
-			console.log("d:"+ctx.d);
+			showDebug("id:"+ctx.id+" stroke:"+ctx.stroke+" stroke-width:"+ctx.strokeWidth+" fill:"+ctx.fill);
+			showDebug("d:"+ctx.d);
 			mPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
 			mPath.setAttribute("stroke-width", ctx.strokeWidth);
 			mPath.setAttribute("stroke", ctx.stroke);
@@ -81,27 +82,37 @@ ws.onmessage = function(msg){
 		}
 	}
 	else {
-		console.log(msg.data);
+		showDebug(msg.data);
 	}
 };
 ws.onclose = function(){
-	console.log("Connection closed!");
+	showDebug("Connection closed!");
 	clearInterval(keepAliveMsg);
 	wsReady = false;
 };
+
 window.onbeforeunload  = function(){if (wsReady) ws.close();};
 keepAliveMsg = setInterval(function(){ ws.send(""); }, 30000);
 
+showDebug("AvailW="+window.innerWidth+",AvailH="+window.innerHeight)
+
+function showDebug(msg){
+	if (enableLog) console.log(msg);
+}
+
 function setColor(c){
 	penColor = c;
+	showDebug("Pen-color="+penColor);
 }
 
 function setWidth(w){
 	penWidth = w;
+	showDebug("Pen-width="+penWidth);
 }
 
 function setPin(p){
 	penPin = p;
+	showDebug("Pen-shape="+penPin);
 }
 
 function scrollHandler(e){
@@ -115,16 +126,22 @@ function scrollHandler(e){
 }
 
 function svgSizeup(t){
+	var r = (1/32);
 	if (t){
-		viewW/=1.1;
-		viewH/=1.1;
+		viewX+=(viewW*r/2);
+		viewY+=(viewH*r/2);
+		viewW/=(1+r);
+		viewH/=(1+r);
 	}
 	else{
-		viewW*=1.1;
-		viewH*=1.1;
+		viewX-=(viewW*r/2);
+		viewY-=(viewH*r/2);
+		viewW*=(1+r);
+		viewH*=(1+r);
 	}
-
 	svg.setAttribute("viewBox", viewX+" "+viewY+" "+viewW+" "+viewH);
+	
+	showDebug("ViewX="+viewX+",ViewY="+viewY+",ViewW="+viewW+",ViewH="+viewH);
 }
 
 function svgShift(x, y){
@@ -133,6 +150,8 @@ function svgShift(x, y){
 	svg.setAttribute("viewBox", viewX+" "+viewY+" "+viewW+" "+viewH);
 	startX = x;
 	startY = y;
+	
+	showDebug("ViewX="+viewX+",ViewY="+viewY+",ViewW="+viewW+",ViewH="+viewH);
 }
 
 function mousedownHandler(e){
