@@ -12,7 +12,7 @@ and open the template in the editor.
     </head>
     <body>
 		<div id="touchCursor" style="display:none;position:absolute;">
-			<img id="curImg" src="marker_black_1.png" style="transform:rotateX(180deg)"/>
+			<img id="curImg" src="marker_black_1.png" style="display:inline-block; -webkit-transform:rotate(270deg); -moz-transform:rotate(270deg); -ms-transform:rotate(270deg); -o-transform:rotate(270deg); transform:rotate(270deg);"/>
 		</div>
 		<div id="whiteboard">
 			<svg id="svgboard"><svg>
@@ -63,11 +63,11 @@ svg.onmousemove = mousemoveHandler;
 svg.onmouseup = mouseupHandler;
 svg.onmouseenter = mouseenterHandler;
 svg.onmouseleave = mouseleaveHandler;
+svg.onwheel = mousewheelHandler;
 svg.oncontextmenu = function(){return false;};
 svg.addEventListener("touchstart", touchstartHandler);
 svg.addEventListener("touchend", mouseleaveHandler);
 svg.addEventListener("touchmove", touchmoveHandler);
-svg.addEventListener("mousewheel", mousewheelHandler);
 
 showDebug("AvailW=" + window.innerWidth + ",AvailH=" + window.innerHeight);
 setSvgArea(svgW, svgH);
@@ -218,7 +218,8 @@ function mouseleaveHandler(e) {
 
 function mousewheelHandler(e){
 	e.preventDefault();
-	if (e.wheelDelta > 0){
+	var d = (e.wheelDelta ? e.wheelDelta : -e.deltaY);
+	if (d > 0){
 		svgSizeup(true);
 	}
 	else {
@@ -240,7 +241,7 @@ function touchstartHandler(e){
 			if (curPath < 0 &&  t.length == 1) {
 				tLbtn = true;
 				curImg.src = "marker_" + penColor + (penColor != "white" && penPin == "round" ? "_round" : "") + "_" + penWidth + ".png";
-				touchCursor.style.display = "";
+				touchCursor.style.display = "inline-block";
 				touchCursor.style.top = t[0].pageY - 70 + (penWidth / 3)+ "px";
 				touchCursor.style.left = t[0].pageX - 26 + "px";
 				drawStart(startX, startY);
