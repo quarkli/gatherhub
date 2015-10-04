@@ -42,7 +42,7 @@ var enableLog = true; // Set 'true' to turn on log message;
 
 var penColor = "black", penWidth = "5", penPin = "rect";
 
-var wMargin = 20, hMargin = 100;
+var wMargin = 20, hMargin = Math.ceil(675 / window.innerWidth) * 36 + 16;
 var svgW = window.innerWidth - wMargin, svgH = window.innerHeight - hMargin;
 var viewX = 0, viewY = 0, viewW = svgW, viewH = svgH;
 var startX = 0, startY = 0;
@@ -108,7 +108,7 @@ ws.onclose = function(){
 	wsReady = false;
 };
 
-window.onbeforeunload  = function(){if (wsReady) ws.close();};
+window.onbeforeunload  = function(){if (wsReady) ws.close(); svg.style.cursor = "auto";};
 window.onresize = resetSvg;
 keepAliveMsg = setInterval(function(){if (wsReady) ws.send("");}, 30000);
 
@@ -346,6 +346,7 @@ function redo(){
 }
 
 function resetSvg(){
+	hMargin = Math.ceil(675 / window.innerWidth) * 36 + 16;
 	setSvgArea(window.innerWidth - wMargin, window.innerHeight - hMargin);
 	setSvgViewbox(0, 0, svgW, svgH);
 }
