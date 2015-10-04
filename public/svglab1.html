@@ -15,11 +15,11 @@ and open the template in the editor.
 			<svg id="svgboard"><svg>
 		</div>
 		<div id="toolbar">
-			<button onclick="setColor('black')">K</button>
-			<button onclick="setColor('red')">R</button>
-			<button onclick="setColor('green')">G</button>
-			<button onclick="setColor('blue')">B</button>
-			<button onclick="setColor('white')">W</button>
+			<button onclick="setColor('black')" style="color: black">K</button>
+			<button onclick="setColor('red')" style="color: red">R</button>
+			<button onclick="setColor('green')" style="color: green">G</button>
+			<button onclick="setColor('blue')" style="color: blue">B</button>
+			<button onclick="setColor('white')" style="color: white">W</button>
 			<button onclick="setWidth(this.innerHTML)">1</button>
 			<button onclick="setWidth(this.innerHTML)">5</button>
 			<button onclick="setWidth(this.innerHTML)">9</button>
@@ -54,6 +54,7 @@ var svg = document.getElementById("svgboard");
 svg.onmousedown = mousedownHandler;
 svg.onmousemove = mousemoveHandler;
 svg.onmouseup = mouseupHandler;
+svg.onmouseenter = mouseenterHandler;
 svg.onmouseleave = mouseleaveHandler;
 svg.oncontextmenu = function(){return false;};
 svg.addEventListener("touchstart", touchstartHandler);
@@ -176,6 +177,10 @@ function mousedownHandler(e){
 	drawStart(startX, startY);
 }
 
+function mouseenterHandler(e){	
+	svg.style.cursor = "url(marker_"+penColor+(penColor!="white" && penPin=="round"?"_round":"")+"_"+penWidth+".png), auto";
+}
+
 function mousemoveHandler(e){
 	e.preventDefault();
 	if (tMbtn || (tLbtn && tRbtn)) {
@@ -200,6 +205,7 @@ function mouseleaveHandler(e) {
 	tLbtn = tMbtn = tRbtn = false;
 	touchDist = touchDistDelta = 0;
 	if (curPath > 0 && svg.childNodes[curPath]) drawEnd();
+	svg.style.cursor = "auto";
 }
 
 function mousewheelHandler(e){
