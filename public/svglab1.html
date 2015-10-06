@@ -11,12 +11,12 @@ and open the template in the editor.
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
     </head>
     <body>
-		<div id="popUpDiv" style="display: none">
-			Peer Name:
-			<input id="pid" type="text"/>
-			Hud ID:
-			<input id="hid" type="text"/>
-			<button onclick="" >Join</button>
+		<div id="hubInfo" style="display: none; position: absolute; width: 325px; height: 90px; border: 4px solid #333333;border-radius: 10px;padding: 15px;text-align: right; background-color: #aaaaaa">
+			Server:	<input id="svrAddr" type="text" size="30" align="left"/><br>
+			Hud ID:	<input id="hubId" type="text" size="30" align="left"/><br>
+			Peer Name: <input id="peerName" type="text" size="30" align="left"/><br>
+			<button onclick="connectSvr('go')" >OK</button>
+			<button onclick="connectSvr('cancel')">Cancel</button>
 		</div>
 		<div id="touchCursor" style="display:none;position:absolute;">
 			<img id="curImg" src="marker_black_1.png"/>
@@ -42,6 +42,7 @@ and open the template in the editor.
 			<button onclick="redo()">重做</button>
 			<button onclick="resetSvg()">回归</button>
 			<button onclick="clearSvg()">清除</button>
+			<button id="btnConn" onclick="connectSvr('set')">連線</button>
 		</div>
     </body>
 <script>
@@ -87,46 +88,74 @@ showDebug("AvailW=" + window.innerWidth + ",AvailH=" + window.innerHeight);
 setSvgArea(svgW, svgH);
 setSvgViewbox(viewX, viewY, viewW, viewH);
 
-var url = "ws://minichat.gatherhub.com	:55688/";
-// url = "ws://192.168.11.123:55688/"; // for loacl test
-var clientId = 0 | Math.random() * 100000000;
+var url = "ws://minichat.gatherhub.com:55688/";
+var hubId = 0 | Math.random() * 10000000;
+var peerName = "Peer-" + (0 | Math.random() * 1000);
 var wsReady = false;
 var keepAliveMsg = null;
-
-var ws = new WebSocket(url);
-ws.onopen = function(){
-	ws.send(JSON.stringify({id: clientId, action: "connect"}));
-	wsReady = true;
-};
-ws.onmessage = function(msg){
-	if (msg.data.match("path")){
-		var ctx = JSON.parse(msg.data);
-		if (ctx.id != clientId){
-			showDebug("id:" + ctx.id + " stroke:" + ctx.stroke + " stroke-width:" + ctx.strokeWidth + " fill:" + ctx.fill);
-			showDebug("d:" + ctx.d);
-			mPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
-			mPath.setAttribute("stroke-width", ctx.strokeWidth);
-			mPath.setAttribute("stroke", ctx.stroke);
-			mPath.setAttribute("fill", ctx.fill);
-			mPath.setAttribute("d", ctx.d);
-			svg.appendChild(mPath);
-			mPath = null;
-		}
-	}
-	else {
-		showDebug(msg.data);
-	}
-};
-ws.onclose = function(){
-	showDebug("Connection closed!");
-	clearInterval(keepAliveMsg);
-	wsReady = false;
-};
+var ws = null;
 
 window.onbeforeunload  = function(){if (wsReady) ws.close(); svg.style.cursor = "auto";};
 window.onresize = resetSvg;
 keepAliveMsg = setInterval(function(){if (wsReady) ws.send("");}, 30000);
 backgroundLoadImg();
+
+function connectSvr(opt){
+	if (opt == "cancel") {
+		hubInfo.style.display = "none";
+	}
+	else if (opt == "set") {
+		if (document.getElementById("btnConn").innerHTML == "断开") {
+			ws.close();
+			return;
+		}
+		
+		document.getElementById("svrAddr").value = url;
+		document.getElementById("hubId").value = hubId;
+		document.getElementById("peerName").value = peerName;
+		hubInfo.style.top = (window.innerHeight - parseInt(hubInfo.style.height)) / 2 + "px";
+		hubInfo.style.left = (window.innerWidth - parseInt(hubInfo.style.width)) / 2 + "px";
+		hubInfo.style.display = "block";
+	}
+	else if (opt == "go") {
+		hubInfo.style.display = "none";
+		url = document.getElementById("svrAddr").value;
+		hubId = document.getElementById("hubId").value;
+		peerName = document.getElementById("peerName").value;
+		document.getElementById("btnConn").innerHTML = "断开";
+		
+		ws = new WebSocket(url);
+		ws.onopen = function(){
+			ws.send(JSON.stringify({id: hubId, name: peerName, action: "connect"}));
+			wsReady = true;
+		};
+		ws.onmessage = function(msg){
+			if (msg.data.match("path")){
+				var ctx = JSON.parse(msg.data);
+				if (ctx.id == hubId && ctx.name != peerName){
+					showDebug("id:" + ctx.id + " stroke:" + ctx.stroke + " stroke-width:" + ctx.strokeWidth + " fill:" + ctx.fill);
+					showDebug("d:" + ctx.d);
+					mPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
+					mPath.setAttribute("stroke-width", ctx.strokeWidth);
+					mPath.setAttribute("stroke", ctx.stroke);
+					mPath.setAttribute("fill", ctx.fill);
+					mPath.setAttribute("d", ctx.d);
+					svg.appendChild(mPath);
+					mPath = null;
+				}
+			}
+			else {
+				showDebug(msg.data);
+			}
+		};
+		ws.onclose = function(){
+			showDebug("Connection closed!");
+			clearInterval(keepAliveMsg);
+			wsReady = false;
+			document.getElementById("btnConn").innerHTML = "连线";
+		};
+	}
+}
 
 function getProperStyleAttr(attr){
     var root=document.documentElement;
@@ -426,7 +455,7 @@ function drawEnd(){
 		var strokeWdVal = svg.childNodes[curPath].getAttribute("stroke-width");
 		var fillVal = svg.childNodes[curPath].getAttribute("fill");
 		
-		ws.send(JSON.stringify({id: clientId, action: "path", 
+		ws.send(JSON.stringify({id: hubId, name: peerName, action: "path", 
 			stroke: strokeVal,
 			strokeWidth: strokeWdVal,
 			fill: fillVal,
