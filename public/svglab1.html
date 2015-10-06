@@ -19,7 +19,7 @@ and open the template in the editor.
 			<button onclick="" >Join</button>
 		</div>
 		<div id="touchCursor" style="display:none;position:absolute;">
-			<img id="curImg" src="marker_black_1.png" style="-webkit-transform:rotate(270deg); -moz-transform:rotate(270deg); -ms-transform:rotate(270deg); -o-transform:rotate(270deg); transform:rotate(270deg);"/>
+			<img id="curImg" src="marker_black_1.png"/>
 		</div>
 		<div id="whiteboard">
 			<svg id="svgboard"><svg>
@@ -45,6 +45,13 @@ and open the template in the editor.
 		</div>
     </body>
 <script>
+var xhttp;
+if (window.XMLHttpRequest) {
+    xhttp = new XMLHttpRequest();
+    } else {
+    xhttp = new ActiveXObject("Microsoft.XMLHTTP");
+}
+
 var enableLog = true; // Set 'true' to turn on log message;
 
 var penColor = "black", penWidth = "5", penShape = "rect";
@@ -81,6 +88,7 @@ setSvgArea(svgW, svgH);
 setSvgViewbox(viewX, viewY, viewW, viewH);
 
 var url = "ws://minichat.gatherhub.com	:55688/";
+// url = "ws://192.168.11.123:55688/"; // for loacl test
 var clientId = 0 | Math.random() * 100000000;
 var wsReady = false;
 var keepAliveMsg = null;
@@ -118,6 +126,33 @@ ws.onclose = function(){
 window.onbeforeunload  = function(){if (wsReady) ws.close(); svg.style.cursor = "auto";};
 window.onresize = resetSvg;
 keepAliveMsg = setInterval(function(){if (wsReady) ws.send("");}, 30000);
+backgroundLoadImg();
+
+function getProperStyleAttr(attr){
+    var root=document.documentElement;
+    if ("-webkit-" + attr in root.style) return "-webkit-" + attr; 
+    if ("-khtml-" + attr in root.style) return "-khtml-" + attr; 
+    if ("-moz-" + attr in root.style) return "-moz-" + attr; 
+    if ("-ms-" + attr in root.style) return "-ms-" + attr; 
+    if ("-o-" + attr in root.style) return "-o-" + attr; 
+    if (attr in root.style) return attr; 
+}
+
+function backgroundLoadImg(){
+	if (window.location.protocol != "http" || window.location.protocol != "https") return;
+	xhttp.open("GET", "hand.png", true); xhttp.send();
+	xhttp.open("GET", "magnifier_minus.png", true); xhttp.send();
+	xhttp.open("GET", "magnifier_null.png", true); xhttp.send();
+	xhttp.open("GET", "magnifier_plus.png", true); xhttp.send();
+	for (penW in ["1", "5", "9", "21"]){
+		for (penC in ["black", "red", "green", "blue", "white"]){
+			for (penS in ["rect", "round"]){
+				xhttp.open("GET", "marker_" + penColor + (penColor != "white" && penShape == "round" ? "_round" : "") + "_" + penWidth + ".png", true);
+				xhttp.send();			
+			}
+		}
+	}
+}
 
 function showDebug(msg){
 	if (enableLog) console.log(msg);
@@ -275,7 +310,7 @@ function touchstartHandler(e){
 		if (t.length == 2){
 			mouseleaveHandler(e);
 				curImg.src = "magnifier_null.png";
-				curImg.style.transform = "rotate(0deg)";
+				curImg.style[getProperStyleAttr("transform")] = "rotate(0deg)";
 				touchCursor.style.top = svgH / 2 + "px";
 				touchCursor.style.left = svgW / 2 + "px";
 				touchCursor.style.display = "block";
@@ -287,7 +322,7 @@ function touchstartHandler(e){
 			if (curPath < 0 &&  t.length == 1) {
 				tLbtn = true;
 				curImg.src = "marker_" + penColor + (penColor != "white" && penShape == "round" ? "_round" : "") + "_" + penWidth + ".png";
-				curImg.style.transform = "rotate(270deg)";
+				curImg.style[getProperStyleAttr("transform")] = "rotate(270deg)";
 				touchCursor.style.top = t[0].pageY - 70 + (penWidth / 3)+ "px";
 				touchCursor.style.left = t[0].pageX - 26 + "px";
 				touchCursor.style.display = "block";
@@ -295,7 +330,7 @@ function touchstartHandler(e){
 			}
 			if (t.length == 3) {
 				curImg.src = "hand.png";
-				curImg.style.transform = "rotate(0deg)";
+				curImg.style[getProperStyleAttr("transform")] = "rotate(0deg)";
 				touchCursor.style.display = "block";
 				touchCursor.style.top = t[0].pageY - 70 + (penWidth / 3)+ "px";
 				touchCursor.style.left = t[0].pageX - 26 + "px";
@@ -318,9 +353,6 @@ function touchmoveHandler(e){
 			var tmpDist = Math.pow(t[0].pageX - t[1].pageX, 2) + Math.pow(t[0].pageY - t[1].pageY, 2);
 			touchDistDelta += (tmpDist - touchDist);
 			touchDist = tmpDist;
-			touchCursor.style.top = svgH / 2 + "px";
-			touchCursor.style.left = svgW / 2 + "px";
-			touchCursor.style.display = "block";
 			if (touchDistDelta > Math.pow(pinchDelta, 2)){
 				curImg.src = "magnifier_plus.png";
 				svgSizeup(true);
@@ -331,6 +363,9 @@ function touchmoveHandler(e){
 				svgSizeup(false);
 				touchDistDelta = 0;
 			}
+			touchCursor.style.top = svgH / 2 + "px";
+			touchCursor.style.left = svgW / 2 + "px";
+			touchCursor.style.display = "block";
 		}
 		else if (t.length == 3){
 			touchCursor.style.top = t[0].pageY - 70 + (penWidth / 3) + "px";
