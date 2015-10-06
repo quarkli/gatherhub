@@ -290,6 +290,12 @@ function mousewheelHandler(e){
 			else if (parseInt(penWidth) != 1) penWidth = parseInt(penWidth) - 4;
 		}
 		setCursorImage();
+		if (curPath > 0 && svg.childNodes[curPath]) drawEnd();
+		if ((tLbtn && !tMbtn && !tRbtn) || (!tLbtn && !tMbtn && tRbtn)) {
+			startX = e.pageX;
+			startY = e.pageY;
+			drawStart(startX, startY);
+		}
 	}
 	else {
 		if (d > 0){
