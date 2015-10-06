@@ -11,8 +11,15 @@ and open the template in the editor.
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
     </head>
     <body>
+		<div id="popUpDiv" style="display: none">
+			Peer Name:
+			<input id="pid" type="text"/>
+			Hud ID:
+			<input id="hid" type="text"/>
+			<button onclick="" >Join</button>
+		</div>
 		<div id="touchCursor" style="display:none;position:absolute;">
-			<img id="curImg" src="marker_black_1.png" style="display:inline-block; -webkit-transform:rotate(270deg); -moz-transform:rotate(270deg); -ms-transform:rotate(270deg); -o-transform:rotate(270deg); transform:rotate(270deg);"/>
+			<img id="curImg" src="marker_black_1.png" style="-webkit-transform:rotate(270deg); -moz-transform:rotate(270deg); -ms-transform:rotate(270deg); -o-transform:rotate(270deg); transform:rotate(270deg);"/>
 		</div>
 		<div id="whiteboard">
 			<svg id="svgboard"><svg>
@@ -27,8 +34,8 @@ and open the template in the editor.
 			<button onclick="setWidth(5)">细</button>
 			<button onclick="setWidth(9)">中</button>
 			<button onclick="setWidth(21)">粗</button>
-			<button onclick="setPin('rect')">方</button>
-			<button onclick="setPin('round')">圆</button>
+			<button onclick="setShape('rect')">方</button>
+			<button onclick="setShape('round')">圆</button>
 			<button onclick="svgSizeup(false)">缩小</button>
 			<button onclick="svgSizeup(true)">放大</button>
 			<button onclick="undo()">复原</button>
@@ -40,15 +47,15 @@ and open the template in the editor.
 <script>
 var enableLog = true; // Set 'true' to turn on log message;
 
-var penColor = "black", penWidth = "5", penPin = "rect";
+var penColor = "black", penWidth = "5", penShape = "rect";
 
-var wMargin = 20, hMargin = Math.ceil(675 / window.innerWidth) * 36 + 16;
+var wMargin = 20, hMargin = Math.ceil(675 / window.innerWidth) * 36 + 30;
 var svgW = window.innerWidth - wMargin, svgH = window.innerHeight - hMargin;
 var viewX = 0, viewY = 0, viewW = svgW, viewH = svgH;
 var startX = 0, startY = 0;
 
 var cursorDiff = 8;
-var tLbtn=false, tMbtn=false, tRbtn=false;
+var tLbtn=false, tMbtn=false, tRbtn=false, rBtnEraser = false;
 var touchDist = 0, touchDistDelta = 0, pinchDelta = 60;
 
 var mPath = null;
@@ -61,7 +68,7 @@ var curImg = document.getElementById("curImg");
 svg.onmousedown = mousedownHandler;
 svg.onmousemove = mousemoveHandler;
 svg.onmouseup = mouseupHandler;
-svg.onmouseenter = mouseenterHandler;
+svg.onmouseenter = setCursorImage;
 svg.onmouseleave = mouseleaveHandler;
 svg.onwheel = mousewheelHandler;
 svg.oncontextmenu = function(){return false;};
@@ -73,7 +80,7 @@ showDebug("AvailW=" + window.innerWidth + ",AvailH=" + window.innerHeight);
 setSvgArea(svgW, svgH);
 setSvgViewbox(viewX, viewY, viewW, viewH);
 
-var url = "ws://gatherhub.com:3005/";
+var url = "ws://minichat.gatherhub.com	:55688/";
 var clientId = 0 | Math.random() * 100000000;
 var wsReady = false;
 var keepAliveMsg = null;
@@ -142,9 +149,15 @@ function setWidth(w){
 	showDebug("Pen-width=" + penWidth);
 }
 
-function setPin(p){
-	penPin = p;
-	showDebug("Pen-shape=" + penPin);
+function setShape(p){
+	penShape = p;
+	showDebug("Pen-shape=" + penShape);
+}
+
+function setCursorImage(){	
+	svg.style.cursor = "url(marker_" + penColor + (penColor != "white" && penShape == "round" ? "_round" : "") + "_" + penWidth + ".png), auto";
+	if (tMbtn || (tLbtn && tRbtn)) svg.style.cursor = "url(hand.png), auto";
+	if (rBtnEraser) svg.style.cursor = "url(marker_white_" + penWidth + ".png), auto";
 }
 
 function svgSizeup(t){
@@ -180,12 +193,17 @@ function mousedownHandler(e){
 	startX = e.pageX;
 	startY = e.pageY;
 	
-	if (!tLbtn || tMbtn || tRbtn) return;
-	drawStart(startX, startY);
-}
-
-function mouseenterHandler(e){	
-	svg.style.cursor = "url(marker_" + penColor + (penColor != "white" && penPin == "round" ? "_round" : "") + "_" + penWidth + ".png), auto";
+	if (!tLbtn && !tMbtn && tRbtn) {
+		rBtnEraser = true;
+	}
+	else {
+		rBtnEraser = false;
+	}
+	
+	setCursorImage();
+	if ((tLbtn && !tMbtn && !tRbtn) || (!tLbtn && !tMbtn && tRbtn)) {
+		drawStart(startX, startY);
+	}
 }
 
 function mousemoveHandler(e){
@@ -196,6 +214,7 @@ function mousemoveHandler(e){
 	else {
 		drawPath(e.pageX, e.pageY);
 	}
+	setCursorImage();
 }
 
 function mouseupHandler(e) {
@@ -205,6 +224,13 @@ function mouseupHandler(e) {
 
 	e.preventDefault();
 	if (curPath > 0 && svg.childNodes[curPath]) drawEnd();
+	if (!tLbtn && !tMbtn && tRbtn) {
+		rBtnEraser = true;
+	}
+	else {
+		rBtnEraser = false;
+	}
+	setCursorImage();
 }
 
 function mouseleaveHandler(e) {
@@ -219,11 +245,26 @@ function mouseleaveHandler(e) {
 function mousewheelHandler(e){
 	e.preventDefault();
 	var d = (e.wheelDelta ? e.wheelDelta : -e.deltaY);
-	if (d > 0){
-		svgSizeup(true);
+	if ((tLbtn && !tMbtn && !tRbtn) || (!tLbtn && !tMbtn && tRbtn)) {
+		if (d < 0){
+			if (parseInt(penWidth) < 9) penWidth = parseInt(penWidth) + 4;
+			else penWidth = 21;
+		}
+		else {
+			if (parseInt(penWidth) == 21) penWidth = 9;
+			else if (parseInt(penWidth) != 1) penWidth = parseInt(penWidth) - 4;
+		}
+		setCursorImage();
 	}
 	else {
-		svgSizeup(false);
+		if (d > 0){
+			svg.style.cursor = "url(magnifier_plus.png), auto";
+			svgSizeup(true);
+		}
+		else {
+			svg.style.cursor = "url(magnifier_minus.png), auto";
+			svgSizeup(false);
+		}
 	}
 }
 
@@ -233,6 +274,11 @@ function touchstartHandler(e){
 		var t = e.touches;
 		if (t.length == 2){
 			mouseleaveHandler(e);
+				curImg.src = "magnifier_null.png";
+				curImg.style.transform = "rotate(0deg)";
+				touchCursor.style.top = svgH / 2 + "px";
+				touchCursor.style.left = svgW / 2 + "px";
+				touchCursor.style.display = "block";
 			touchDist = Math.pow(t[0].pageX - t[1].pageX, 2) + Math.pow(t[0].pageY -t[1].pageY, 2);
 		}
 		else {
@@ -240,11 +286,19 @@ function touchstartHandler(e){
 			startY = t[0].pageY - 24 + (penWidth / 2);
 			if (curPath < 0 &&  t.length == 1) {
 				tLbtn = true;
-				curImg.src = "marker_" + penColor + (penColor != "white" && penPin == "round" ? "_round" : "") + "_" + penWidth + ".png";
-				touchCursor.style.display = "inline-block";
+				curImg.src = "marker_" + penColor + (penColor != "white" && penShape == "round" ? "_round" : "") + "_" + penWidth + ".png";
+				curImg.style.transform = "rotate(270deg)";
 				touchCursor.style.top = t[0].pageY - 70 + (penWidth / 3)+ "px";
 				touchCursor.style.left = t[0].pageX - 26 + "px";
+				touchCursor.style.display = "block";
 				drawStart(startX, startY);
+			}
+			if (t.length == 3) {
+				curImg.src = "hand.png";
+				curImg.style.transform = "rotate(0deg)";
+				touchCursor.style.display = "block";
+				touchCursor.style.top = t[0].pageY - 70 + (penWidth / 3)+ "px";
+				touchCursor.style.left = t[0].pageX - 26 + "px";
 			}
 		}
 	}
@@ -264,16 +318,23 @@ function touchmoveHandler(e){
 			var tmpDist = Math.pow(t[0].pageX - t[1].pageX, 2) + Math.pow(t[0].pageY - t[1].pageY, 2);
 			touchDistDelta += (tmpDist - touchDist);
 			touchDist = tmpDist;
+			touchCursor.style.top = svgH / 2 + "px";
+			touchCursor.style.left = svgW / 2 + "px";
+			touchCursor.style.display = "block";
 			if (touchDistDelta > Math.pow(pinchDelta, 2)){
+				curImg.src = "magnifier_plus.png";
 				svgSizeup(true);
 				touchDistDelta = 0;
 			}
 			if (touchDistDelta < -Math.pow(pinchDelta, 2)){
+				curImg.src = "magnifier_minus.png";
 				svgSizeup(false);
 				touchDistDelta = 0;
 			}
 		}
 		else if (t.length == 3){
+			touchCursor.style.top = t[0].pageY - 70 + (penWidth / 3) + "px";
+			touchCursor.style.left = t[0].pageX - 26 + "px";
 			svgShift(t[0].pageX, t[0].pageY);
 		}
 	}
@@ -290,8 +351,13 @@ function drawStart(x, y){
 	y -= Math.round(diffPenW + diffCurY);
 	mPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
 	mPath.setAttribute("stroke-width", penWidth);
-	mPath.setAttribute("stroke-linecap", penPin);
-	mPath.setAttribute("stroke", penColor);
+	mPath.setAttribute("stroke-linecap", penShape);
+	if (rBtnEraser) {
+		mPath.setAttribute("stroke", "white");
+	}
+	else {
+		mPath.setAttribute("stroke", penColor);
+	}
 	mPath.setAttribute("fill", "none");
 	mPath.setAttribute("d", "M" + x + "," + y + "L" + x + "," + y);
 	svg.appendChild(mPath);
@@ -347,7 +413,7 @@ function redo(){
 }
 
 function resetSvg(){
-	hMargin = Math.ceil(675 / window.innerWidth) * 36 + 16;
+	hMargin = Math.ceil(675 / window.innerWidth) * 36 + 30;
 	setSvgArea(window.innerWidth - wMargin, window.innerHeight - hMargin);
 	setSvgViewbox(0, 0, svgW, svgH);
 }
