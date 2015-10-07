@@ -13,9 +13,17 @@ EventMachine.run {
     end
 
     ws.onclose do
+	  peers = 0
       index = @sockets.index {|i| i[:socket] == ws}
       client = @sockets.delete_at index
-      @sockets.each {|s| s[:socket].send h("#{client[:id]} has disconnected!")}
+	  reply = "Peer:#{client[:name]} has left Hub:#{client[:id]}"
+      @sockets.each do |s| 
+	    if (s[:id] == client[:id]) then 
+		  s[:socket].send(h(reply)) 
+		  peers += 1
+	    end
+	  end
+      puts "#{reply}(#{peers})"
     end
     
     ws.onmessage do |msg|
@@ -23,15 +31,31 @@ EventMachine.run {
         client = JSON.parse(msg).symbolize_keys
         case client[:action]
           when 'connect'
-            @sockets.push({:id=>client[:id], :socket=>ws})
-            @sockets.each {|s| s[:socket].send h("#{client[:id]} has connected!")}
+		    peers = 0
+		    reply = "Peer:#{client[:name]} has entered Hub:#{client[:id]}"
+            @sockets.push({:id=>client[:id], :name=>client[:name], :socket=>ws})
+            @sockets.each do |s| 
+			  if (s[:id] == client[:id]) then 
+			    s[:socket].send(h(reply))
+				peers += 1
+			  end
+			end
+			puts "#{reply}(#{peers})"
           when 'say'
-            @sockets.each {|s| s[:socket].send h("#{client[:id]} says : #{client[:data]}")}
+            @sockets.each do |s| 
+			  if (s[:id] == client[:id]) then 
+			    s[:socket].send(h("#{client[:name]} says : #{client[:data]}")) 
+			  end
+			end
           when 'path'
-            @sockets.each {|s| s[:socket].send msg}
+            @sockets.each do |s| 
+			  if (s[:id] == client[:id]) then 
+			    s[:socket].send(msg) 
+			  end
+			end
           end
-      rescue
-        # do nothing
+      rescue JSON::ParserError => e
+        #puts "JSON Parse Error: #{e.message}"
       end
     end
   end

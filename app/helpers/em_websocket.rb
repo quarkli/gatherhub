@@ -21,16 +21,20 @@ Thread.new {
       end
     
       ws.onmessage do |msg|
-        client = JSON.parse(msg).symbolize_keys
-        case client[:action]
-        when 'connect'
-          @sockets.push({:id=>client[:id], :socket=>ws})
-          @sockets.each {|s| s[:socket].send h("#{client[:id]} has connected!")}
-        when 'say'
-          @sockets.each {|s| s[:socket].send h("#{client[:id]} says : #{client[:data]}")}
-        when 'path'
-          @sockets.each {|s| s[:socket].send msg}
-        end
+		begin
+			client = JSON.parse(msg).symbolize_keys
+			case client[:action]
+			when 'connect'
+			  @sockets.push({:id=>client[:id], :socket=>ws})
+			  @sockets.each {|s| s[:socket].send h("#{client[:id]} has connected!")}
+			when 'say'
+			  @sockets.each {|s| s[:socket].send h("#{client[:id]} says : #{client[:data]}")}
+			when 'path'
+			  @sockets.each {|s| s[:socket].send msg}
+			end
+		rescue JSON::ParserError => e
+			# do nothing
+		end
       end
     end
   }
