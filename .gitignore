@@ -1,1 +1,4 @@
 /tmp
+.project
+webrtc_demo/node_modules
+.svn
