@@ -46,13 +46,6 @@ and open the template in the editor.
 		</div>
     </body>
 <script>
-var xhttp;
-if (window.XMLHttpRequest) {
-    xhttp = new XMLHttpRequest();
-    } else {
-    xhttp = new ActiveXObject("Microsoft.XMLHTTP");
-}
-
 var enableLog = true; // Set 'true' to turn on log message;
 
 var penColor = "black", penWidth = "5", penShape = "rect";
@@ -98,7 +91,6 @@ var ws = null;
 window.onbeforeunload  = function(){if (wsReady) ws.close(); svg.style.cursor = "auto";};
 window.onresize = resetSvg;
 keepAliveMsg = setInterval(function(){if (wsReady) ws.send("");}, 30000);
-backgroundLoadImg();
 
 function connectSvr(opt){
 	if (opt == "cancel") {
@@ -143,6 +135,7 @@ function connectSvr(opt){
 					mPath.setAttribute("d", ctx.d);
 					svg.appendChild(mPath);
 					mPath = null;
+					btnUndo.disabled = false;
 				}
 			}
 			else {
@@ -166,22 +159,6 @@ function getProperStyleAttr(attr){
     if ("-ms-" + attr in root.style) return "-ms-" + attr; 
     if ("-o-" + attr in root.style) return "-o-" + attr; 
     if (attr in root.style) return attr; 
-}
-
-function backgroundLoadImg(){
-	if (window.location.protocol != "http" || window.location.protocol != "https") return;
-	xhttp.open("GET", "hand.png", true); xhttp.send();
-	xhttp.open("GET", "magnifier_minus.png", true); xhttp.send();
-	xhttp.open("GET", "magnifier_null.png", true); xhttp.send();
-	xhttp.open("GET", "magnifier_plus.png", true); xhttp.send();
-	for (penW in ["1", "5", "9", "21"]){
-		for (penC in ["black", "red", "green", "blue", "white"]){
-			for (penS in ["rect", "round"]){
-				xhttp.open("GET", "marker_" + penColor + (penColor != "white" && penShape == "round" ? "_round" : "") + "_" + penWidth + ".png", true);
-				xhttp.send();			
-			}
-		}
-	}
 }
 
 function showDebug(msg){
