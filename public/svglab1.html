@@ -278,7 +278,6 @@ function mousemoveHandler(e){
 	else {
 		drawPath(e.pageX, e.pageY);
 	}
-	setCursorImage();
 }
 
 function mouseupHandler(e) {
@@ -287,7 +286,7 @@ function mouseupHandler(e) {
 	if (e.button==2) tRbtn = false;
 
 	e.preventDefault();
-	if (curPath > 0 && svg.childNodes[curPath]) drawEnd();
+	if (curPath >= 0 && svg.childNodes[curPath]) drawEnd();
 	if (!tLbtn && !tMbtn && tRbtn) {
 		rBtnEraser = true;
 	}
@@ -301,7 +300,7 @@ function mouseleaveHandler(e) {
 	e.preventDefault();	
 	tLbtn = tMbtn = tRbtn = false;
 	touchDist = touchDistDelta = 0;
-	if (curPath > 0 && svg.childNodes[curPath]) drawEnd();
+	if (curPath >= 0 && svg.childNodes[curPath]) drawEnd();
 	svg.style.cursor = "auto";
 	touchCursor.style.display = "none";
 }
@@ -319,7 +318,7 @@ function mousewheelHandler(e){
 			else if (parseInt(penWidth) != 1) penWidth = parseInt(penWidth) - 4;
 		}
 		setCursorImage();
-		if (curPath > 0 && svg.childNodes[curPath]) drawEnd();
+		if (curPath >= 0 && svg.childNodes[curPath]) drawEnd();
 		if ((tLbtn && !tMbtn && !tRbtn) || (!tLbtn && !tMbtn && tRbtn)) {
 			startX = e.pageX;
 			startY = e.pageY;
@@ -398,8 +397,6 @@ function touchmoveHandler(e){
 				svgSizeup(false);
 				touchDistDelta = 0;
 			}
-			touchCursor.style.top = svgH / 2 + "px";
-			touchCursor.style.left = svgW / 2 + "px";
 			touchCursor.style.display = "block";
 		}
 		else if (t.length == 3){
@@ -435,7 +432,7 @@ function drawStart(x, y){
 }
 
 function drawPath(x, y){
-	if (curPath > 0) {
+	if (curPath >= 0) {
 		x = x * viewW / svgW + viewX;
 		y = y * viewH / svgH + viewY;
 		var diffPenW = penWidth / 2;
