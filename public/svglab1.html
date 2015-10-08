@@ -133,10 +133,11 @@ function connectSvr(opt){
 			if (msg.data.match("path")){
 				var ctx = JSON.parse(msg.data);
 				if (ctx.id == hubId && ctx.name != peerName){
-					showDebug("peer:" + ctx.name + " stroke:" + ctx.stroke + " stroke-width:" + ctx.strokeWidth + " fill:" + ctx.fill);
+					showDebug("peer:" + ctx.name + " stroke:" + ctx.stroke + " stroke-width:" + ctx.strokeWidth + " stroke-linecap:" + ctx.strokeLinecap + " fill:" + ctx.fill);
 					showDebug("d:" + ctx.d);
 					mPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
 					mPath.setAttribute("stroke-width", ctx.strokeWidth);
+					mPath.setAttribute("stroke-linecap", ctx.strokeLinecap);
 					mPath.setAttribute("stroke", ctx.stroke);
 					mPath.setAttribute("fill", ctx.fill);
 					mPath.setAttribute("d", ctx.d);
@@ -450,11 +451,13 @@ function drawEnd(){
 		var dVal = svg.childNodes[curPath].getAttribute("d");
 		var strokeVal = svg.childNodes[curPath].getAttribute("stroke");
 		var strokeWdVal = svg.childNodes[curPath].getAttribute("stroke-width");
+		var strokeLcVal = svg.childNodes[curPath].getAttribute("stroke-linecap");
 		var fillVal = svg.childNodes[curPath].getAttribute("fill");
 		
 		ws.send(JSON.stringify({id: hubId, name: peerName, action: "path", 
 			stroke: strokeVal,
 			strokeWidth: strokeWdVal,
+			strokeLinecap: strokeLcVal,
 			fill: fillVal,
 			d: dVal}));
 	}
