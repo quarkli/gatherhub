@@ -38,8 +38,8 @@ and open the template in the editor.
 			<button onclick="setShape('round')">圆</button>
 			<button onclick="svgSizeup(false)">缩小</button>
 			<button onclick="svgSizeup(true)">放大</button>
-			<button onclick="undo()">复原</button>
-			<button onclick="redo()">重做</button>
+			<button id="btnUndo" onclick="undo()" disabled>复原</button>
+			<button id="btnRedo" onclick="redo()" disabled>重做</button>
 			<button onclick="resetSvg()">回归</button>
 			<button onclick="clearSvg()">清除</button>
 			<button id="btnConn" onclick="connectSvr('set')">連線</button>
@@ -430,6 +430,7 @@ function drawStart(x, y){
 	mPath.setAttribute("d", "M" + x + "," + y + "L" + x + "," + y);
 	svg.appendChild(mPath);
 	curPath = svg.childNodes.length - 1;
+	btnUndo.disabled = false;
 }
 
 function drawPath(x, y){
@@ -467,8 +468,10 @@ function drawEnd(){
 
 function undo(){
 	var node = svg.childNodes[svg.childNodes.length - 1];
-	if (node.tagName == "path") {
+	if (node && node.tagName == "path") {
 		svgCache.appendChild(node);
+		btnRedo.disabled = false;
+		if (svg.childNodes.length == 0) btnUndo.disabled = true;
 		return true;
 	}
 	return false;
@@ -476,9 +479,11 @@ function undo(){
 
 function redo(){
 	var nodes = svgCache.childNodes;
-	if (nodes.length > 0) {
+	if (nodes && nodes.length > 0) {
 		var node = nodes[nodes.length - 1];
 		if (node.tagName == "path") svg.appendChild(node);
+		btnUndo.disabled = false;
+		if (svgCache.childNodes.length == 0) btnRedo.disabled = true;
 	}
 }
 
@@ -492,6 +497,7 @@ function clearSvg(){
 	var nodes = svgCache.childNodes;
 	while (undo()) {};
 	while (nodes.length > 0) svgCache.removeChild(nodes[nodes.length - 1]);
+	btnRedo.disabled = true;
 	resetSvg();
 }
 </script>
