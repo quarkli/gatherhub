@@ -100,14 +100,6 @@ var taskKeepAlive = keepAlive();
 var ws;
 
 // Window, AJAX, Debug Section
-var xhttp;
-if (window.XMLHttpRequest) {
-    xhttp = new XMLHttpRequest();
-}
-else {
-    xhttp = new ActiveXObject("Microsoft.XMLHTTP");
-}
-backgroundLoadImg();
 window.onresize = resetDrawpad;
 var bLog = true; // Set 'true' to turn on log message;window.onbeforeunload  = function(){if (bWsReady) ws.close(); drawpad.style.cursor = "auto";};
 
@@ -177,7 +169,7 @@ function connectSvr(opt){
 					paths.appendChild(node);
 					btnUndo.disabled = false;
 					clearCanvasCache();
-					//updatevispad(true);
+					updateVispad();
 				}
 			}
 			else {
@@ -193,20 +185,60 @@ function connectSvr(opt){
 	}
 }
 
-function backgroundLoadImg(){
-	if (window.location.protocol != "http" || window.location.protocol != "https") return;
-	xhttp.open("GET", "hand.png", true); xhttp.send();
-	xhttp.open("GET", "magnifier_minus.png", true); xhttp.send();
-	xhttp.open("GET", "magnifier_null.png", true); xhttp.send();
-	xhttp.open("GET", "magnifier_plus.png", true); xhttp.send();
-	for (penW in ["1", "5", "9", "21"]){
-		for (penC in ["black", "red", "green", "blue", "white"]){
-			for (penS in ["rect", "round"]){
-				xhttp.open("GET", "marker_" + penColor + (penColor != "white" && penShape == "round" ? "_round" : "") + "_" + penWidth + ".png", true);
-				xhttp.send();			
-			}
+function setPenColor(c){
+	penColor = c;
+	showDebug("Pen-color=" + c);
+}
+
+function setPenWidth(w){
+	penWidth = w;
+	showDebug("Pen-width=" + w);
+}
+
+function setPenShape(s){
+	penShape = s;
+	showDebug("Pen-shape=" + s);
+}
+
+function setVisdivWH(w, h){
+	visdiv.style.width = w + "px";
+	visdiv.style.height = h + "px";
+	vispad.setAttribute("width", w);
+	vispad.setAttribute("height", h);
+}
+
+function setVispadViewbox(x, y, w, h){
+	vispadVBoxX = x;
+	vispadVBoxY = y;
+	vispadVBoxW = w;
+	vispadVBoxH = h;
+	vispad.setAttribute("viewBox", x + " " + y + " " + w + " " + h);
+	showDebug("vispad viewBox=" + vispad.getAttribute("viewBox"));
+}
+
+function visdivWheelHdl(e) {
+	e.preventDefault();
+	var w = parseInt(vispad.getAttribute("width"));
+	var h = parseInt(vispad.getAttribute("height"));
+	var wheelDelta = (e.wheelDelta ? e.wheelDelta : -e.deltaY);
+
+	if (wheelDelta < 0){
+		w -= 80;
+		h -= 45;
+		if (w < 160 ) {
+			w = 160;
+			h = 90;
 		}
 	}
+	else {
+		w += 80;
+		h += 45;
+		if (w > window.innerWidth) {
+			w = window.innerWidth;
+			h = w / 16 * 9;
+		}
+	}
+	setVisdivWH(w, h);
 }
 
 function setDrawpadWH(w, h){
@@ -222,31 +254,7 @@ function setDrawpadViewbox(x, y, w, h){
 	drawpadVBoxW = w;
 	drawpadVBoxH = h;
 	drawpad.setAttribute("viewBox", x + " " + y + " " + w + " " + h);
-	showDebug("drawpadVBoxX=" + x + ",drawpadVBoxY=" + y + ",\ndrawpadVBoxW=" + w + ",drawpadVBoxH=" + h);
-}
-
-function setVispadViewbox(x, y, w, h){
-	vispadVBoxX = x;
-	vispadVBoxY = y;
-	vispadVBoxW = w;
-	vispadVBoxH = h;
-	vispad.setAttribute("viewBox", x + " " + y + " " + w + " " + h);
-	showDebug("vispadVBoxX=" + x + ",vispadVBoxY=" + y + ",\nvispadVBoxW=" + w + ",vispadVBoxH=" + h);
-}
-
-function setPenColor(c){
-	penColor = c;
-	showDebug("Pen-color=" + c);
-}
-
-function setPenWidth(w){
-	penWidth = w;
-	showDebug("Pen-width=" + w);
-}
-
-function setPenShape(s){
-	penShape = s;
-	showDebug("Pen-shape=" + s);
+	showDebug("drawpad viewBox=" + drawpad.getAttribute("viewBox"));
 }
 
 function setDrawpadCursor(){	
@@ -335,38 +343,6 @@ function drawpadLostFocus(e) {
 	drawpad.style.cursor = "auto";
 	touchCursor.style.display = "none";
 	drawpadTouchStartHdl(e);
-}
-
-function setVisdivWH(w, h){
-	visdiv.style.width = w + "px";
-	visdiv.style.height = h + "px";
-	vispad.setAttribute("width", w);
-	vispad.setAttribute("height", h);
-}
-
-function visdivWheelHdl(e) {
-	e.preventDefault();
-	var w = parseInt(vispad.getAttribute("width"));
-	var h = parseInt(vispad.getAttribute("height"));
-	var wheelDelta = (e.wheelDelta ? e.wheelDelta : -e.deltaY);
-
-	if (wheelDelta < 0){
-		w -= 80;
-		h -= 45;
-		if (w < 160 ) {
-			w = 160;
-			h = 90;
-		}
-	}
-	else {
-		w += 80;
-		h += 45;
-		if (w > window.innerWidth) {
-			w = window.innerWidth;
-			h = w / 16 * 9;
-		}
-	}
-	setVisdivWH(w, h);
 }
 
 function drawpadMouseWheelHdl(e){
@@ -512,33 +488,36 @@ function drawPath(x, y){
 	}
 }
 
+function updateVispad() {
+	var needUpdate = false;
+	var px = paths.getBBox().x;
+	var py = paths.getBBox().y;
+	var pw = paths.getBBox().width;
+	var ph = paths.getBBox().height;
+
+	if (px < vispadVBoxX) {
+		vispadVBoxX = px;
+		vispadVBoxW += px;
+		needUpdate = true;
+	}
+	if (py < vispadVBoxY) {
+		vispadVBoxY = py;
+		vispadVBoxH += py;
+		needUpdate = true;
+	}
+	while ((px + pw) > (vispadVBoxX + vispadVBoxW) || (py + ph) > (vispadVBoxY + vispadVBoxH)) {
+		vispadVBoxW += 16;
+		vispadVBoxH += 9;
+		needUpdate = true;
+	}
+	if (needUpdate) setVispadViewbox(vispadVBoxX, vispadVBoxY, vispadVBoxW, vispadVBoxH);
+}
+
 function drawEnd(){
 	if (curPath >=0) {
-		var updateVispad = false;
 		var node = paths.childNodes[curPath];
-		var px = paths.getBBox().x;
-		var py = paths.getBBox().y;
-		var pw = paths.getBBox().width;
-		var ph = paths.getBBox().height;
-		console.log("px="+px+", py="+py+",\npw="+pw+", ph="+ph);
-		if (px < vispadVBoxX) {
-			vispadVBoxX = px;
-			vispadVBoxW += px;
-			updateVispad = true;
-		}
-		if (py < vispadVBoxY) {
-			vispadVBoxY = py;
-			vispadVBoxH += py;
-			updateVispad = true;
-		}
-		while ((px + pw) > (vispadVBoxX + vispadVBoxW) || (py + ph) > (vispadVBoxY + vispadVBoxH)) {
-			vispadVBoxW += 16;
-		    vispadVBoxH += 9;
-			updateVispad = true;
-		}
-		if (updateVispad) setVispadViewbox(vispadVBoxX, vispadVBoxY, vispadVBoxW, vispadVBoxH);
 		
-		//updatevispad(node);
+		updateVispad();
 
 		if (bWsReady && curPath >= 0) {
 			ws.send(
