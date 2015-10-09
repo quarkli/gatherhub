@@ -11,7 +11,7 @@ and open the template in the editor.
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
     </head>
     <body>
-		<div id="hubInfo" style="display: none; position: absolute; width: 325px; height: 90px; border: 4px solid #333333;border-radius: 10px;padding: 15px;text-align: right; background-color: #aaaaaa">
+		<div id="hubInfo" style="display: none; position: absolute; width: 325px; height: 90px; border: 4px solid #333;border-radius: 10px;padding: 15px;text-align: right; background-color: #AAA">
 			Server:	<input id="svrAddr" type="text" size="30" align="left"/><br>
 			Hud ID:	<input id="hubId" type="text" size="30" align="left"/><br>
 			Peer Name: <input id="peerName" type="text" size="30" align="left"/><br>
@@ -21,76 +21,116 @@ and open the template in the editor.
 		<div id="touchCursor" style="display:none;position:absolute;">
 			<img id="curImg" src="marker_black_1.png"/>
 		</div>
-		<div id="whiteboard">
-			<svg id="svgboard"></svg>
+		<div id="sketchBoard">
+			<svg id="sketchCanvas"><g id="allpaths"></g></svg>
+		</div>
+		<div id="visualBoard" style="display: block; position: absolute; top: 0px; left: 0px; width: 320px; height: 180px; border: 2px solid #DDD; background: #FFA">
+			<svg id="visualCanvas">
+				<use xlink:href="#allpaths"/>
+			</svg>
 		</div>
 		<div id="toolbar">
-			<button onclick="setColor('black')" style="color: black">黑</button>
-			<button onclick="setColor('red')" style="color: red">红</button>
-			<button onclick="setColor('green')" style="color: green">绿</button>
-			<button onclick="setColor('blue')" style="color: blue">蓝</button>
-			<button onclick="setColor('white')" style="color: black">擦</button>
-			<button onclick="setWidth(1)">极细</button>
-			<button onclick="setWidth(5)">细</button>
-			<button onclick="setWidth(9)">中</button>
-			<button onclick="setWidth(21)">粗</button>
-			<button onclick="setShape('rect')">方</button>
-			<button onclick="setShape('round')">圆</button>
-			<button onclick="svgSizeup(false)">缩小</button>
-			<button onclick="svgSizeup(true)">放大</button>
+			<button onclick="setPenColor('black')" style="color: black">黑</button>
+			<button onclick="setPenColor('red')" style="color: red">红</button>
+			<button onclick="setPenColor('green')" style="color: green">绿</button>
+			<button onclick="setPenColor('blue')" style="color: blue">蓝</button>
+			<button onclick="setPenColor('white')" style="color: black">擦</button>
+			<button onclick="setPenWidth(1)">极细</button>
+			<button onclick="setPenWidth(5)">细</button>
+			<button onclick="setPenWidth(9)">中</button>
+			<button onclick="setPenWidth(21)">粗</button>
+			<button onclick="setPenShape('rect')">方</button>
+			<button onclick="setPenShape('round')">圆</button>
+			<button onclick="drawpadSizeup(false)">缩小</button>
+			<button onclick="drawpadSizeup(true)">放大</button>
 			<button id="btnUndo" onclick="undo()" disabled>复原</button>
 			<button id="btnRedo" onclick="redo()" disabled>重做</button>
-			<button onclick="resetSvg()">回归</button>
-			<button onclick="clearSvg()">清除</button>
+			<button onclick="resetDrawpad()">回归</button>
+			<button onclick="clearDrawpad()">清除</button>
 			<button id="btnConn" onclick="connectSvr('set')">連線</button>
 		</div>
     </body>
 <script>
-var enableLog = true; // Set 'true' to turn on log message;
-
-var penColor = "black", penWidth = "5", penShape = "rect";
-
+// SVG Section
 var wMargin = 20, hMargin = Math.ceil(675 / window.innerWidth) * 36 + 30;
-var svgW = window.innerWidth - wMargin, svgH = window.innerHeight - hMargin;
-var viewX = 0, viewY = 0, viewW = svgW, viewH = svgH;
-var startX = 0, startY = 0;
-
-var cursorDiff = 8;
-var tLbtn=false, tMbtn=false, tRbtn=false, rBtnEraser = false;
-var touchDist = 0, touchDistDelta = 0, pinchDelta = 60;
-
-var mPath = null;
+var drawpad = document.getElementById("sketchCanvas");
+var drawpadWidth = window.innerWidth - wMargin;
+var drawpadHeight = window.innerHeight - hMargin;
+var drawpadVBoxX = 0, drawpadVBoxY = 0, drawpadVBoxW = drawpadWidth, drawpadVBoxH = drawpadHeight;
+var penColor = "black", penWidth = "5", penShape = "rect";
+var canvasCache = document.createElementNS("http://www.w3.org/2000/svg", "svg");
 var curPath = -1;
-var svgCache = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+var paths = document.getElementById("allpaths");
 
-var svg = document.getElementById("svgboard");
+drawpad.onmousedown = drawpadMouseDownHdl;
+drawpad.onmousemove = drawpadMouseMoveHdl;
+drawpad.onmouseup = drawpadMouseUpHdl;
+drawpad.onmouseenter = setDrawpadCursor;
+drawpad.onmouseleave = drawpadLostFocus;
+drawpad.onwheel = drawpadMouseWheelHdl;
+drawpad.oncontextmenu = function(){return false;};
+drawpad.addEventListener("touchstart", drawpadTouchStartHdl);
+drawpad.addEventListener("touchend", drawpadLostFocus);
+drawpad.addEventListener("touchmove", drawpadTouchMoveHdl);
+
+setDrawpadWH(drawpadWidth, drawpadHeight);
+setDrawpadViewbox(drawpadVBoxX, drawpadVBoxY, drawpadVBoxW, drawpadVBoxH);
+
+var visdiv = document.getElementById("visualBoard");
+var vispad = document.getElementById("visualCanvas");
+var vispadVBoxX = 0, vispadVBoxY = 0, vispadVBoxW = 160, vispadVBoxH = 90;
+visdiv.onwheel = visdivWheelHdl;
+setVisdivWH(160, 90);
+setVispadViewbox(vispadVBoxX, vispadVBoxY, vispadVBoxW, vispadVBoxH);
+
+// Mouse and Touch Section
+var startX = 0, startY = 0;
+var cursorDiff = 8;
+var bBtnLeft=false, bBtnMiddle=false, bBtnRight=false, bUseRBtnEraser = false;
+var touchDist = 0, touchDistDelta = 0, pinchDelta = 60;
 var touchCursor = document.getElementById("touchCursor");
 var curImg = document.getElementById("curImg");
-svg.onmousedown = mousedownHandler;
-svg.onmousemove = mousemoveHandler;
-svg.onmouseup = mouseupHandler;
-svg.onmouseenter = setCursorImage;
-svg.onmouseleave = mouseleaveHandler;
-svg.onwheel = mousewheelHandler;
-svg.oncontextmenu = function(){return false;};
-svg.addEventListener("touchstart", touchstartHandler);
-svg.addEventListener("touchend", mouseleaveHandler);
-svg.addEventListener("touchmove", touchmoveHandler);
 
-showDebug("AvailW=" + window.innerWidth + ",AvailH=" + window.innerHeight);
-setSvgArea(svgW, svgH);
-setSvgViewbox(viewX, viewY, viewW, viewH);
-
+// WebSocket Section
 var url = "ws://minichat.gatherhub.com:55688/";
 var hubId = 0 | Math.random() * 10000000;
 var peerName = "Peer-" + (0 | Math.random() * 1000);
-var wsReady = false;
-var keepAliveMsg = null;
-var ws = null;
+var bWsReady = false;
+var taskKeepAlive = keepAlive();
+var ws;
 
-window.onbeforeunload  = function(){if (wsReady) ws.close(); svg.style.cursor = "auto";};
-window.onresize = resetSvg;
-keepAliveMsg = setInterval(function(){if (wsReady) ws.send("");}, 30000);
+// Window, AJAX, Debug Section
+var xhttp;
+if (window.XMLHttpRequest) {
+    xhttp = new XMLHttpRequest();
+}
+else {
+    xhttp = new ActiveXObject("Microsoft.XMLHTTP");
+}
+backgroundLoadImg();
+window.onresize = resetDrawpad;
+var bLog = true; // Set 'true' to turn on log message;window.onbeforeunload  = function(){if (bWsReady) ws.close(); drawpad.style.cursor = "auto";};
+
+function getProperStyleAttr(attr){
+    var root=document.documentElement;
+    if ("-webkit-" + attr in root.style) return "-webkit-" + attr; 
+    if ("-khtml-" + attr in root.style) return "-khtml-" + attr; 
+    if ("-moz-" + attr in root.style) return "-moz-" + attr; 
+    if ("-ms-" + attr in root.style) return "-ms-" + attr; 
+    if ("-o-" + attr in root.style) return "-o-" + attr; 
+    if (attr in root.style) return attr; 
+}
+
+function showDebug(msg){
+	if (bLog) console.log(msg);
+}
+
+function keepAlive(){
+	if (bWsReady) {
+		return setInterval(function(){if (bWsReady) ws.send("");}, 30000);
+	}
+	return null;
+}
 
 function connectSvr(opt){
 	if (opt == "cancel") {
@@ -119,23 +159,25 @@ function connectSvr(opt){
 		ws = new WebSocket(url);
 		ws.onopen = function(){
 			ws.send(JSON.stringify({id: hubId, name: peerName, action: "connect"}));
-			wsReady = true;
+			bWsReady = true;
+			taskKeepAlive = keepAlive();
 		};
 		ws.onmessage = function(msg){
 			if (msg.data.match("path")){
 				var ctx = JSON.parse(msg.data);
 				if (ctx.id == hubId && ctx.name != peerName){
-					showDebug("peer:" + ctx.name + " stroke:" + ctx.stroke + " stroke-width:" + ctx.strokeWidth + " stroke-linecap:" + ctx.strokeLinecap + " fill:" + ctx.fill);
-					showDebug("d:" + ctx.d);
-					mPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
-					mPath.setAttribute("stroke-width", ctx.strokeWidth);
-					mPath.setAttribute("stroke-linecap", ctx.strokeLinecap);
-					mPath.setAttribute("stroke", ctx.stroke);
-					mPath.setAttribute("fill", ctx.fill);
-					mPath.setAttribute("d", ctx.d);
-					svg.appendChild(mPath);
-					mPath = null;
+					showDebug(">> " + ctx.name + " drawing:");
+					showDebug("<path stroke='" + ctx.stroke + "' stroke-width='" + ctx.strokeWidth +"'\n stroke-linecap='" + ctx.strokeLinecap + "' fill='" + ctx.fill + "'\n d='" + ctx.d + "'/>");
+					var node = document.createElementNS("http://www.w3.org/2000/svg", "path");
+					node.setAttribute("stroke-width", ctx.strokeWidth);
+					node.setAttribute("stroke", ctx.stroke);
+					node.setAttribute("stroke-linecap", ctx.strokeLinecap);
+					node.setAttribute("fill", ctx.fill);
+					node.setAttribute("d", ctx.d);
+					paths.appendChild(node);
 					btnUndo.disabled = false;
+					clearCanvasCache();
+					//updatevispad(true);
 				}
 			}
 			else {
@@ -144,150 +186,194 @@ function connectSvr(opt){
 		};
 		ws.onclose = function(){
 			showDebug("Connection closed!");
-			clearInterval(keepAliveMsg);
-			wsReady = false;
+			clearInterval(taskKeepAlive);
+			bWsReady = false;
 			document.getElementById("btnConn").innerHTML = "连线";
 		};
 	}
 }
 
-function getProperStyleAttr(attr){
-    var root=document.documentElement;
-    if ("-webkit-" + attr in root.style) return "-webkit-" + attr; 
-    if ("-khtml-" + attr in root.style) return "-khtml-" + attr; 
-    if ("-moz-" + attr in root.style) return "-moz-" + attr; 
-    if ("-ms-" + attr in root.style) return "-ms-" + attr; 
-    if ("-o-" + attr in root.style) return "-o-" + attr; 
-    if (attr in root.style) return attr; 
+function backgroundLoadImg(){
+	if (window.location.protocol != "http" || window.location.protocol != "https") return;
+	xhttp.open("GET", "hand.png", true); xhttp.send();
+	xhttp.open("GET", "magnifier_minus.png", true); xhttp.send();
+	xhttp.open("GET", "magnifier_null.png", true); xhttp.send();
+	xhttp.open("GET", "magnifier_plus.png", true); xhttp.send();
+	for (penW in ["1", "5", "9", "21"]){
+		for (penC in ["black", "red", "green", "blue", "white"]){
+			for (penS in ["rect", "round"]){
+				xhttp.open("GET", "marker_" + penColor + (penColor != "white" && penShape == "round" ? "_round" : "") + "_" + penWidth + ".png", true);
+				xhttp.send();			
+			}
+		}
+	}
 }
 
-function showDebug(msg){
-	if (enableLog) console.log(msg);
+function setDrawpadWH(w, h){
+	drawpadWidth = w;
+	drawpadHeight = h;
+	drawpad.setAttribute("width", w);
+	drawpad.setAttribute("height", h);
 }
 
-function setSvgArea(w, h){
-	svgW = w;
-	svgH = h;
-	svg.setAttribute("width", w);
-	svg.setAttribute("height", h);
+function setDrawpadViewbox(x, y, w, h){
+	drawpadVBoxX = x;
+	drawpadVBoxY = y;
+	drawpadVBoxW = w;
+	drawpadVBoxH = h;
+	drawpad.setAttribute("viewBox", x + " " + y + " " + w + " " + h);
+	showDebug("drawpadVBoxX=" + x + ",drawpadVBoxY=" + y + ",\ndrawpadVBoxW=" + w + ",drawpadVBoxH=" + h);
 }
 
-function setSvgViewbox(x, y, w, h){
-	viewX = x;
-	viewY = y;
-	viewW = w;
-	viewH = h;
-	svg.setAttribute("viewBox", x + " " + y + " " + w + " " + h);
-	showDebug("ViewX=" + x + ",ViewY=" + y + ",ViewW=" + w + ",ViewH=" + h);
+function setVispadViewbox(x, y, w, h){
+	vispadVBoxX = x;
+	vispadVBoxY = y;
+	vispadVBoxW = w;
+	vispadVBoxH = h;
+	vispad.setAttribute("viewBox", x + " " + y + " " + w + " " + h);
+	showDebug("vispadVBoxX=" + x + ",vispadVBoxY=" + y + ",\nvispadVBoxW=" + w + ",vispadVBoxH=" + h);
 }
 
-function setColor(c){
+function setPenColor(c){
 	penColor = c;
-	showDebug("Pen-color=" + penColor);
+	showDebug("Pen-color=" + c);
 }
 
-function setWidth(w){
+function setPenWidth(w){
 	penWidth = w;
-	showDebug("Pen-width=" + penWidth);
+	showDebug("Pen-width=" + w);
 }
 
-function setShape(p){
-	penShape = p;
-	showDebug("Pen-shape=" + penShape);
+function setPenShape(s){
+	penShape = s;
+	showDebug("Pen-shape=" + s);
 }
 
-function setCursorImage(){	
-	svg.style.cursor = "url(marker_" + penColor + (penColor != "white" && penShape == "round" ? "_round" : "") + "_" + penWidth + ".png), auto";
-	if (tMbtn || (tLbtn && tRbtn)) svg.style.cursor = "url(hand.png), auto";
-	if (rBtnEraser) svg.style.cursor = "url(marker_white_" + penWidth + ".png), auto";
+function setDrawpadCursor(){	
+	drawpad.style.cursor = "url(marker_" + penColor + (penColor != "white" && penShape == "round" ? "_round" : "") + "_" + penWidth + ".png), auto";
+	if (bBtnMiddle || (bBtnLeft && bBtnRight)) drawpad.style.cursor = "url(hand.png), auto";
+	if (bUseRBtnEraser) drawpad.style.cursor = "url(marker_white_" + penWidth + ".png), auto";
 }
 
-function svgSizeup(t){
+function drawpadSizeup(t){
 	var r = (1 / 16);
 	if (t){
-		viewX += (viewW * r / 2);
-		viewY += (viewH * r / 2);
-		viewW /= (1 + r);
-		viewH /= (1 + r);
+		drawpadVBoxX += (drawpadVBoxW * r / 2);
+		drawpadVBoxY += (drawpadVBoxH * r / 2);
+		drawpadVBoxW /= (1 + r);
+		drawpadVBoxH /= (1 + r);
 	}
 	else{
-		viewX -= (viewW * r / 2);
-		viewY -= (viewH * r / 2);
-		viewW *= (1 + r);
-		viewH *= (1 + r);
+		drawpadVBoxX -= (drawpadVBoxW * r / 2);
+		drawpadVBoxY -= (drawpadVBoxH * r / 2);
+		drawpadVBoxW *= (1 + r);
+		drawpadVBoxH *= (1 + r);
 	}
-	setSvgViewbox(viewX, viewY, viewW, viewH);
+	setDrawpadViewbox(drawpadVBoxX, drawpadVBoxY, drawpadVBoxW, drawpadVBoxH);
 }
 
-function svgShift(x, y){
-	viewX += (startX - x);
-	viewY += (startY - y);
+function drawpadShift(x, y){
+	drawpadVBoxX += (startX - x);
+	drawpadVBoxY += (startY - y);
 	startX = x;
 	startY = y;
-	setSvgViewbox(viewX, viewY, viewW, viewH);
+	setDrawpadViewbox(drawpadVBoxX, drawpadVBoxY, drawpadVBoxW, drawpadVBoxH);
 }
 
-function mousedownHandler(e){
+function drawpadMouseDownHdl(e){
 	e.preventDefault();
-	if (e.button==0) tLbtn = true;
-	if (e.button==1) tMbtn = true;
-	if (e.button==2) tRbtn = true;
+	if (e.button==0) bBtnLeft = true;
+	if (e.button==1) bBtnMiddle = true;
+	if (e.button==2) bBtnRight = true;
 	startX = e.pageX;
 	startY = e.pageY;
 	
-	if (!tLbtn && !tMbtn && tRbtn) {
-		rBtnEraser = true;
+	if (!bBtnLeft && !bBtnMiddle && bBtnRight) {
+		bUseRBtnEraser = true;
 	}
 	else {
-		rBtnEraser = false;
+		bUseRBtnEraser = false;
 	}
 	
-	setCursorImage();
-	if ((tLbtn && !tMbtn && !tRbtn) || (!tLbtn && !tMbtn && tRbtn)) {
+	setDrawpadCursor();
+	if ((bBtnLeft && !bBtnMiddle && !bBtnRight) || (!bBtnLeft && !bBtnMiddle && bBtnRight)) {
 		drawStart(startX, startY);
 	}
 }
 
-function mousemoveHandler(e){
+function drawpadMouseMoveHdl(e){
 	e.preventDefault();
-	if (tMbtn || (tLbtn && tRbtn)) {
-		svgShift(e.pageX, e.pageY);
+	if (bBtnMiddle || (bBtnLeft && bBtnRight)) {
+		drawpadShift(e.pageX, e.pageY);
 	}
 	else {
 		drawPath(e.pageX, e.pageY);
 	}
 }
 
-function mouseupHandler(e) {
-	if (e.button==0) tLbtn = false;
-	if (e.button==1) tMbtn = false;
-	if (e.button==2) tRbtn = false;
+function drawpadMouseUpHdl(e) {
+	if (e.button==0) bBtnLeft = false;
+	if (e.button==1) bBtnMiddle = false;
+	if (e.button==2) bBtnRight = false;
 
 	e.preventDefault();
-	if (curPath >= 0 && svg.childNodes[curPath]) drawEnd();
-	if (!tLbtn && !tMbtn && tRbtn) {
-		rBtnEraser = true;
+	if (curPath >= 0 && paths.childNodes[curPath]) drawEnd();
+	if (!bBtnLeft && !bBtnMiddle && bBtnRight) {
+		bUseRBtnEraser = true;
 	}
 	else {
-		rBtnEraser = false;
+		bUseRBtnEraser = false;
 	}
-	setCursorImage();
+	setDrawpadCursor();
 }
 
-function mouseleaveHandler(e) {
+function drawpadLostFocus(e) {
 	e.preventDefault();	
-	tLbtn = tMbtn = tRbtn = false;
+	bBtnLeft = bBtnMiddle = bBtnRight = false;
 	touchDist = touchDistDelta = 0;
-	if (curPath >= 0 && svg.childNodes[curPath]) drawEnd();
-	svg.style.cursor = "auto";
+	if (curPath >= 0 && paths.childNodes[curPath]) drawEnd();
+	drawpad.style.cursor = "auto";
 	touchCursor.style.display = "none";
+	drawpadTouchStartHdl(e);
 }
 
-function mousewheelHandler(e){
+function setVisdivWH(w, h){
+	visdiv.style.width = w + "px";
+	visdiv.style.height = h + "px";
+	vispad.setAttribute("width", w);
+	vispad.setAttribute("height", h);
+}
+
+function visdivWheelHdl(e) {
 	e.preventDefault();
-	var d = (e.wheelDelta ? e.wheelDelta : -e.deltaY);
-	if ((tLbtn && !tMbtn && !tRbtn) || (!tLbtn && !tMbtn && tRbtn)) {
-		if (d < 0){
+	var w = parseInt(vispad.getAttribute("width"));
+	var h = parseInt(vispad.getAttribute("height"));
+	var wheelDelta = (e.wheelDelta ? e.wheelDelta : -e.deltaY);
+
+	if (wheelDelta < 0){
+		w -= 80;
+		h -= 45;
+		if (w < 160 ) {
+			w = 160;
+			h = 90;
+		}
+	}
+	else {
+		w += 80;
+		h += 45;
+		if (w > window.innerWidth) {
+			w = window.innerWidth;
+			h = w / 16 * 9;
+		}
+	}
+	setVisdivWH(w, h);
+}
+
+function drawpadMouseWheelHdl(e){
+	e.preventDefault();
+	var wheelDelta = (e.wheelDelta ? e.wheelDelta : -e.deltaY);
+	if ((bBtnLeft && !bBtnMiddle && !bBtnRight) || (!bBtnLeft && !bBtnMiddle && bBtnRight)) {
+		if (wheelDelta < 0){
 			if (parseInt(penWidth) < 9) penWidth = parseInt(penWidth) + 4;
 			else penWidth = 21;
 		}
@@ -295,44 +381,35 @@ function mousewheelHandler(e){
 			if (parseInt(penWidth) == 21) penWidth = 9;
 			else if (parseInt(penWidth) != 1) penWidth = parseInt(penWidth) - 4;
 		}
-		setCursorImage();
-		if (curPath >= 0 && svg.childNodes[curPath]) drawEnd();
-		if ((tLbtn && !tMbtn && !tRbtn) || (!tLbtn && !tMbtn && tRbtn)) {
+		setDrawpadCursor();
+		if (curPath >= 0 && paths.childNodes[curPath]) drawEnd();
+		if ((bBtnLeft && !bBtnMiddle && !bBtnRight) || (!bBtnLeft && !bBtnMiddle && bBtnRight)) {
 			startX = e.pageX;
 			startY = e.pageY;
 			drawStart(startX, startY);
 		}
 	}
 	else {
-		if (d > 0){
-			svg.style.cursor = "url(magnifier_plus.png), auto";
-			svgSizeup(true);
+		if (wheelDelta > 0){
+			drawpad.style.cursor = "url(magnifier_plus.png), auto";
+			drawpadSizeup(true);
 		}
 		else {
-			svg.style.cursor = "url(magnifier_minus.png), auto";
-			svgSizeup(false);
+			drawpad.style.cursor = "url(magnifier_minus.png), auto";
+			drawpadSizeup(false);
 		}
 	}
 }
 
-function touchstartHandler(e){
+function drawpadTouchStartHdl(e){
 	e.preventDefault();
 	if (e.touches){
 		var t = e.touches;
-		if (t.length == 2){
-			mouseleaveHandler(e);
-				curImg.src = "magnifier_null.png";
-				curImg.style[getProperStyleAttr("transform")] = "rotate(0deg)";
-				touchCursor.style.top = svgH / 2 + "px";
-				touchCursor.style.left = svgW / 2 + "px";
-				touchCursor.style.display = "block";
-			touchDist = Math.pow(t[0].pageX - t[1].pageX, 2) + Math.pow(t[0].pageY -t[1].pageY, 2);
-		}
-		else {
+		if (t.length == 1) {
 			startX = t[0].pageX - 26;
 			startY = t[0].pageY - 24 + (penWidth / 2);
 			if (curPath < 0 &&  t.length == 1) {
-				tLbtn = true;
+				bBtnLeft = true;
 				curImg.src = "marker_" + penColor + (penColor != "white" && penShape == "round" ? "_round" : "") + "_" + penWidth + ".png";
 				curImg.style[getProperStyleAttr("transform")] = "rotate(270deg)";
 				touchCursor.style.top = t[0].pageY - 70 + (penWidth / 3)+ "px";
@@ -340,23 +417,31 @@ function touchstartHandler(e){
 				touchCursor.style.display = "block";
 				drawStart(startX, startY);
 			}
-			if (t.length == 3) {
+		}
+		else if (t.length == 2){
+			curImg.src = "magnifier_null.png";
+			curImg.style[getProperStyleAttr("transform")] = "rotate(0deg)";
+			touchCursor.style.top = drawpadHeight / 2 + "px";
+			touchCursor.style.left = drawpadWidth / 2 + "px";
+			touchCursor.style.display = "block";
+			touchDist = Math.pow(t[0].pageX - t[1].pageX, 2) + Math.pow(t[0].pageY -t[1].pageY, 2);
+		}
+		else if (t.length == 3) {
 				curImg.src = "hand.png";
 				curImg.style[getProperStyleAttr("transform")] = "rotate(0deg)";
 				touchCursor.style.display = "block";
 				touchCursor.style.top = t[0].pageY - 70 + (penWidth / 3)+ "px";
 				touchCursor.style.left = t[0].pageX - 26 + "px";
-			}
 		}
 	}
 }
 
-function touchmoveHandler(e){
+function drawpadTouchMoveHdl(e){
 	e.preventDefault();
 	if (e.touches){
 		var t = e.touches;
 		if (t.length == 1) {
-			tLbtn = true;
+			bBtnLeft = true;
 			touchCursor.style.top = t[0].pageY - 70 + (penWidth / 3) + "px";
 			touchCursor.style.left = t[0].pageX - 26 + "px";
 			drawPath(t[0].pageX - 26, t[0].pageY - 24 + (penWidth / 2));
@@ -367,12 +452,12 @@ function touchmoveHandler(e){
 			touchDist = tmpDist;
 			if (touchDistDelta > Math.pow(pinchDelta, 2)){
 				curImg.src = "magnifier_plus.png";
-				svgSizeup(true);
+				drawpadSizeup(true);
 				touchDistDelta = 0;
 			}
 			if (touchDistDelta < -Math.pow(pinchDelta, 2)){
 				curImg.src = "magnifier_minus.png";
-				svgSizeup(false);
+				drawpadSizeup(false);
 				touchDistDelta = 0;
 			}
 			touchCursor.style.display = "block";
@@ -380,102 +465,138 @@ function touchmoveHandler(e){
 		else if (t.length == 3){
 			touchCursor.style.top = t[0].pageY - 70 + (penWidth / 3) + "px";
 			touchCursor.style.left = t[0].pageX - 26 + "px";
-			svgShift(t[0].pageX, t[0].pageY);
+			drawpadShift(t[0].pageX, t[0].pageY);
 		}
 	}
 }
 
 function drawStart(x, y){
-	x = x * viewW / svgW + viewX;
-	y = y * viewH / svgH + viewY;
+	x = x * drawpadVBoxW / drawpadWidth + drawpadVBoxX;
+	y = y * drawpadVBoxH / drawpadHeight + drawpadVBoxY;
 
 	var diffPenW = penWidth / 2;
-	var diffCurX = (cursorDiff / penWidth) * (viewW/ svgW);
-	var diffCurY = (cursorDiff / penWidth) * (viewH / svgH);
+	var diffCurX = (cursorDiff / penWidth) * (drawpadVBoxW/ drawpadWidth);
+	var diffCurY = (cursorDiff / penWidth) * (drawpadVBoxH / drawpadHeight);
 	x -= Math.round(diffPenW + diffCurX);
 	y -= Math.round(diffPenW + diffCurY);
-	mPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
-	mPath.setAttribute("stroke-width", penWidth);
-	mPath.setAttribute("stroke-linecap", penShape);
-	if (rBtnEraser) {
-		mPath.setAttribute("stroke", "white");
+	
+	var node = document.createElementNS("http://www.w3.org/2000/svg", "path");
+	node.setAttribute("stroke-width", penWidth);
+	node.setAttribute("stroke-linecap", penShape);
+	if (bUseRBtnEraser) {
+		node.setAttribute("stroke", "white");
 	}
 	else {
-		mPath.setAttribute("stroke", penColor);
+		node.setAttribute("stroke", penColor);
 	}
-	mPath.setAttribute("fill", "none");
-	mPath.setAttribute("d", "M" + x + "," + y + "L" + x + "," + y);
-	svg.appendChild(mPath);
-	curPath = svg.childNodes.length - 1;
+	node.setAttribute("fill", "none");
+	node.setAttribute("d", "M" + x + "," + y + "L" + x + "," + y);
+	
+	paths.appendChild(node);
 	btnUndo.disabled = false;
+	clearCanvasCache();
+	curPath = paths.childNodes.length - 1;
 }
 
 function drawPath(x, y){
 	if (curPath >= 0) {
-		x = x * viewW / svgW + viewX;
-		y = y * viewH / svgH + viewY;
+		x = x * drawpadVBoxW / drawpadWidth + drawpadVBoxX;
+		y = y * drawpadVBoxH / drawpadHeight + drawpadVBoxY;
 		var diffPenW = penWidth / 2;
-		var diffCurX = (cursorDiff / penWidth) * (viewW / svgW);
-		var diffCurY = (cursorDiff / penWidth) * (viewH / svgH);
+		var diffCurX = (cursorDiff / penWidth) * (drawpadVBoxW / drawpadWidth);
+		var diffCurY = (cursorDiff / penWidth) * (drawpadVBoxH / drawpadHeight);
 		x -= Math.round(diffPenW + diffCurX);
 		y -= Math.round(diffPenW + diffCurY);
-		var node = svg.childNodes[curPath];
+		var node = paths.childNodes[curPath];
 		node.setAttribute("d", node.getAttribute("d") + "L" + x + "," + y);
 	}
 }
 
 function drawEnd(){
-	if (wsReady) {
-		var dVal = svg.childNodes[curPath].getAttribute("d");
-		var strokeVal = svg.childNodes[curPath].getAttribute("stroke");
-		var strokeWdVal = svg.childNodes[curPath].getAttribute("stroke-width");
-		var strokeLcVal = svg.childNodes[curPath].getAttribute("stroke-linecap");
-		var fillVal = svg.childNodes[curPath].getAttribute("fill");
+	if (curPath >=0) {
+		var updateVispad = false;
+		var node = paths.childNodes[curPath];
+		var px = paths.getBBox().x;
+		var py = paths.getBBox().y;
+		var pw = paths.getBBox().width;
+		var ph = paths.getBBox().height;
+		console.log("px="+px+", py="+py+",\npw="+pw+", ph="+ph);
+		while (px < vispadVBoxX || py < vispadVBoxY) {
+			vispadVBoxX -= 16;
+			vispadVBoxY -= 9;
+			updateVispad = true;
+		}
+		while (pw + (px > 0 ? px : -px) > vispadVBoxW ||
+			ph + (py > 0 ? py : -py) > vispadVBoxH) {
+			vispadVBoxW += 16;
+		    vispadVBoxH += 9;
+			updateVispad = true;
+		}
+		if (updateVispad) setVispadViewbox(vispadVBoxX, vispadVBoxY, vispadVBoxW, vispadVBoxH);
 		
-		ws.send(JSON.stringify({id: hubId, name: peerName, action: "path", 
-			stroke: strokeVal,
-			strokeWidth: strokeWdVal,
-			strokeLinecap: strokeLcVal,
-			fill: fillVal,
-			d: dVal}));
+		//updatevispad(node);
+
+		if (bWsReady && curPath >= 0) {
+			ws.send(
+				JSON.stringify(
+					{
+						id: hubId, 
+						name: peerName, 
+						action: "path", 
+						stroke: node.getAttribute("stroke"),
+						strokeWidth: node.getAttribute("stroke-width"),
+						strokeLinecap: node.getAttribute("stroke-linecap"),
+						fill: node.getAttribute("fill"),
+						d: node.getAttribute("d")
+					}
+				)
+			);
+		}
+		curPath = -1;
 	}
-	curPath = -1;
-	mPath = null;
 }
 
 function undo(){
-	var node = svg.childNodes[svg.childNodes.length - 1];
-	if (node && node.tagName == "path") {
-		svgCache.appendChild(node);
-		btnRedo.disabled = false;
-		if (svg.childNodes.length == 0) btnUndo.disabled = true;
-		return true;
+	if (paths.childNodes && paths.childNodes.length > 0){
+		var node = paths.childNodes[paths.childNodes.length - 1];
+		if (node.tagName == "path") {
+			canvasCache.appendChild(node);
+			btnRedo.disabled = false;
+			if (paths.childNodes.length == 0) btnUndo.disabled = true;
+			return true;
+		}
 	}
 	return false;
 }
 
 function redo(){
-	var nodes = svgCache.childNodes;
+	var nodes = canvasCache.childNodes;
 	if (nodes && nodes.length > 0) {
 		var node = nodes[nodes.length - 1];
-		if (node.tagName == "path") svg.appendChild(node);
-		btnUndo.disabled = false;
-		if (svgCache.childNodes.length == 0) btnRedo.disabled = true;
+		if (node.tagName == "path") {
+			paths.appendChild(node);
+			btnUndo.disabled = false;
+			if (nodes.length == 0) btnRedo.disabled = true;
+		}
 	}
 }
 
-function resetSvg(){
+function resetDrawpad(){
 	hMargin = Math.ceil(675 / window.innerWidth) * 36 + 30;
-	setSvgArea(window.innerWidth - wMargin, window.innerHeight - hMargin);
-	setSvgViewbox(0, 0, svgW, svgH);
+	setDrawpadWH(window.innerWidth - wMargin, window.innerHeight - hMargin);
+	setDrawpadViewbox(0, 0, drawpadWidth, drawpadHeight);
 }
 
-function clearSvg(){
-	var nodes = svgCache.childNodes;
+function clearDrawpad(){
 	while (undo()) {};
-	while (nodes.length > 0) svgCache.removeChild(nodes[nodes.length - 1]);
+	clearCanvasCache();
+	resetDrawpad();
+}
+
+function clearCanvasCache() {
+	var nodes = canvasCache.childNodes;
+	while (nodes.length > 0) canvasCache.removeChild(nodes[nodes.length - 1]);
 	btnRedo.disabled = true;
-	resetSvg();
 }
 </script>
 </html>
