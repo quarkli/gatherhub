@@ -521,13 +521,17 @@ function drawEnd(){
 		var pw = paths.getBBox().width;
 		var ph = paths.getBBox().height;
 		console.log("px="+px+", py="+py+",\npw="+pw+", ph="+ph);
-		while (px < vispadVBoxX || py < vispadVBoxY) {
-			vispadVBoxX -= 16;
-			vispadVBoxY -= 9;
+		if (px < vispadVBoxX) {
+			vispadVBoxX = px;
+			vispadVBoxW += px;
 			updateVispad = true;
 		}
-		while (pw + (px > 0 ? px : -px) > vispadVBoxW ||
-			ph + (py > 0 ? py : -py) > vispadVBoxH) {
+		if (py < vispadVBoxY) {
+			vispadVBoxY = py;
+			vispadVBoxH += py;
+			updateVispad = true;
+		}
+		while ((px + pw) > (vispadVBoxX + vispadVBoxW) || (py + ph) > (vispadVBoxY + vispadVBoxH)) {
 			vispadVBoxW += 16;
 		    vispadVBoxH += 9;
 			updateVispad = true;
