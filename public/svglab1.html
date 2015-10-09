@@ -78,8 +78,11 @@ setDrawpadViewbox(drawpadVBoxX, drawpadVBoxY, drawpadVBoxW, drawpadVBoxH);
 
 var visdiv = document.getElementById("visualBoard");
 var vispad = document.getElementById("visualCanvas");
+var visdivTap = false, taskVisdiv;
 var vispadVBoxX = 0, vispadVBoxY = 0, vispadVBoxW = 160, vispadVBoxH = 90;
 visdiv.onwheel = visdivWheelHdl;
+visdiv.onmousedown = visdivDblTapHdl;
+visdiv.addEventListener("touchstart", visdivDblTapHdl);
 setVisdivWH(160, 90);
 setVispadViewbox(vispadVBoxX, vispadVBoxY, vispadVBoxW, vispadVBoxH);
 
@@ -239,6 +242,24 @@ function visdivWheelHdl(e) {
 		}
 	}
 	setVisdivWH(w, h);
+}
+
+function visdivDblTapHdl(e) {
+	e.preventDefault();
+	if (visdivTap) {
+		var w = window.innerWidth, h = w / 16 * 9;
+		if (w / 16 * 9 > window.innerHeight) {
+			h = window.innerHeight;
+			w = h / 9 * 16;
+		}
+		if (parseInt(visdiv.style.width) != w) setVisdivWH(w, h);
+		else setVisdivWH(160, 90);
+		visdivTap = false;
+	}
+	else {
+		visdivTap = true;
+		taskVisdiv = setTimeout(function(){visdivTap = false;}, 400);
+	}
 }
 
 function setDrawpadWH(w, h){
