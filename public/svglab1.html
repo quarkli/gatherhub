@@ -88,7 +88,7 @@ setVispadViewbox(vispadVBoxX, vispadVBoxY, vispadVBoxW, vispadVBoxH);
 
 // Mouse and Touch Section
 var startX = 0, startY = 0;
-var cursorDiff = 8;
+var cursorDiff = 7;  // Do not change this value
 var bBtnLeft=false, bBtnMiddle=false, bBtnRight=false, bUseRBtnEraser = false;
 var touchDist = 0, touchDistDelta = 0, pinchDelta = 60;
 var touchCursor = document.getElementById("touchCursor");
@@ -342,8 +342,8 @@ function drawpadMouseDownHdl(e){
 	if (e.button==0) bBtnLeft = true;
 	if (e.button==1) bBtnMiddle = true;
 	if (e.button==2) bBtnRight = true;
-	startX = precision(e.pageX, 3);
-	startY = precision(e.pageY, 3);
+	startX = precision(e.pageX - cursorDiff, 3);
+	startY = precision(e.pageY - cursorDiff, 3);
 	
 	if (!bBtnLeft && !bBtnMiddle && bBtnRight) {
 		bUseRBtnEraser = true;
@@ -364,7 +364,7 @@ function drawpadMouseMoveHdl(e){
 		drawpadShift(precision(e.pageX, 3), precision(e.pageY, 3));
 	}
 	else {
-		drawPath(precision(e.pageX, 3), precision(e.pageY, 3));
+		drawPath(precision(e.pageX - cursorDiff, 3), precision(e.pageY - cursorDiff, 3));
 	}
 }
 
@@ -496,17 +496,9 @@ function drawpadTouchMoveHdl(e){
 }
 
 function drawStart(x, y){
-	x = x * drawpadVBoxW / drawpadWidth + drawpadVBoxX;
-	y = y * drawpadVBoxH / drawpadHeight + drawpadVBoxY;
+	x = precision(x * drawpadVBoxW / drawpadWidth + drawpadVBoxX, 3);
+	y = precision(y * drawpadVBoxH / drawpadHeight + drawpadVBoxY, 3);
 
-	var diffPenW = penWidth / 2;
-	var diffCurX = (cursorDiff / penWidth) * (drawpadVBoxW/ drawpadWidth);
-	var diffCurY = (cursorDiff / penWidth) * (drawpadVBoxH / drawpadHeight);
-	x -= (diffPenW + diffCurX);
-	y -= (diffPenW + diffCurY);
-	x = precision(x, 3);
-	y = precision(y, 3);
-	
 	var node = document.createElementNS("http://www.w3.org/2000/svg", "path");
 	node.setAttribute("stroke-width", penWidth);
 	node.setAttribute("stroke-linecap", penShape);
@@ -527,15 +519,8 @@ function drawStart(x, y){
 
 function drawPath(x, y){
 	if (curPath >= 0) {
-		x = x * drawpadVBoxW / drawpadWidth + drawpadVBoxX;
-		y = y * drawpadVBoxH / drawpadHeight + drawpadVBoxY;
-		var diffPenW = penWidth / 2;
-		var diffCurX = (cursorDiff / penWidth) * (drawpadVBoxW / drawpadWidth);
-		var diffCurY = (cursorDiff / penWidth) * (drawpadVBoxH / drawpadHeight);
-		x -= (diffPenW + diffCurX, 3);
-		y -= (diffPenW + diffCurY, 3);
-		x = precision(x, 3);
-		y = precision(y, 3);
+		x = precision(x * drawpadVBoxW / drawpadWidth + drawpadVBoxX, 3);
+		y = precision(y * drawpadVBoxH / drawpadHeight + drawpadVBoxY, 3);
 		var node = paths.childNodes[curPath];
 		node.setAttribute("d", node.getAttribute("d") + "L" + x + "," + y);
 	}
