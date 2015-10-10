@@ -262,6 +262,30 @@ function visdivDblTapHdl(e) {
 	}
 }
 
+function updateVispad() {
+	var needUpdate = false;
+	var px = paths.getBBox().x;
+	var py = paths.getBBox().y;
+	var pw = paths.getBBox().width;
+	var ph = paths.getBBox().height;
+	console.log("paths BBox= " + px + " " + py + " " + pw + " " + ph);
+
+	if (px != vispadVBoxX) {
+		vispadVBoxX = px;
+		needUpdate = true;
+	}
+	if (py != vispadVBoxY) {
+		vispadVBoxY = py;
+		needUpdate = true;
+	}
+	if (needUpdate || pw != vispadVBoxW || ph != vispadVBoxH) {
+		var scale = Math.ceil(pw / 16) > Math.ceil(ph / 9) ? Math.ceil(pw / 16) : Math.ceil(ph / 9);
+		vispadVBoxW = scale * 16;
+		vispadVBoxH = scale * 9;
+		setVispadViewbox(vispadVBoxX, vispadVBoxY, vispadVBoxW, vispadVBoxH);		
+	}
+}
+
 function setDrawpadWH(w, h){
 	drawpadWidth = w;
 	drawpadHeight = h;
@@ -509,31 +533,6 @@ function drawPath(x, y){
 	}
 }
 
-function updateVispad() {
-	var needUpdate = false;
-	var px = paths.getBBox().x;
-	var py = paths.getBBox().y;
-	var pw = paths.getBBox().width;
-	var ph = paths.getBBox().height;
-
-	if (px < vispadVBoxX) {
-		vispadVBoxX = px;
-		vispadVBoxW += px;
-		needUpdate = true;
-	}
-	if (py < vispadVBoxY) {
-		vispadVBoxY = py;
-		vispadVBoxH += py;
-		needUpdate = true;
-	}
-	while ((px + pw) > (vispadVBoxX + vispadVBoxW) || (py + ph) > (vispadVBoxY + vispadVBoxH)) {
-		vispadVBoxW += 16;
-		vispadVBoxH += 9;
-		needUpdate = true;
-	}
-	if (needUpdate) setVispadViewbox(vispadVBoxX, vispadVBoxY, vispadVBoxW, vispadVBoxH);
-}
-
 function drawEnd(){
 	if (curPath >=0) {
 		var node = paths.childNodes[curPath];
@@ -567,6 +566,7 @@ function undo(){
 			canvasCache.appendChild(node);
 			btnRedo.disabled = false;
 			if (paths.childNodes.length == 0) btnUndo.disabled = true;
+			updateVispad();
 			return true;
 		}
 	}
@@ -581,6 +581,7 @@ function redo(){
 			paths.appendChild(node);
 			btnUndo.disabled = false;
 			if (nodes.length == 0) btnRedo.disabled = true;
+			updateVispad();
 		}
 	}
 }
