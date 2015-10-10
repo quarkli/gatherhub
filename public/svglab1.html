@@ -91,6 +91,8 @@ var startX = 0, startY = 0;
 var cursorDiff = 7;  // Do not change this value
 var bBtnLeft=false, bBtnMiddle=false, bBtnRight=false, bUseRBtnEraser = false;
 var touchDist = 0, touchDistDelta = 0, pinchDelta = 60;
+var touchAdjustX = 14, touchAdjustY = 32;
+var touchCursorAdjustX = -8, touchCursorAdjustY = 39;  // Do not change these values
 var touchCursor = document.getElementById("touchCursor");
 var curImg = document.getElementById("curImg");
 
@@ -430,15 +432,18 @@ function drawpadTouchStartHdl(e){
 	e.preventDefault();
 	if (e.touches){
 		var t = e.touches;
+		var t0_x = (t[0] && t[0].pageX) ? t[0].pageX - touchAdjustX : 0;
+		var t0_y = (t[0] && t[0].pageY) ? t[0].pageY - touchAdjustY : 0;
+
 		if (t.length == 1) {
-			startX = t[0].pageX - 26;
-			startY = t[0].pageY - 24 + (penWidth / 2);
+			startX = t0_x;
+			startY = t0_y;
 			if (curPath < 0 &&  t.length == 1) {
 				bBtnLeft = true;
 				curImg.src = "marker_" + penColor + (penColor != "white" && penShape == "round" ? "_round" : "") + "_" + penWidth + ".png";
 				curImg.style[getProperStyleAttr("transform")] = "rotate(270deg)";
-				touchCursor.style.top = t[0].pageY - 70 + (penWidth / 3)+ "px";
-				touchCursor.style.left = t[0].pageX - 26 + "px";
+				touchCursor.style.top = t0_y - touchCursorAdjustY + "px";
+				touchCursor.style.left = t0_x - touchCursorAdjustX + "px";
 				touchCursor.style.display = "block";
 				drawStart(startX, startY);
 			}
@@ -449,14 +454,14 @@ function drawpadTouchStartHdl(e){
 			touchCursor.style.top = drawpadHeight / 2 + "px";
 			touchCursor.style.left = drawpadWidth / 2 + "px";
 			touchCursor.style.display = "block";
-			touchDist = Math.pow(t[0].pageX - t[1].pageX, 2) + Math.pow(t[0].pageY -t[1].pageY, 2);
+			touchDist = Math.pow(t0_x - t[1].pageX, 2) + Math.pow(t0_y -t[1].pageY, 2);
 		}
 		else if (t.length == 3) {
 				curImg.src = "hand.png";
 				curImg.style[getProperStyleAttr("transform")] = "rotate(0deg)";
 				touchCursor.style.display = "block";
-				touchCursor.style.top = t[0].pageY - 70 + (penWidth / 3)+ "px";
-				touchCursor.style.left = t[0].pageX - 26 + "px";
+				touchCursor.style.top = t0_y - touchCursorAdjustY + "px";
+				touchCursor.style.left = t0_x - touchCursorAdjustX + "px";
 		}
 	}
 }
@@ -465,14 +470,17 @@ function drawpadTouchMoveHdl(e){
 	e.preventDefault();
 	if (e.touches){
 		var t = e.touches;
+		var t0_x = (t[0] && t[0].pageX) ? t[0].pageX - touchAdjustX : 0;
+		var t0_y = (t[0] && t[0].pageY) ? t[0].pageY - touchAdjustY : 0;
+		
 		if (t.length == 1) {
 			bBtnLeft = true;
-			touchCursor.style.top = t[0].pageY - 70 + (penWidth / 3) + "px";
-			touchCursor.style.left = t[0].pageX - 26 + "px";
-			drawPath(t[0].pageX - 26, t[0].pageY - 24 + (penWidth / 2));
+			touchCursor.style.top = t0_y - touchCursorAdjustY + "px";
+			touchCursor.style.left = t0_x - touchCursorAdjustX + "px";
+			drawPath(t0_x, t0_y);
 		}
 		else if (t.length == 2){
-			var tmpDist = Math.pow(t[0].pageX - t[1].pageX, 2) + Math.pow(t[0].pageY - t[1].pageY, 2);
+			var tmpDist = Math.pow(t0_x - t[1].pageX, 2) + Math.pow(t0_y - t[1].pageY, 2);
 			touchDistDelta += (tmpDist - touchDist);
 			touchDist = tmpDist;
 			if (touchDistDelta > Math.pow(pinchDelta, 2)){
@@ -488,9 +496,9 @@ function drawpadTouchMoveHdl(e){
 			touchCursor.style.display = "block";
 		}
 		else if (t.length == 3){
-			touchCursor.style.top = t[0].pageY - 70 + (penWidth / 3) + "px";
-			touchCursor.style.left = t[0].pageX - 26 + "px";
-			drawpadShift(t[0].pageX, t[0].pageY);
+			touchCursor.style.top = t0_y - touchCursorAdjustY + "px";
+			touchCursor.style.left = t0_x - touchCursorAdjustX + "px";
+			drawpadShift(t0_x, t0_y);
 		}
 	}
 }
