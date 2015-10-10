@@ -91,7 +91,9 @@ var startX = 0, startY = 0;
 var cursorDiff = 7;  // Do not change this value
 var bBtnLeft=false, bBtnMiddle=false, bBtnRight=false, bUseRBtnEraser = false;
 var touchDist = 0, touchDistDelta = 0, pinchDelta = 60;
-var touchAdjustX = 14, touchAdjustY = 32;
+var touchFingerAdjustX = 14, touchFingerAdjustY = 24;
+var touchPenAdjustX = 11, touchPenAdjustY = 11;
+var touchAdjustX = touchPenAdjustX, touchAdjustY = touchPenAdjustY;
 var touchCursorAdjustX = -8, touchCursorAdjustY = 39;  // Do not change these values
 var touchCursor = document.getElementById("touchCursor");
 var curImg = document.getElementById("curImg");
