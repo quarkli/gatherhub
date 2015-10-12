@@ -5,6 +5,8 @@ var sendTextarea = document.getElementById("dataChannelSend");
 var msgHistory = document.getElementById("msgHistory");
 
 /*add two kind of event to handle wether channel is intiated or not*/
+enableMessageInterface(false);
+sendButton.onclick = sendData;
 
 
 var chatText = new Array();
@@ -23,6 +25,8 @@ var p2pHdls = new Array();
 
 
 var room = location.pathname.substring(1);
+
+
 if (room === '') {
 //  room = prompt('Enter room name:');
   room = 'foo';
@@ -40,7 +44,7 @@ if (room !== '') {
 function getSocketIndex(id){
 	var i = 0;
 	for(i=0;i<p2pHdls.length;i++){
-		if(p2pHdls[i].id == id){
+		if((p2pHdls[i])&&(p2pHdls[i].id == id)){
 			return i;
 		}
 	}
@@ -206,7 +210,7 @@ function PeerHdl(){
 		},
 		addIceCandidate: function(candidate){
 			this.connection.addIceCandidate(candidate);
-		}
+		},
 		close: function(){
 		  console.log('peerconnection close');
 			this.connection.close();
@@ -274,7 +278,7 @@ function hdlDataChanSateChange(){
 		if(p2pNode.sendChannel.readyState=="open"){
 			state = true;
 			console.log("hdlDataChanSateChange event is ",state);
-			break;
+			return;
 		}
 	});
 	enableMessageInterface(state);

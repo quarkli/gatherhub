@@ -115,6 +115,7 @@ io.sockets.on('connection', function (socket){
 						currentRoom = room;
 						console.log("find socket in "+r+" leaved!");
 						flag =1;
+						break;
 					}
 					id += 1;
 				}
