@@ -4,7 +4,8 @@ var sendButton = document.getElementById("sendButton");
 var sendTextarea = document.getElementById("dataChannelSend");
 var msgHistory = document.getElementById("msgHistory");
 
-sendButton.onclick = sendData;
+/*add two kind of event to handle wether channel is intiated or not*/
+
 
 var chatText = new Array();
 
@@ -63,7 +64,6 @@ socket.on('joined', function (data){
 	//create offer
 	p2pNode.makeOffer();
 	//add here temp
-	enableMessageInterface(true);
 });
 
 socket.on('bye',function(data){
@@ -71,7 +71,10 @@ socket.on('bye',function(data){
 	var id = data.id;
 	var index = getSocketIndex(id);
 
+	console.log('release index '+index+ ' resource' );
+
 	if(index>=0){
+		p2pHdls[index].close();
 		delete p2pHdls[index];
 	}
 	
@@ -100,7 +103,6 @@ socket.on('msg', function (message){
 		//make a offer
     p2pNode.makeAnswer();
 		//add here temp
-		enableMessageInterface(true);
 		
   } else if (message.sdp.type === 'answer' ) {
 		if(!p2pNode){
@@ -127,7 +129,6 @@ socket.on('msg', function (message){
 socket.on('log', function (array){
   console.log.apply(console, array);
 });
-
 
 
 function PeerHdl(){
@@ -159,17 +160,19 @@ function PeerHdl(){
 	      this.sendChannel = this.connection.createDataChannel("sendDataChannel",{reliable: false});
 			  console.log('sendChannel created!',this.sendChannel);
 	      this.sendChannel.onmessage = handleMessage;
-    		//this.sendChannel.onopen = handleSendChannelStateChange;
-    		//this.sendChannel.onclose = handleSendChannelStateChange;
+    		this.sendChannel.onopen = hdlDataChanSateChange;
+    		this.sendChannel.onclose = hdlDataChanSateChange;
 			}else{
     		this.connection.ondatachannel = function(event){
 					trace('Receive Channel Callback');
 					self.sendChannel = event.channel;
 					self.sendChannel.onmessage = handleMessage;
+	    		self.sendChannel.onopen = hdlDataChanSateChange;
+	    		self.sendChannel.onclose = hdlDataChanSateChange;
 				};
 			}
 		},
-		
+
 		
 		makeOffer: function(){
 			var self =this;
@@ -204,8 +207,14 @@ function PeerHdl(){
 		addIceCandidate: function(candidate){
 			this.connection.addIceCandidate(candidate);
 		}
+		close: function(){
+		  console.log('peerconnection close');
+			this.connection.close();
+		}
 	};
 }
+
+
 
 
 ////////////////////////////////////////////////
@@ -258,6 +267,21 @@ function sendData() {
 }
 
 
+function hdlDataChanSateChange(){
+	var p2pNode;
+	var state =false;
+	p2pHdls.forEach(function(p2pNode){
+		if(p2pNode.sendChannel.readyState=="open"){
+			state = true;
+			console.log("hdlDataChanSateChange event is ",state);
+			break;
+		}
+	});
+	enableMessageInterface(state);
+
+}
+
+
 function handleMessage(event) {
   trace('Received message: ' + event.data);
   //receiveTextarea.value = event.data;
@@ -266,17 +290,6 @@ function handleMessage(event) {
 
 }
 
-function handleSendChannelStateChange() {
-  var readyState = sendChannel.readyState;
-  trace('Send channel state is: ' + readyState);
-  enableMessageInterface(readyState == "open");
-}
-
-function handleReceiveChannelStateChange() {
-  var readyState = sendChannel.readyState;
-  trace('Receive channel state is: ' + readyState);
-  enableMessageInterface(readyState == "open");
-}
 
 function enableMessageInterface(shouldEnable) {
     if (shouldEnable) {
