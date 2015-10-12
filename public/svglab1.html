@@ -24,7 +24,9 @@ and open the template in the editor.
 		<div id="sketchBoard">
 			<svg id="sketchCanvas"><g id="allpaths"></g></svg>
 		</div>
-		<div id="visualBoard" style="display: block; position: absolute; top: 0px; left: 0px; width: 320px; height: 180px; border: 2px solid #DDD; background: #FFA">
+		<div id="visualBoard" style="display: block; position: absolute; top: 1px; left: 1px; border: 2px solid #DDD; background: #FFF">
+			<span id="vispadSizeH" style="display: none; position: absolute; color: white; font-size: 9px; padding: 0px 5px; background: #AAA; transform: rotate(270deg)"></span>
+			<span id="vispadSizeW" style="display: none; position: absolute; color: white; font-size: 9px; padding: 0px 5px; background: #AAA"></span>
 			<svg id="visualCanvas">
 				<use xlink:href="#allpaths"/>
 			</svg>
@@ -39,8 +41,8 @@ and open the template in the editor.
 			<button onclick="setPenWidth(5)">细</button>
 			<button onclick="setPenWidth(9)">中</button>
 			<button onclick="setPenWidth(21)">粗</button>
-			<button onclick="setPenShape('rect')">方</button>
-			<button onclick="setPenShape('round')">圆</button>
+			<!--<button onclick="setPenShape('rect')">方</button>
+			<button onclick="setPenShape('round')">圆</button>-->
 			<button onclick="drawpadSizeup(false)">缩小</button>
 			<button onclick="drawpadSizeup(true)">放大</button>
 			<button id="btnUndo" onclick="undo()" disabled>复原</button>
@@ -57,7 +59,7 @@ var drawpad = document.getElementById("sketchCanvas");
 var drawpadWidth = window.innerWidth - wMargin;
 var drawpadHeight = window.innerHeight - hMargin;
 var drawpadVBoxX = 0, drawpadVBoxY = 0, drawpadVBoxW = drawpadWidth, drawpadVBoxH = drawpadHeight;
-var penColor = "black", penWidth = "5", penShape = "rect";
+var penColor = "black", penWidth = "5", penShape = "round";
 var canvasCache = document.createElementNS("http://www.w3.org/2000/svg", "svg");
 var curPath = -1;
 var paths = document.getElementById("allpaths");
@@ -214,6 +216,10 @@ function setVisdivWH(w, h){
 	visdiv.style.height = h + "px";
 	vispad.setAttribute("width", w);
 	vispad.setAttribute("height", h);
+	vispadSizeH.style.top = parseInt(visdiv.style.top) + vispadSizeH.innerHTML.length * 2 + "px";
+	vispadSizeH.style.left = parseInt(visdiv.style.width) - parseInt(vispadSizeH.style["font-size"]) - 12 + "px";
+	vispadSizeW.style.top = parseInt(visdiv.style.height) - parseInt(vispadSizeW.style["font-size"]) - 4 + "px";
+	vispadSizeW.style.left = parseInt(visdiv.style.left) - 1 + "px";
 	showDebug("vispad width=" + w + " height=" + h);
 }
 
@@ -289,7 +295,14 @@ function updateVispad() {
 		var scale = Math.ceil(pw / 16) > Math.ceil(ph / 9) ? Math.ceil(pw / 16) : Math.ceil(ph / 9);
 		vispadVBoxW = scale * 16;
 		vispadVBoxH = scale * 9;
-		setVispadViewbox(vispadVBoxX, vispadVBoxY, vispadVBoxW, vispadVBoxH);		
+		setVispadViewbox(vispadVBoxX, vispadVBoxY, vispadVBoxW, vispadVBoxH);
+		vispadSizeH.innerHTML = vispadVBoxH;
+		vispadSizeW.innerHTML = vispadVBoxW;
+		vispadSizeH.style.top = parseInt(visdiv.style.top) + vispadSizeH.innerHTML.length * 2 + "px";
+		vispadSizeH.style.left = parseInt(visdiv.style.width) - parseInt(vispadSizeH.style["font-size"]) - 12 + "px";
+		vispadSizeW.style.top = parseInt(visdiv.style.height) - parseInt(vispadSizeW.style["font-size"]) - 4 + "px";
+		vispadSizeW.style.left = parseInt(visdiv.style.left) - 1 + "px";
+		vispadSizeH.style.display = vispadSizeW.style.display = "block";
 	}
 }
 
