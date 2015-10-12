@@ -31,7 +31,7 @@ and open the template in the editor.
 				<use xlink:href="#allpaths"/>
 			</svg>
 		</div>
-		<div id="toolbar">
+		<div id="toolbar" style="font-size: 0">
 			<button onclick="setPenColor('black')" style="color: black">黑</button>
 			<button onclick="setPenColor('red')" style="color: red">红</button>
 			<button onclick="setPenColor('green')" style="color: green">绿</button>
@@ -49,7 +49,11 @@ and open the template in the editor.
 			<button id="btnRedo" onclick="redo()" disabled>重做</button>
 			<button onclick="resetDrawpad()">回归</button>
 			<button onclick="clearDrawpad()">清除</button>
-			<button id="btnConn" onclick="connectSvr('set')">連線</button>
+			<button id="btnConn" onclick="connectSvr('set')">連線</button><br>
+			<span style="font-size: 9px">
+			Text: <input id="txtMsg" type="text" size="25"/>
+			<button onclick="sendMsg()">Send</button>
+			</span>
 		</div>
     </body>
 <script>
@@ -191,6 +195,12 @@ function connectSvr(opt){
 			bWsReady = false;
 			document.getElementById("btnConn").innerHTML = "连线";
 		};
+	}
+}
+
+function sendMsg() {
+	if (bWsReady) {
+		ws.send(JSON.stringify({id: hubId, name: peerName, action: "say", data: txtMsg.value}));
 	}
 }
 

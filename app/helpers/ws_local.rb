@@ -47,6 +47,7 @@ EventMachine.run {
 			    s[:socket].send(h("#{client[:name]} says : #{client[:data]}")) 
 			  end
 			end
+			puts "#{client[:name]} says : #{client[:data]}"
           when 'path'
             @sockets.each do |s| 
 			  if (s[:id] == client[:id]) then 
