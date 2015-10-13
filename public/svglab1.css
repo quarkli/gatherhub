@@ -1,0 +1,44 @@
+#hubInfo {
+	display: none;
+	position: absolute;
+	width: 325px;
+	height: 90px;
+	border: 4px solid #333;
+	border-radius: 10px;
+	padding: 15px;
+	text-align: right;
+	background-color: #AAA;
+}
+
+#touchCursor {
+	display:none;
+	position:absolute;
+}
+
+#visualBoard {
+	display: block;
+	position: absolute;
+	top: 1px;
+	left: 1px;
+	border: 2px solid #DDD;
+	background: #FFF;
+}
+
+#vispadSizeH {
+	display: none;
+	position: absolute;
+	color: white;
+	font-size: 9px;
+	padding: 0px 5px;
+	background: #AAA;
+	transform: rotate(270deg);
+}
+
+#vispadSizeW {
+	display: none;
+	position: absolute;
+	color: white;
+	font-size: 9px;
+	padding: 0px 5px;
+	background: #AAA;
+}
