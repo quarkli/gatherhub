@@ -9,473 +9,58 @@ and open the template in the editor.
         <title>SVG Lab1</title>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    </head>
+		<!--<link rel="stylesheet" href="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css">-->
+		<link rel="stylesheet" href="svglab1.css">
+		<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
+		<script src="svglab1.js"></script>
+		<!--<script src="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/js/bootstrap.min.js"></script>-->
+	</head>
     <body>
-		<div id="hubInfo" style="display: none; position: absolute; width: 325px; height: 90px; border: 4px solid #333333;border-radius: 10px;padding: 15px;text-align: right; background-color: #aaaaaa">
+	<div class="container-fluid">
+		<div id="hubInfo">
 			Server:	<input id="svrAddr" type="text" size="30" align="left"/><br>
 			Hud ID:	<input id="hubId" type="text" size="30" align="left"/><br>
 			Peer Name: <input id="peerName" type="text" size="30" align="left"/><br>
 			<button onclick="connectSvr('go')" >OK</button>
 			<button onclick="connectSvr('cancel')">Cancel</button>
 		</div>
-		<div id="touchCursor" style="display:none;position:absolute;">
+		<div id="touchCursor">
 			<img id="curImg" src="marker_black_1.png"/>
 		</div>
-		<div id="whiteboard">
-			<svg id="svgboard"></svg>
+		<div>
+			<svg id="sketchCanvas"><g id="allpaths"></g></svg>
 		</div>
-		<div id="toolbar">
-			<button onclick="setColor('black')" style="color: black">黑</button>
-			<button onclick="setColor('red')" style="color: red">红</button>
-			<button onclick="setColor('green')" style="color: green">绿</button>
-			<button onclick="setColor('blue')" style="color: blue">蓝</button>
-			<button onclick="setColor('white')" style="color: black">擦</button>
-			<button onclick="setWidth(1)">极细</button>
-			<button onclick="setWidth(5)">细</button>
-			<button onclick="setWidth(9)">中</button>
-			<button onclick="setWidth(21)">粗</button>
-			<button onclick="setShape('rect')">方</button>
-			<button onclick="setShape('round')">圆</button>
-			<button onclick="svgSizeup(false)">缩小</button>
-			<button onclick="svgSizeup(true)">放大</button>
+		<div id="visualBoard">
+			<span id="vispadSizeH"></span>
+			<span id="vispadSizeW"></span>
+			<svg id="visualCanvas">
+				<use xlink:href="#allpaths"/>
+			</svg>
+		</div>
+		<div id="toolbar" style="font-size: 0">
+			<button onclick="setPenColor('black')" style="color: black;">黑</button>
+			<button onclick="setPenColor('red')" style="color: red">红</button>
+			<button onclick="setPenColor('green')" style="color: green">绿</button>
+			<button onclick="setPenColor('blue')" style="color: blue">蓝</button>
+			<button onclick="setPenColor('white')" style="color: black">擦</button>
+			<button onclick="setPenWidth(1)">极细</button>
+			<button onclick="setPenWidth(5)">细</button>
+			<button onclick="setPenWidth(9)">中</button>
+			<button onclick="setPenWidth(21)">粗</button>
+			<!--<button onclick="setPenShape('rect')">方</button>
+			<button onclick="setPenShape('round')">圆</button>-->
+			<button onclick="drawpadSizeup(false)">缩小</button>
+			<button onclick="drawpadSizeup(true)">放大</button>
 			<button id="btnUndo" onclick="undo()" disabled>复原</button>
 			<button id="btnRedo" onclick="redo()" disabled>重做</button>
-			<button onclick="resetSvg()">回归</button>
-			<button onclick="clearSvg()">清除</button>
-			<button id="btnConn" onclick="connectSvr('set')">連線</button>
+			<button onclick="resetDrawpad()">回归</button>
+			<button onclick="clearDrawpad()">清除</button>
+			<button id="btnConn" onclick="connectSvr('set')">連線</button><br>
+			<span style="font-size: 9px">
+			Text: <input id="txtMsg" type="text" size="25"/>
+			<button onclick="sendMsg()">Send</button>
+			</span>
 		</div>
+	</div>
     </body>
-<script>
-var enableLog = true; // Set 'true' to turn on log message;
-
-var penColor = "black", penWidth = "5", penShape = "rect";
-
-var wMargin = 20, hMargin = Math.ceil(675 / window.innerWidth) * 36 + 30;
-var svgW = window.innerWidth - wMargin, svgH = window.innerHeight - hMargin;
-var viewX = 0, viewY = 0, viewW = svgW, viewH = svgH;
-var startX = 0, startY = 0;
-
-var cursorDiff = 8;
-var tLbtn=false, tMbtn=false, tRbtn=false, rBtnEraser = false;
-var touchDist = 0, touchDistDelta = 0, pinchDelta = 60;
-
-var mPath = null;
-var curPath = -1;
-var svgCache = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-
-var svg = document.getElementById("svgboard");
-var touchCursor = document.getElementById("touchCursor");
-var curImg = document.getElementById("curImg");
-svg.onmousedown = mousedownHandler;
-svg.onmousemove = mousemoveHandler;
-svg.onmouseup = mouseupHandler;
-svg.onmouseenter = setCursorImage;
-svg.onmouseleave = mouseleaveHandler;
-svg.onwheel = mousewheelHandler;
-svg.oncontextmenu = function(){return false;};
-svg.addEventListener("touchstart", touchstartHandler);
-svg.addEventListener("touchend", mouseleaveHandler);
-svg.addEventListener("touchmove", touchmoveHandler);
-
-showDebug("AvailW=" + window.innerWidth + ",AvailH=" + window.innerHeight);
-setSvgArea(svgW, svgH);
-setSvgViewbox(viewX, viewY, viewW, viewH);
-
-var url = "ws://minichat.gatherhub.com:55688/";
-var hubId = 0 | Math.random() * 10000000;
-var peerName = "Peer-" + (0 | Math.random() * 1000);
-var wsReady = false;
-var keepAliveMsg = null;
-var ws = null;
-
-window.onbeforeunload  = function(){if (wsReady) ws.close(); svg.style.cursor = "auto";};
-window.onresize = resetSvg;
-keepAliveMsg = setInterval(function(){if (wsReady) ws.send("");}, 30000);
-
-function connectSvr(opt){
-	if (opt == "cancel") {
-		hubInfo.style.display = "none";
-	}
-	else if (opt == "set") {
-		if (document.getElementById("btnConn").innerHTML == "断开") {
-			ws.close();
-			return;
-		}
-		
-		document.getElementById("svrAddr").value = url;
-		document.getElementById("hubId").value = hubId;
-		document.getElementById("peerName").value = peerName;
-		hubInfo.style.top = (window.innerHeight - parseInt(hubInfo.style.height)) / 2 + "px";
-		hubInfo.style.left = (window.innerWidth - parseInt(hubInfo.style.width)) / 2 + "px";
-		hubInfo.style.display = "block";
-	}
-	else if (opt == "go") {
-		hubInfo.style.display = "none";
-		url = document.getElementById("svrAddr").value;
-		hubId = document.getElementById("hubId").value;
-		peerName = document.getElementById("peerName").value;
-		document.getElementById("btnConn").innerHTML = "断开";
-		
-		ws = new WebSocket(url);
-		ws.onopen = function(){
-			ws.send(JSON.stringify({id: hubId, name: peerName, action: "connect"}));
-			wsReady = true;
-		};
-		ws.onmessage = function(msg){
-			if (msg.data.match("path")){
-				var ctx = JSON.parse(msg.data);
-				if (ctx.id == hubId && ctx.name != peerName){
-					showDebug("peer:" + ctx.name + " stroke:" + ctx.stroke + " stroke-width:" + ctx.strokeWidth + " stroke-linecap:" + ctx.strokeLinecap + " fill:" + ctx.fill);
-					showDebug("d:" + ctx.d);
-					mPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
-					mPath.setAttribute("stroke-width", ctx.strokeWidth);
-					mPath.setAttribute("stroke-linecap", ctx.strokeLinecap);
-					mPath.setAttribute("stroke", ctx.stroke);
-					mPath.setAttribute("fill", ctx.fill);
-					mPath.setAttribute("d", ctx.d);
-					svg.appendChild(mPath);
-					mPath = null;
-					btnUndo.disabled = false;
-				}
-			}
-			else {
-				showDebug(msg.data);
-			}
-		};
-		ws.onclose = function(){
-			showDebug("Connection closed!");
-			clearInterval(keepAliveMsg);
-			wsReady = false;
-			document.getElementById("btnConn").innerHTML = "连线";
-		};
-	}
-}
-
-function getProperStyleAttr(attr){
-    var root=document.documentElement;
-    if ("-webkit-" + attr in root.style) return "-webkit-" + attr; 
-    if ("-khtml-" + attr in root.style) return "-khtml-" + attr; 
-    if ("-moz-" + attr in root.style) return "-moz-" + attr; 
-    if ("-ms-" + attr in root.style) return "-ms-" + attr; 
-    if ("-o-" + attr in root.style) return "-o-" + attr; 
-    if (attr in root.style) return attr; 
-}
-
-function showDebug(msg){
-	if (enableLog) console.log(msg);
-}
-
-function setSvgArea(w, h){
-	svgW = w;
-	svgH = h;
-	svg.setAttribute("width", w);
-	svg.setAttribute("height", h);
-}
-
-function setSvgViewbox(x, y, w, h){
-	viewX = x;
-	viewY = y;
-	viewW = w;
-	viewH = h;
-	svg.setAttribute("viewBox", x + " " + y + " " + w + " " + h);
-	showDebug("ViewX=" + x + ",ViewY=" + y + ",ViewW=" + w + ",ViewH=" + h);
-}
-
-function setColor(c){
-	penColor = c;
-	showDebug("Pen-color=" + penColor);
-}
-
-function setWidth(w){
-	penWidth = w;
-	showDebug("Pen-width=" + penWidth);
-}
-
-function setShape(p){
-	penShape = p;
-	showDebug("Pen-shape=" + penShape);
-}
-
-function setCursorImage(){	
-	svg.style.cursor = "url(marker_" + penColor + (penColor != "white" && penShape == "round" ? "_round" : "") + "_" + penWidth + ".png), auto";
-	if (tMbtn || (tLbtn && tRbtn)) svg.style.cursor = "url(hand.png), auto";
-	if (rBtnEraser) svg.style.cursor = "url(marker_white_" + penWidth + ".png), auto";
-}
-
-function svgSizeup(t){
-	var r = (1 / 16);
-	if (t){
-		viewX += (viewW * r / 2);
-		viewY += (viewH * r / 2);
-		viewW /= (1 + r);
-		viewH /= (1 + r);
-	}
-	else{
-		viewX -= (viewW * r / 2);
-		viewY -= (viewH * r / 2);
-		viewW *= (1 + r);
-		viewH *= (1 + r);
-	}
-	setSvgViewbox(viewX, viewY, viewW, viewH);
-}
-
-function svgShift(x, y){
-	viewX += (startX - x);
-	viewY += (startY - y);
-	startX = x;
-	startY = y;
-	setSvgViewbox(viewX, viewY, viewW, viewH);
-}
-
-function mousedownHandler(e){
-	e.preventDefault();
-	if (e.button==0) tLbtn = true;
-	if (e.button==1) tMbtn = true;
-	if (e.button==2) tRbtn = true;
-	startX = e.pageX;
-	startY = e.pageY;
-	
-	if (!tLbtn && !tMbtn && tRbtn) {
-		rBtnEraser = true;
-	}
-	else {
-		rBtnEraser = false;
-	}
-	
-	setCursorImage();
-	if ((tLbtn && !tMbtn && !tRbtn) || (!tLbtn && !tMbtn && tRbtn)) {
-		drawStart(startX, startY);
-	}
-}
-
-function mousemoveHandler(e){
-	e.preventDefault();
-	if (tMbtn || (tLbtn && tRbtn)) {
-		svgShift(e.pageX, e.pageY);
-	}
-	else {
-		drawPath(e.pageX, e.pageY);
-	}
-}
-
-function mouseupHandler(e) {
-	if (e.button==0) tLbtn = false;
-	if (e.button==1) tMbtn = false;
-	if (e.button==2) tRbtn = false;
-
-	e.preventDefault();
-	if (curPath >= 0 && svg.childNodes[curPath]) drawEnd();
-	if (!tLbtn && !tMbtn && tRbtn) {
-		rBtnEraser = true;
-	}
-	else {
-		rBtnEraser = false;
-	}
-	setCursorImage();
-}
-
-function mouseleaveHandler(e) {
-	e.preventDefault();	
-	tLbtn = tMbtn = tRbtn = false;
-	touchDist = touchDistDelta = 0;
-	if (curPath >= 0 && svg.childNodes[curPath]) drawEnd();
-	svg.style.cursor = "auto";
-	touchCursor.style.display = "none";
-}
-
-function mousewheelHandler(e){
-	e.preventDefault();
-	var d = (e.wheelDelta ? e.wheelDelta : -e.deltaY);
-	if ((tLbtn && !tMbtn && !tRbtn) || (!tLbtn && !tMbtn && tRbtn)) {
-		if (d < 0){
-			if (parseInt(penWidth) < 9) penWidth = parseInt(penWidth) + 4;
-			else penWidth = 21;
-		}
-		else {
-			if (parseInt(penWidth) == 21) penWidth = 9;
-			else if (parseInt(penWidth) != 1) penWidth = parseInt(penWidth) - 4;
-		}
-		setCursorImage();
-		if (curPath >= 0 && svg.childNodes[curPath]) drawEnd();
-		if ((tLbtn && !tMbtn && !tRbtn) || (!tLbtn && !tMbtn && tRbtn)) {
-			startX = e.pageX;
-			startY = e.pageY;
-			drawStart(startX, startY);
-		}
-	}
-	else {
-		if (d > 0){
-			svg.style.cursor = "url(magnifier_plus.png), auto";
-			svgSizeup(true);
-		}
-		else {
-			svg.style.cursor = "url(magnifier_minus.png), auto";
-			svgSizeup(false);
-		}
-	}
-}
-
-function touchstartHandler(e){
-	e.preventDefault();
-	if (e.touches){
-		var t = e.touches;
-		if (t.length == 2){
-			mouseleaveHandler(e);
-				curImg.src = "magnifier_null.png";
-				curImg.style[getProperStyleAttr("transform")] = "rotate(0deg)";
-				touchCursor.style.top = svgH / 2 + "px";
-				touchCursor.style.left = svgW / 2 + "px";
-				touchCursor.style.display = "block";
-			touchDist = Math.pow(t[0].pageX - t[1].pageX, 2) + Math.pow(t[0].pageY -t[1].pageY, 2);
-		}
-		else {
-			startX = t[0].pageX - 26;
-			startY = t[0].pageY - 24 + (penWidth / 2);
-			if (curPath < 0 &&  t.length == 1) {
-				tLbtn = true;
-				curImg.src = "marker_" + penColor + (penColor != "white" && penShape == "round" ? "_round" : "") + "_" + penWidth + ".png";
-				curImg.style[getProperStyleAttr("transform")] = "rotate(270deg)";
-				touchCursor.style.top = t[0].pageY - 70 + (penWidth / 3)+ "px";
-				touchCursor.style.left = t[0].pageX - 26 + "px";
-				touchCursor.style.display = "block";
-				drawStart(startX, startY);
-			}
-			if (t.length == 3) {
-				curImg.src = "hand.png";
-				curImg.style[getProperStyleAttr("transform")] = "rotate(0deg)";
-				touchCursor.style.display = "block";
-				touchCursor.style.top = t[0].pageY - 70 + (penWidth / 3)+ "px";
-				touchCursor.style.left = t[0].pageX - 26 + "px";
-			}
-		}
-	}
-}
-
-function touchmoveHandler(e){
-	e.preventDefault();
-	if (e.touches){
-		var t = e.touches;
-		if (t.length == 1) {
-			tLbtn = true;
-			touchCursor.style.top = t[0].pageY - 70 + (penWidth / 3) + "px";
-			touchCursor.style.left = t[0].pageX - 26 + "px";
-			drawPath(t[0].pageX - 26, t[0].pageY - 24 + (penWidth / 2));
-		}
-		else if (t.length == 2){
-			var tmpDist = Math.pow(t[0].pageX - t[1].pageX, 2) + Math.pow(t[0].pageY - t[1].pageY, 2);
-			touchDistDelta += (tmpDist - touchDist);
-			touchDist = tmpDist;
-			if (touchDistDelta > Math.pow(pinchDelta, 2)){
-				curImg.src = "magnifier_plus.png";
-				svgSizeup(true);
-				touchDistDelta = 0;
-			}
-			if (touchDistDelta < -Math.pow(pinchDelta, 2)){
-				curImg.src = "magnifier_minus.png";
-				svgSizeup(false);
-				touchDistDelta = 0;
-			}
-			touchCursor.style.display = "block";
-		}
-		else if (t.length == 3){
-			touchCursor.style.top = t[0].pageY - 70 + (penWidth / 3) + "px";
-			touchCursor.style.left = t[0].pageX - 26 + "px";
-			svgShift(t[0].pageX, t[0].pageY);
-		}
-	}
-}
-
-function drawStart(x, y){
-	x = x * viewW / svgW + viewX;
-	y = y * viewH / svgH + viewY;
-
-	var diffPenW = penWidth / 2;
-	var diffCurX = (cursorDiff / penWidth) * (viewW/ svgW);
-	var diffCurY = (cursorDiff / penWidth) * (viewH / svgH);
-	x -= Math.round(diffPenW + diffCurX);
-	y -= Math.round(diffPenW + diffCurY);
-	mPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
-	mPath.setAttribute("stroke-width", penWidth);
-	mPath.setAttribute("stroke-linecap", penShape);
-	if (rBtnEraser) {
-		mPath.setAttribute("stroke", "white");
-	}
-	else {
-		mPath.setAttribute("stroke", penColor);
-	}
-	mPath.setAttribute("fill", "none");
-	mPath.setAttribute("d", "M" + x + "," + y + "L" + x + "," + y);
-	svg.appendChild(mPath);
-	curPath = svg.childNodes.length - 1;
-	btnUndo.disabled = false;
-}
-
-function drawPath(x, y){
-	if (curPath >= 0) {
-		x = x * viewW / svgW + viewX;
-		y = y * viewH / svgH + viewY;
-		var diffPenW = penWidth / 2;
-		var diffCurX = (cursorDiff / penWidth) * (viewW / svgW);
-		var diffCurY = (cursorDiff / penWidth) * (viewH / svgH);
-		x -= Math.round(diffPenW + diffCurX);
-		y -= Math.round(diffPenW + diffCurY);
-		var node = svg.childNodes[curPath];
-		node.setAttribute("d", node.getAttribute("d") + "L" + x + "," + y);
-	}
-}
-
-function drawEnd(){
-	if (wsReady) {
-		var dVal = svg.childNodes[curPath].getAttribute("d");
-		var strokeVal = svg.childNodes[curPath].getAttribute("stroke");
-		var strokeWdVal = svg.childNodes[curPath].getAttribute("stroke-width");
-		var strokeLcVal = svg.childNodes[curPath].getAttribute("stroke-linecap");
-		var fillVal = svg.childNodes[curPath].getAttribute("fill");
-		
-		ws.send(JSON.stringify({id: hubId, name: peerName, action: "path", 
-			stroke: strokeVal,
-			strokeWidth: strokeWdVal,
-			strokeLinecap: strokeLcVal,
-			fill: fillVal,
-			d: dVal}));
-	}
-	curPath = -1;
-	mPath = null;
-}
-
-function undo(){
-	var node = svg.childNodes[svg.childNodes.length - 1];
-	if (node && node.tagName == "path") {
-		svgCache.appendChild(node);
-		btnRedo.disabled = false;
-		if (svg.childNodes.length == 0) btnUndo.disabled = true;
-		return true;
-	}
-	return false;
-}
-
-function redo(){
-	var nodes = svgCache.childNodes;
-	if (nodes && nodes.length > 0) {
-		var node = nodes[nodes.length - 1];
-		if (node.tagName == "path") svg.appendChild(node);
-		btnUndo.disabled = false;
-		if (svgCache.childNodes.length == 0) btnRedo.disabled = true;
-	}
-}
-
-function resetSvg(){
-	hMargin = Math.ceil(675 / window.innerWidth) * 36 + 30;
-	setSvgArea(window.innerWidth - wMargin, window.innerHeight - hMargin);
-	setSvgViewbox(0, 0, svgW, svgH);
-}
-
-function clearSvg(){
-	var nodes = svgCache.childNodes;
-	while (undo()) {};
-	while (nodes.length > 0) svgCache.removeChild(nodes[nodes.length - 1]);
-	btnRedo.disabled = true;
-	resetSvg();
-}
-</script>
 </html>
