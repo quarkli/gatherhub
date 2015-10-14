@@ -4,9 +4,13 @@ var sendButton = document.getElementById("sendButton");
 var sendTextarea = document.getElementById("dataChannelSend");
 var msgHistory = document.getElementById("msgHistory");
 
+var mediaButton = document.getElementById("mediaButton");
+var mediaArea = document.getElementById("mediaAreas");
+
 /*add two kind of event to handle wether channel is intiated or not*/
 enableMessageInterface(false);
 sendButton.onclick = sendData;
+mediaButton.onclick = invokeMedia;
 
 
 var chatText = new Array();
@@ -102,6 +106,7 @@ socket.on('msg', function (message){
 			p2pHdls[p2pHdls.length] = p2pNode;
 		}
 
+		/*if there is a local stream playing, we need remove this */
 		
     p2pNode.setRemoteDescription(new RTCSessionDescription(message.sdp));
 		//make a offer
@@ -122,6 +127,7 @@ socket.on('msg', function (message){
 		}
     var candidate = new RTCIceCandidate({sdpMLineIndex:message.sdp.label,
       candidate:message.sdp.candidate});
+		console.log("addIceCandidate ",candidate);
     p2pNode.addIceCandidate(candidate);
   } else if (message === 'bye' ) {
     //handleRemoteHangup();
@@ -175,20 +181,16 @@ function PeerHdl(){
 	    		self.sendChannel.onclose = hdlDataChanSateChange;
 				};
 			}
+			// add stream on add/remove callback
+			this.connection.onaddstream = handleRemoteStreamAdded;
+			this.connection.onremovestream = handleRemoteStreamRemoved;
+
+			
 		},
 
 		
 		makeOffer: function(){
 			var self =this;
-		  var constraints = {'optional': [], 'mandatory': {'MozDontOfferDataChannel': true}};
-		  // temporary measure to remove Moz* constraints in Chrome
-		  if (webrtcDetectedBrowser === 'chrome') {
-		    for (var prop in constraints.mandatory) {
-		      if (prop.indexOf('Moz') !== -1) {
-		        delete constraints.mandatory[prop];
-		      }
-		     }
-		   }
 		  this.connection.createOffer(function(sdp){
 			  self.connection.setLocalDescription(sdp);
 			  sendMessage({room:room, to:self.id, sdp:sdp});
@@ -204,9 +206,18 @@ function PeerHdl(){
 			},null);
 
 		},
+
+		addStream: function(stream){
+			this.connection.addStream(stream);
+		},
+		removeStream: function(stream){
+			this.connection.removeStream(stream);
+		},
 		
 		setRemoteDescription: function(sdp){
 			this.connection.setRemoteDescription(sdp);
+			console.log('setRemoteDescription ',sdp);
+
 		},
 		addIceCandidate: function(candidate){
 			this.connection.addIceCandidate(candidate);
@@ -301,12 +312,83 @@ function enableMessageInterface(shouldEnable) {
     dataChannelSend.focus();
     dataChannelSend.placeholder = "";
     sendButton.disabled = false;
+		mediaButton.disabled = false;
+		
   } else {
     dataChannelSend.disabled = true;
     sendButton.disabled = true;
+		mediaButton.disabled = true;
   }
 }
 
+////////////////////////////////////
+var localAudio = document.querySelector('#localAudio');
+var remoteAudio = document.querySelector('#remoteAudio');
+var localStream = null;
+var remoteStream = null;
+
+
+function startCall(){
+	var p2pNode;
+	p2pHdls.forEach(function(p2pNode){
+		p2pNode.addStream(localStream);
+		p2pNode.makeOffer();
+	});
+}
+
+function stopCall(){
+	var p2pNode;
+	p2pHdls.forEach(function(p2pNode){
+		p2pNode.removeStream(localStream);
+		p2pNode.makeOffer();
+	});
+}
+
+
+function handleUserMedia(stream) {
+  console.log('Adding local stream.');
+  localAudio.src = window.URL.createObjectURL(stream);
+  localStream = stream;
+	//startCall();
+}
+
+function handleUserMediaError(error){
+  console.log('getUserMedia error: ', error);
+	mediaStatus = false;
+
+}
+
+var constraints = {audio: true};
+
+
+getUserMedia(constraints, handleUserMedia, handleUserMediaError);
+console.log('Getting user media with constraints', constraints);
+
+
+function startMedia(){
+	startCall();
+	
+	mediaStatus = true;
+	mediaButton.innerHTML = "Stop Broadcast"
+
+}
+
+function stopMedia(){
+	stopCall();
+	mediaStatus = false;
+	mediaButton.innerHTML = "Start Broadcast"
+}
+
+var mediaStatus = false;
+
+function invokeMedia(){
+	if(mediaStatus == false){
+		startMedia();
+	}else{
+		stopMedia();
+	}
+
+}
 
 function mergeConstraints(cons1, cons2) {
   var merged = cons1;
@@ -350,9 +432,9 @@ function requestTurn(turn_url) {
 function handleRemoteStreamAdded(event) {
   console.log('Remote stream added.');
  // reattachMediaStream(miniVideo, localVideo);
-  attachMediaStream(remoteVideo, event.stream);
+  attachMediaStream(remoteAudio, event.stream);
   remoteStream = event.stream;
-//  waitForRemoteVideo();
+//  waitForRemoteAudio();
 }
 function handleRemoteStreamRemoved(event) {
   console.log('Remote stream removed. Event: ', event);
@@ -372,7 +454,7 @@ function handleRemoteHangup() {
 
 function stop() {
   // isAudioMuted = false;
-  // isVideoMuted = false;
+  // isAudioMuted = false;
   //pc.close();
   //pc = null;
 }
