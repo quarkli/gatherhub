@@ -21,9 +21,10 @@ var pc_config = webrtcDetectedBrowser === 'firefox' ?
 
 var pc_constraints = {
   'optional': [
-    {'DtlsSrtpKeyAgreement': true},
+    {'DtlsSrtpKeyAgreement': false},
     {'RtpDataChannels': true}
   ]};
+//var pc_constraints = null;  
 
 var p2pHdls = new Array();
 
@@ -184,19 +185,20 @@ function PeerHdl(id, type){
 
 PeerHdl.prototype.makeOffer = function(){
 	var self =this;
-  console.log('makeOffer');
-  this.connection.createOffer(function(sdp){
-	  self.connection.setLocalDescription(sdp);
-	  sendMessage({room:room, to:self.id, sdp:sdp});
+  this.connection.createOffer(function(desc){
+  	console.log('makeOffer',desc);
+	  self.connection.setLocalDescription(desc);
+	  sendMessage({room:room, to:self.id, sdp:desc});
 	}, null, constraints);
 };
 
 PeerHdl.prototype.makeAnswer = function(){
 	var self =this;
-  console.log('makeAnswer');
-  this.connection.createAnswer(function(sdp){
-	  self.connection.setLocalDescription(sdp);
-	  sendMessage({room:room, to:self.id, sdp:sdp});
+  this.connection.createAnswer(function(desc){
+  	console.log('makeAnswer');
+		//desc.sdp = stripTcpSes(desc.sdp);
+	  self.connection.setLocalDescription(desc);
+	  sendMessage({room:room, to:self.id, sdp:desc});
 	},null);
 
 };
@@ -481,6 +483,20 @@ function stop() {
 ///////////////////////////////////////////
 
 // Set Opus as the default audio codec if it's present.
+
+function stripTcpSes(sdp){
+  var sdpLines = sdp.split('\r\n');
+	var tmpLines = [];
+  for (var i = 0; i < sdpLines.length; i++) {
+      if (sdpLines[i].search(' tcp ') == -1) {
+				tmpLines[tmpLines.length] = sdpLines[i];
+      }
+  }
+  sdp = tmpLines.join('\r\n');
+	return sdp;
+}
+
+
 function preferOpus(sdp) {
   var sdpLines = sdp.split('\r\n');
   var mLineIndex;
