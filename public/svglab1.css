@@ -45,18 +45,11 @@
 
 .chatbox {
 	position:absolute;
-	left: 200px;
 	width: 200px;
 	font: bold 14px sans-serif;
 	background: #DDF;
 	border: 1px solid blue;
 	border-radius: 5px;
 	padding: 4px;
+	word-wrap: break-word;
  }
-
-@keyframes floatin {
-	0% {top: 200px; opacity: 0}
-	25% {top: 150px; opacity: 0.8}
-	85% {top: 150px; opacity: 0.8}
-	100% {top: 150px; opacity: 0}
-}

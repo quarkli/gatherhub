@@ -28,7 +28,7 @@ var touchCursorAdjustX = -8, touchCursorAdjustY = 39;  // Do not change these va
 var touchCursor, curImg;
 
 // WebSocket Section
-var url = "ws://minichat.gatherhub.com:55688/";
+var svraddr = "minichat.gatherhub.com";
 var hubid = 0 | Math.random() * 10000000;
 var peername = "Peer-" + (0 | Math.random() * 1000);
 var bWsReady = false;
@@ -36,6 +36,8 @@ var taskKeepAlive = keepAlive();
 var ws;
 
 var bLog = true; // Set 'true' to turn on log message;
+var popStartX = window.innerWidth - 250;
+var popStartY = window.innerHeight - hMargin;
 
 $(function(){
 	drawpad = document.getElementById("sketchCanvas");
@@ -69,6 +71,14 @@ $(function(){
 
 	window.onresize = resetDrawpad;
 	window.onbeforeunload  = function(){if (bWsReady) ws.close(); drawpad.style.cursor = "auto";};
+	$("#txtMsg").keypress(function(e){
+		if (e.which == 13) sendMsg();
+	});
+	$("#hubInfo").keyup(function(e){
+		if (e.which == 13) connectSvr('go');
+		if (e.which == 27) connectSvr('cancel');
+	});
+	$("#msgSect").hide();
 });
 
 function getProperStyleAttr(attr){
@@ -97,30 +107,33 @@ function connectSvr(opt){
 		$("#hubInfo").hide();
 	}
 	else if (opt == "set") {
-		if (document.getElementById("btnConn").innerHTML == "断开") {
+		if ($("#btnConn").html() == "断开") {
 			ws.close();
 			return;
 		}
 
-		document.getElementById("svrAddr").value = url;
-		document.getElementById("hubId").value = hubid;
-		document.getElementById("peerName").value = peername;
+		$("#svrAddr").val(svraddr);
+		$("#hubId").val(hubid);
+		$("#peerName").val(peername);
 		$("#hubInfo").css("top", (window.innerHeight - parseInt($("#hubInfo").css("height"))) / 2 + "px");
 		$("#hubInfo").css("left", (window.innerWidth - parseInt($("#hubInfo").css("width"))) / 2 + "px");
 		$("#hubInfo").show();
+		$("#svrAddr").focus();
+		$("#svrAddr").select();
 	}
 	else if (opt == "go") {
 		$("#hubInfo").hide();
-		url = document.getElementById("svrAddr").value;
-		hubid = document.getElementById("hubId").value;
-		peername = document.getElementById("peerName").value;
-		document.getElementById("btnConn").innerHTML = "断开";
+		svraddr = $("#svrAddr").val();
+		hubid = $("#hubId").val();
+		peername = $("#peerName").val();
+		$("#btnConn").html("断开");
 
-		ws = new WebSocket(url);
+		ws = new WebSocket("ws://" + svraddr + ":55688");
 		ws.onopen = function(){
 			ws.send(JSON.stringify({id: hubid, name: peername, action: "connect"}));
 			bWsReady = true;
 			taskKeepAlive = keepAlive();
+			$("#msgSect").show();
 		};
 		ws.onmessage = function(msg){
 			if (msg.data.match("path")){
@@ -150,28 +163,48 @@ function connectSvr(opt){
 			clearInterval(taskKeepAlive);
 			bWsReady = false;
 			document.getElementById("btnConn").innerHTML = "连线";
+			$("#msgSect").hide();
 		};
 	}
 }
 
 function popupMsg(msg) {
-	var strs = msg.split(" says : ");
-	if (strs.length > 1) {
-		var dur = msg.length * 0.2;
-		var node = document.createElementNS("http://www.w3.org/1999/xhtml", "div");
-		node.setAttribute("class", "chatbox");
-		node.setAttribute("id", "chat1");
-		node.style["animation"] = "floatin";
-		node.style["animation-duration"] = dur + "s";
-		node.innerHTML = strs[0] + ":<br>" + strs[1];
-		$("body").append(node);
-		setTimeout(function(){$(".chatbox").remove();}, dur * 1000);		
+	var tmpid = (0 | Math.random() * 10000);
+	var divid = "#" + tmpid;
+	var tmpAry = msg.split(" says : ");
+	var dur = msg.length * 0.1;
+	var nodeDiv = document.createElementNS("http://www.w3.org/1999/xhtml", "div");
+	var nodeSpan = document.createElementNS("http://www.w3.org/1999/xhtml", "span");
+
+	if (tmpAry.length > 1) {
+		//if (tmpAry[0] == peername) return;
+		msg = tmpAry[0] + ":<br>" + tmpAry[1]
 	}
+
+	if ($(".chatbox").length == 0 || (popStartY - nodeDiv.offsetHeight) < 40) {
+		popStartY = window.innerHeight - hMargin;
+	}
+
+	nodeDiv.setAttribute("class", "chatbox");
+	nodeDiv.setAttribute("id", tmpid);
+	$("body").append(nodeDiv);
+
+	nodeSpan.innerHTML = msg;
+	$(divid).append(nodeSpan);
+	$(divid).css("top", popStartY);
+	$(divid).css("left", popStartX);
+	$(divid).css("opacity", 0);
+	popStartY -= nodeDiv.offsetHeight;
+	$(divid).animate({opacity: 0.8, top: popStartY}, 1000);
+	$(divid).animate({opacity: 0.8}, 2000);
+	$(divid).animate({opacity: 0}, 1000, function(){$(divid).remove();});
 }
 
 function sendMsg() {
-	if (bWsReady) {
+	if (bWsReady && $("#txtMsg").val().length > 0) {
 		ws.send(JSON.stringify({id: hubid, name: peername, action: "say", data: $("#txtMsg").val()}));
+		$("#txtMsg").val("");
+		$("#txtMsg").focus();
 	}
 }
 
