@@ -107,7 +107,7 @@ function connectSvr(opt){
 		$("#hubInfo").hide();
 	}
 	else if (opt == "set") {
-		if ($("#btnConn").html() == "断开") {
+		if ($("#btnConn").html() == '<span class="glyphicon glyphicon-log-out"></span>') {
 			ws.close();
 			return;
 		}
@@ -126,7 +126,7 @@ function connectSvr(opt){
 		svraddr = $("#svrAddr").val();
 		hubid = $("#hubId").val();
 		peername = $("#peerName").val();
-		$("#btnConn").html("断开");
+		$("#btnConn").html('<span class="glyphicon glyphicon-log-out"></span>');
 
 		ws = new WebSocket("ws://" + svraddr + ":55688");
 		ws.onopen = function(){
@@ -137,7 +137,6 @@ function connectSvr(opt){
 			$("#msgSect").show();
 			hMargin = $("#toolbar").outerHeight();
 			setDrawpadWH(window.innerWidth - wMargin, window.innerHeight - hMargin);
-			$("#toolbar").css("top", window.innerHeight - hMargin);
 		};
 		ws.onmessage = function(msg){
 			if (msg.data.match("path")){
@@ -166,7 +165,7 @@ function connectSvr(opt){
 			showDebug("Connection closed!");
 			clearInterval(taskKeepAlive);
 			bWsReady = false;
-			document.getElementById("btnConn").innerHTML = "连线";
+			document.getElementById("btnConn").innerHTML = '<span class="glyphicon glyphicon-log-in"></span>';
 			$("#msgSect").hide();
 		};
 	}
@@ -683,7 +682,6 @@ function resetDrawpad(){
 	hMargin = $("#toolbar").outerHeight();
 	setDrawpadWH(window.innerWidth - wMargin, window.innerHeight - hMargin);
 	setDrawpadViewbox(0, 0, drawpadWidth, drawpadHeight);
-	$("#toolbar").css("top", window.innerHeight - hMargin);
 	popStartX = window.innerWidth - 250;
 	popStartY = window.innerHeight - hMargin;
 }
