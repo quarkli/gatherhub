@@ -68,6 +68,10 @@ socket.on('joined', function (data){
 		p2pNode = new PeerHdl(id,'calling');
 		p2pHdls[p2pHdls.length] = p2pNode;
 	}
+
+	if(localStream){
+		p2pNode.addStream(localStream);
+	}
 	
 	//create offer
 	p2pNode.makeOffer();
@@ -106,6 +110,9 @@ socket.on('msg', function (message){
 		}
 
 		/*if there is a local stream playing, we need remove this */
+		if(localStream){
+			stopMedia();
+		}
 		
     p2pNode.setRemoteDescription(new RTCSessionDescription(message.sdp));
 		//make a offer
@@ -395,7 +402,6 @@ function startMedia(){
 
 function stopMedia(){
 	muteMedia();
-	doCall(false);
 	mediaStatus = false;
 	mediaButton.innerHTML = "Start Broadcast"
 }
@@ -407,6 +413,7 @@ function invokeMedia(){
 		startMedia();
 	}else{
 		stopMedia();
+		doCall(false);
 	}
 
 }
