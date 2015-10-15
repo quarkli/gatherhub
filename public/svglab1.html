@@ -11,7 +11,9 @@ and open the template in the editor.
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
 		<!--<link rel="stylesheet" href="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css">-->
 		<link rel="stylesheet" href="svglab1.css">
-		<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
+		<!--<script src="http://ajax.aspnetcdn.com/ajax/jQuery/jquery-1.11.3.min.js"></script>-->
+		<!--<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>-->
+		<script src="jquery.min.js"></script>
 		<script src="svglab1.js"></script>
 		<!--<script src="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/js/bootstrap.min.js"></script>-->
 	</head>
@@ -37,7 +39,7 @@ and open the template in the editor.
 				<use xlink:href="#allpaths"/>
 			</svg>
 		</div>
-		<div id="toolbar" style="font-size: 0">
+		<div id="toolbar"">
 			<button onclick="setPenColor('black')" style="color: black;">黑</button>
 			<button onclick="setPenColor('red')" style="color: red">红</button>
 			<button onclick="setPenColor('green')" style="color: green">绿</button>
@@ -56,10 +58,11 @@ and open the template in the editor.
 			<button onclick="resetDrawpad()">回归</button>
 			<button onclick="clearDrawpad()">清除</button>
 			<button id="btnConn" onclick="connectSvr('set')">連線</button><br>
-			<span id="msgSect" style="font-size: 9px">
-			Msg: <input id="txtMsg" type="text" size="25"/>
-			<button onclick="sendMsg()">Send</button>
-			</span>
+			<div id="msgSect">
+				<span id="msgHead"></span>
+				<input id="txtMsg" type="text" size="25"/>
+				<button onclick="sendMsg()">Send</button>
+			</div>
 		</div>
 	</div>
     </body>

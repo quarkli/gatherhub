@@ -32,7 +32,7 @@ EventMachine.run {
         case client[:action]
           when 'connect'
 		    peers = 0
-		    reply = "Peer:#{client[:name]} has entered Hub:#{client[:id]}"
+		    reply = "#{client[:name]} has entered Hub:#{client[:id]}"
             @sockets.push({:id=>client[:id], :name=>client[:name], :socket=>ws})
             @sockets.each do |s| 
 			  if (s[:id] == client[:id]) then 

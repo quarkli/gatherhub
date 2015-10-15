@@ -2,7 +2,7 @@
 
 // SVG Section
 var wMargin = 20;
-var hMargin = 85;
+var hMargin = 50;
 var drawpadWidth = window.innerWidth - wMargin;
 var drawpadHeight = window.innerHeight - hMargin;
 var drawpadVBoxX = 0, drawpadVBoxY = 0;
@@ -26,6 +26,8 @@ var touchPenAdjustX = 11, touchPenAdjustY = 11;
 var touchAdjustX = touchPenAdjustX, touchAdjustY = touchPenAdjustY;
 var touchCursorAdjustX = -8, touchCursorAdjustY = 39;  // Do not change these values
 var touchCursor, curImg;
+var holdDrawing =  false;
+var falseTouch = false;
 
 // WebSocket Section
 var svraddr = "minichat.gatherhub.com";
@@ -58,9 +60,6 @@ $(function(){
 	drawpad.addEventListener("touchend", drawpadLostFocus);
 	drawpad.addEventListener("touchmove", drawpadTouchMoveHdl);
 
-	setDrawpadWH(drawpadWidth, drawpadHeight);
-	setDrawpadViewbox(drawpadVBoxX, drawpadVBoxY, drawpadVBoxW, drawpadVBoxH);	
-
 	visdiv.onwheel = visdivWheelHdl;
 	visdiv.onmousedown = visdivDblTapHdl;
 	visdiv.addEventListener("touchstart", visdivDblTapHdl);
@@ -68,7 +67,8 @@ $(function(){
 	setVispadViewbox(vispadVBoxX, vispadVBoxY, vispadVBoxW, vispadVBoxH);
 	setPenColor(penColor);
 	setPenWidth(penWidth);
-
+	resetDrawpad();
+		
 	window.onresize = resetDrawpad;
 	window.onbeforeunload  = function(){if (bWsReady) ws.close(); drawpad.style.cursor = "auto";};
 	$("#txtMsg").keypress(function(e){
@@ -133,7 +133,11 @@ function connectSvr(opt){
 			ws.send(JSON.stringify({id: hubid, name: peername, action: "connect"}));
 			bWsReady = true;
 			taskKeepAlive = keepAlive();
+			$("#msgHead").html(peername + "@" + hubid + ":");
 			$("#msgSect").show();
+			hMargin = $("#toolbar").outerHeight();
+			setDrawpadWH(window.innerWidth - wMargin, window.innerHeight - hMargin);
+			$("#toolbar").css("top", window.innerHeight - hMargin);
 		};
 		ws.onmessage = function(msg){
 			if (msg.data.match("path")){
@@ -172,22 +176,23 @@ function popupMsg(msg) {
 	var tmpid = (0 | Math.random() * 10000);
 	var divid = "#" + tmpid;
 	var tmpAry = msg.split(" says : ");
-	var dur = msg.length * 0.1;
+	var dur = msg.length < 10 ? 2000 : msg.length / 3 * 1000;
 	var nodeDiv = document.createElementNS("http://www.w3.org/1999/xhtml", "div");
 	var nodeSpan = document.createElementNS("http://www.w3.org/1999/xhtml", "span");
 
-	if (tmpAry.length > 1) {
-		//if (tmpAry[0] == peername) return;
-		msg = tmpAry[0] + ":<br>" + tmpAry[1]
-	}
-
 	if ($(".chatbox").length == 0 || (popStartY - nodeDiv.offsetHeight) < 40) {
+		popStartX = window.innerWidth - 250;
 		popStartY = window.innerHeight - hMargin;
 	}
 
 	nodeDiv.setAttribute("class", "chatbox");
 	nodeDiv.setAttribute("id", tmpid);
 	$("body").append(nodeDiv);
+
+	if (tmpAry.length > 1) {
+		if (tmpAry[0] == peername) nodeDiv.style["background"] = "#CCC";
+		msg = tmpAry[0] + ":<br>" + tmpAry[1]
+	}
 
 	nodeSpan.innerHTML = msg;
 	$(divid).append(nodeSpan);
@@ -196,7 +201,7 @@ function popupMsg(msg) {
 	$(divid).css("opacity", 0);
 	popStartY -= nodeDiv.offsetHeight;
 	$(divid).animate({opacity: 0.8, top: popStartY}, 1000);
-	$(divid).animate({opacity: 0.8}, 2000);
+	$(divid).animate({opacity: 0.8}, dur);
 	$(divid).animate({opacity: 0}, 1000, function(){$(divid).remove();});
 }
 
@@ -299,9 +304,13 @@ function visdivWheelHdl(e) {
 	else {
 		w += 80;
 		h += 45;
-		if (w > window.innerWidth) {
-			w = window.innerWidth;
+		if (w > window.innerWidth - 10) {
+			w = window.innerWidth - 10;
 			h = precision(w / 16 * 9, 3);
+		}
+		if (h > window.innerHeight - hMargin - 10) {
+			h = window.innerHeight - hMargin - 10;
+			w = precision(h / 9 * 16, 3);
 		}
 	}
 	setVisdivWH(w, h);
@@ -310,12 +319,12 @@ function visdivWheelHdl(e) {
 function visdivDblTapHdl(e) {
 	e.preventDefault();
 	if (visdivTap) {
-		var w = window.innerWidth, h = precision(w / 16 * 9, 3);
-		if (w / 16 * 9 > window.innerHeight) {
-			h = window.innerHeight;
+		var w = window.innerWidth - 10, h = precision(w / 16 * 9, 3);
+		if (w / 16 * 9 > window.innerHeight - hMargin) {
+			h = window.innerHeight - hMargin - 10;
 			w = precision(h / 9 * 16, 3);
 		}
-		if (parseInt($("#visualBoard").css("width")) != w) setVisdivWH(w, h);
+		if (parseInt($("#visualBoard").css("width")) != w && parseInt($("#visualBoard").css("height")) != h) setVisdivWH(w, h);
 		else setVisdivWH(160, 90);
 		visdivTap = false;
 	}
@@ -359,7 +368,7 @@ function updateVispad() {
 
 function setDrawpadWH(w, h){
 	drawpadWidth = precision(w, 3);
-	drawpadHeight = precision(h, 3);
+	drawpadHeight = precision(h - 10, 3);
 	drawpad.setAttribute("width", drawpadWidth);
 	drawpad.setAttribute("height", drawpadHeight);
 	showDebug("drawpad width=" + drawpadWidth + " height=" + drawpadHeight);
@@ -460,6 +469,7 @@ function drawpadLostFocus(e) {
 	drawpad.style.cursor = "auto";
 	touchCursor.style.display = "none";
 	drawpadTouchStartHdl(e);
+	setTimeout(function(){holdDrawing = false;}, 200);
 }
 
 function drawpadMouseWheelHdl(e){
@@ -496,12 +506,33 @@ function drawpadMouseWheelHdl(e){
 
 function drawpadTouchStartHdl(e){
 	e.preventDefault();
+	$("#txtMsg").blur();
+	
 	if (e.touches){
 		var t = e.touches;
 		var t0_x = (t[0] && t[0].pageX) ? t[0].pageX - touchAdjustX : 0;
 		var t0_y = (t[0] && t[0].pageY) ? t[0].pageY - touchAdjustY : 0;
 
-		if (t.length == 1) {
+		if (t.length == 3) {
+			if (curPath >= 0) drawEnd();
+			curImg.src = "hand.png";
+			curImg.style[getProperStyleAttr("transform")] = "rotate(0deg)";
+			touchCursor.style.display = "block";
+			touchCursor.style.top = t0_y - touchCursorAdjustY + "px";
+			touchCursor.style.left = t0_x - touchCursorAdjustX + "px";
+			holdDrawing = true;
+		}
+		else if (t.length == 2){
+			if (curPath >= 0) drawEnd();
+			curImg.src = "magnifier_null.png";
+			curImg.style[getProperStyleAttr("transform")] = "rotate(0deg)";
+			touchCursor.style.top = drawpadHeight / 2 + "px";
+			touchCursor.style.left = drawpadWidth / 2 + "px";
+			touchCursor.style.display = "block";
+			touchDist = Math.pow(t0_x - t[1].pageX, 2) + Math.pow(t0_y -t[1].pageY, 2);
+			holdDrawing = true;
+		}
+		else if (t.length == 1 && !holdDrawing) {
 			startX = t0_x;
 			startY = t0_y;
 			if (curPath < 0 &&  t.length == 1) {
@@ -512,22 +543,9 @@ function drawpadTouchStartHdl(e){
 				touchCursor.style.left = t0_x - touchCursorAdjustX + "px";
 				touchCursor.style.display = "block";
 				drawStart(startX, startY);
+				falseTouch = true;
+				setTimeout(function(){falseTouch=false;}, 5);
 			}
-		}
-		else if (t.length == 2){
-			curImg.src = "magnifier_null.png";
-			curImg.style[getProperStyleAttr("transform")] = "rotate(0deg)";
-			touchCursor.style.top = drawpadHeight / 2 + "px";
-			touchCursor.style.left = drawpadWidth / 2 + "px";
-			touchCursor.style.display = "block";
-			touchDist = Math.pow(t0_x - t[1].pageX, 2) + Math.pow(t0_y -t[1].pageY, 2);
-		}
-		else if (t.length == 3) {
-				curImg.src = "hand.png";
-				curImg.style[getProperStyleAttr("transform")] = "rotate(0deg)";
-				touchCursor.style.display = "block";
-				touchCursor.style.top = t0_y - touchCursorAdjustY + "px";
-				touchCursor.style.left = t0_x - touchCursorAdjustX + "px";
 		}
 	}
 }
@@ -546,6 +564,7 @@ function drawpadTouchMoveHdl(e){
 			drawPath(t0_x, t0_y);
 		}
 		else if (t.length == 2){
+			if (curPath >= 0) drawEnd();
 			var tmpDist = Math.pow(t0_x - t[1].pageX, 2) + Math.pow(t0_y - t[1].pageY, 2);
 			touchDistDelta += (tmpDist - touchDist);
 			touchDist = tmpDist;
@@ -562,6 +581,7 @@ function drawpadTouchMoveHdl(e){
 			touchCursor.style.display = "block";
 		}
 		else if (t.length == 3){
+			if (curPath >= 0) drawEnd();
 			touchCursor.style.top = t0_y - touchCursorAdjustY + "px";
 			touchCursor.style.left = t0_x - touchCursorAdjustX + "px";
 			drawpadShift(t0_x, t0_y);
@@ -583,10 +603,9 @@ function drawStart(x, y){
 		node.setAttribute("stroke", penColor);
 	}
 	node.setAttribute("fill", "none");
-	node.setAttribute("d", "M" + x + "," + y + "L" + x + "," + y);
+	node.setAttribute("d", "M" + x + "," + y);
 
 	paths.appendChild(node);
-	$("#btnUndo").attr("disabled", false);
 	clearCanvasCache();
 	curPath = paths.childNodes.length - 1;
 }
@@ -603,10 +622,18 @@ function drawPath(x, y){
 function drawEnd(){
 	if (curPath >=0) {
 		var node = paths.childNodes[curPath];
-
+		var move = node.getAttribute("d").split("L").length;
+		curPath = -1;
+		
+		if (move < 2 || (falseTouch && move < 3)) {
+			paths.removeChild(node);
+			return;
+		}
+		
 		updateVispad();
+		$("#btnUndo").attr("disabled", false);
 
-		if (bWsReady && curPath >= 0) {
+		if (bWsReady) {
 			ws.send(
 				JSON.stringify(
 					{
@@ -622,7 +649,6 @@ function drawEnd(){
 				)
 			);
 		}
-		curPath = -1;
 	}
 }
 
@@ -654,9 +680,12 @@ function redo(){
 }
 
 function resetDrawpad(){
-	hMargin = Math.ceil(675 / window.innerWidth) * 36 + 30;
+	hMargin = $("#toolbar").outerHeight();
 	setDrawpadWH(window.innerWidth - wMargin, window.innerHeight - hMargin);
 	setDrawpadViewbox(0, 0, drawpadWidth, drawpadHeight);
+	$("#toolbar").css("top", window.innerHeight - hMargin);
+	popStartX = window.innerWidth - 250;
+	popStartY = window.innerHeight - hMargin;
 }
 
 function clearDrawpad(){

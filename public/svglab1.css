@@ -43,11 +43,20 @@
 	background: #AAA;
 }
 
+#toolbar {
+	position: absolute;
+	font-size: 0px;
+}
+
+#msgSect {
+	font: 12px sans-serif;
+}
+
 .chatbox {
 	position:absolute;
 	width: 200px;
 	font: bold 14px sans-serif;
-	background: #DDF;
+	background: #FFD;
 	border: 1px solid blue;
 	border-radius: 5px;
 	padding: 4px;
