@@ -18,13 +18,13 @@ var drawpad, paths, visdiv, vispad;
 
 // Mouse and Touch Section
 var startX = 0, startY = 0;
-var cursorDiff = 7;  // Do not change this value
+var cursorDiff = 0;  // Do not change this value
 var bBtnLeft=false, bBtnMiddle=false, bBtnRight=false, bUseRBtnEraser = false;
 var touchDist = 0, touchDistDelta = 0, pinchDelta = 60;
 var touchFingerAdjustX = 14, touchFingerAdjustY = 24;
 var touchPenAdjustX = 11, touchPenAdjustY = 11;
 var touchAdjustX = touchPenAdjustX, touchAdjustY = touchPenAdjustY;
-var touchCursorAdjustX = -8, touchCursorAdjustY = 39;  // Do not change these values
+var touchCursorAdjustX = 0, touchCursorAdjustY = 45;  // Do not change these values
 var touchCursor, curImg;
 var holdDrawing =  false;
 var falseTouch = false;
