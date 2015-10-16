@@ -15,15 +15,17 @@ EventMachine.run {
     ws.onclose do
 	  peers = 0
       index = @sockets.index {|i| i[:socket] == ws}
-      client = @sockets.delete_at index
-	  reply = "Peer:#{client[:name]} has left Hub:#{client[:id]}"
-      @sockets.each do |s| 
-	    if (s[:id] == client[:id]) then 
-		  s[:socket].send(h(reply)) 
-		  peers += 1
-	    end
+	  if (index > 0) then
+        client = @sockets.delete_at index
+        reply = "Peer:#{client[:name]} has left Hub:#{client[:id]}"
+        @sockets.each do |s| 
+      	  if (s[:id] == client[:id]) then 
+      	    s[:socket].send(h(reply)) 
+            peers += 1
+          end
+        end
+        puts "#{reply}(#{peers})"
 	  end
-      puts "#{reply}(#{peers})"
     end
     
     ws.onmessage do |msg|

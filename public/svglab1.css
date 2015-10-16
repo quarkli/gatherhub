@@ -1,9 +1,10 @@
 #hubInfo {
-	display: none;
 	position: absolute;
+	height: 160px;
+	width: 285px;
 	border: 4px solid #333;
 	border-radius: 10px;
-	padding: 15px;
+	padding: 10px;
 	text-align: right;
 	background-color: #AAA;
 }
@@ -42,7 +43,31 @@
 }
 
 #msgSect {
+	display: inline-block;
+	white-space: nowrap;
 	font: 12px sans-serif;
+}
+
+#toolbar {
+	position: absolute;
+}
+
+.header-sm {
+	font-weight: bold;
+}
+
+.input-sm {
+	height: 20px;
+	width: 150px;
+}
+
+.input-md {
+	height: 20px;
+	width: 200px;
+}
+
+.light-border {
+	border: 1px solid #CCC;
 }
 
 .chatbox {

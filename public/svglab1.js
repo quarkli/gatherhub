@@ -1,8 +1,8 @@
 "use strict";
 
 // SVG Section
-var wMargin = 20;
-var hMargin = 50;
+var wMargin = 5;
+var hMargin = 5;
 var drawpadWidth = window.innerWidth - wMargin;
 var drawpadHeight = window.innerHeight - hMargin;
 var drawpadVBoxX = 0, drawpadVBoxY = 0;
@@ -67,7 +67,6 @@ $(function(){
 	setVispadViewbox(vispadVBoxX, vispadVBoxY, vispadVBoxW, vispadVBoxH);
 	setPenColor(penColor);
 	setPenWidth(penWidth);
-	resetDrawpad();
 		
 	window.onresize = resetDrawpad;
 	window.onbeforeunload  = function(){if (bWsReady) ws.close(); drawpad.style.cursor = "auto";};
@@ -75,10 +74,12 @@ $(function(){
 		if (e.which == 13) sendMsg();
 	});
 	$("#hubInfo").keyup(function(e){
-		if (e.which == 13) connectSvr('go');
+		if (e.which == 13) $("#btnOK").click();
 		if (e.which == 27) connectSvr('cancel');
 	});
+	$("#btnDisconn").hide();
 	$("#msgSect").hide();
+	resetDrawpad();
 });
 
 function getProperStyleAttr(attr){
@@ -103,40 +104,36 @@ function keepAlive(){
 }
 
 function connectSvr(opt){
-	if (opt == "cancel") {
-		$("#hubInfo").hide();
+	if (opt == "disconn") {
+		ws.close();
+		$("#btnDisconn").hide();
+		$("#btnConn").show();
 	}
 	else if (opt == "set") {
-		if ($("#btnConn").html() == '<span class="glyphicon glyphicon-log-out"></span>') {
-			ws.close();
-			return;
-		}
-
+		$("#hubInfo").show();
 		$("#svrAddr").val(svraddr);
 		$("#hubId").val(hubid);
 		$("#peerName").val(peername);
-		$("#hubInfo").css("top", (window.innerHeight - parseInt($("#hubInfo").css("height"))) / 2 + "px");
-		$("#hubInfo").css("left", (window.innerWidth - parseInt($("#hubInfo").css("width"))) / 2 + "px");
-		$("#hubInfo").show();
 		$("#svrAddr").focus();
 		$("#svrAddr").select();
 	}
 	else if (opt == "go") {
-		$("#hubInfo").hide();
 		svraddr = $("#svrAddr").val();
 		hubid = $("#hubId").val();
 		peername = $("#peerName").val();
-		$("#btnConn").html('<span class="glyphicon glyphicon-log-out"></span>');
 
 		ws = new WebSocket("ws://" + svraddr + ":55688");
 		ws.onopen = function(){
 			ws.send(JSON.stringify({id: hubid, name: peername, action: "connect"}));
 			bWsReady = true;
 			taskKeepAlive = keepAlive();
+			$("#btnDisconn").show();
+			$("#btnConn").hide();
 			$("#msgHead").html(peername + "@" + hubid + ":");
 			$("#msgSect").show();
 			hMargin = $("#toolbar").outerHeight();
 			setDrawpadWH(window.innerWidth - wMargin, window.innerHeight - hMargin);
+			$("#toolbar").css("top", window.innerHeight - hMargin + "px");
 		};
 		ws.onmessage = function(msg){
 			if (msg.data.match("path")){
@@ -165,8 +162,12 @@ function connectSvr(opt){
 			showDebug("Connection closed!");
 			clearInterval(taskKeepAlive);
 			bWsReady = false;
-			document.getElementById("btnConn").innerHTML = '<span class="glyphicon glyphicon-log-in"></span>';
+			$("#btnDisconn").hide();
+			$("#btnConn").show();
 			$("#msgSect").hide();
+			hMargin = $("#toolbar").outerHeight();
+			setDrawpadWH(window.innerWidth - wMargin, window.innerHeight - hMargin);
+			$("#toolbar").css("top", window.innerHeight - hMargin + "px");
 		};
 	}
 }
@@ -319,7 +320,7 @@ function visdivDblTapHdl(e) {
 	e.preventDefault();
 	if (visdivTap) {
 		var w = window.innerWidth - 10, h = precision(w / 16 * 9, 3);
-		if (w / 16 * 9 > window.innerHeight - hMargin) {
+		if (w / 16 * 9 > window.innerHeight - hMargin - 10) {
 			h = window.innerHeight - hMargin - 10;
 			w = precision(h / 9 * 16, 3);
 		}
@@ -684,6 +685,7 @@ function resetDrawpad(){
 	setDrawpadViewbox(0, 0, drawpadWidth, drawpadHeight);
 	popStartX = window.innerWidth - 250;
 	popStartY = window.innerHeight - hMargin;
+	$("#toolbar").css("top", window.innerHeight - hMargin + "px");
 }
 
 function clearDrawpad(){

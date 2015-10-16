@@ -8,7 +8,7 @@ and open the template in the editor.
     <head>
         <title>SVG Lab1</title>
         <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+		<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1">
 		<link rel="stylesheet" href="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css">
 		<link rel="stylesheet" href="svglab1.css">
 		<!--<script src="http://ajax.aspnetcdn.com/ajax/jQuery/jquery-1.11.3.min.js"></script>-->
@@ -19,17 +19,18 @@ and open the template in the editor.
 	</head>
     <body>
 	<div>
-		<div id="hubInfo" id="toolbar" class="container-fluid">
-			Server:	<input clase="form-control" id="svrAddr" type="text" size="20"/><br>
-			Hud ID:	<input clase="form-control" id="hubId" type="text" size="20"/><br>
-			Peer Name: <input clase="form-control" id="peerName" type="text" size="20"/><br>
-			<button class="btn-default btn-sm" onclick="connectSvr('go')" ><span class="glyphicon glyphicon-ok green"></span></button>
-			<button class="btn-default btn-sm" onclick="connectSvr('cancel')"><span class="glyphicon glyphicon-remove red"></span></button>
+		<div id="hubInfo" class="modal modal-dialog modal-sm fade">
+			<span class="header-sm">Join Hub</span><br>
+			Server:	<input clase="form-control input-sm" id="svrAddr" type="text" size="20"/><br>
+			Hud ID:	<input clase="form-control input-sm" id="hubId" type="text" size="20"/><br>
+			Peer Name: <input clase="form-control input-sm" id="peerName" type="text" size="20"/><br>
+			<button id="btnOK" class="btn-default btn-sm" data-dismiss="modal" onclick="connectSvr('go')"><span class="glyphicon glyphicon-ok green"></span></button>
+			<button class="btn-default btn-sm" data-dismiss="modal"><span class="glyphicon glyphicon-remove red"></span></button>
 		</div>
 		<div id="touchCursor">
 			<img id="curImg" src="marker_black_1.png"/>
 		</div>
-		<div>
+		<div class="light-border">
 			<svg id="sketchCanvas"><g id="allpaths"></g></svg>
 		</div>
 		<div id="visualBoard">
@@ -39,7 +40,8 @@ and open the template in the editor.
 				<use xlink:href="#allpaths"/>
 			</svg>
 		</div>
-		<div id="toolbar" class="btn-group">
+		<div id="toolbar" class="container">
+		<div class="row btn-group">
 			<button class="btn-default btn-sm" onclick="setPenColor('black')"><span class="glyphicon glyphicon-pencil black"></span></button>
 			<button class="btn-default btn-sm" onclick="setPenColor('red')"><span class="glyphicon glyphicon-pencil red"></span></button>
 			<button class="btn-default btn-sm" onclick="setPenColor('green')"><span class="glyphicon glyphicon-pencil green"></button>
@@ -57,12 +59,14 @@ and open the template in the editor.
 			<button class="btn-default btn-sm" id="btnRedo" onclick="redo()" disabled><span class="glyphicon glyphicon-forward grey"></button>
 			<button class="btn-default btn-sm" onclick="resetDrawpad()"><span class="glyphicon glyphicon-screenshot grey"></button>
 			<button class="btn-default btn-sm" onclick="clearDrawpad()"><span class="glyphicon glyphicon-refresh grey"></button>
-			<button class="btn-default btn-sm" id="btnConn" onclick="connectSvr('set')"><span class="glyphicon glyphicon-log-in grey"></button><br>
-			<div id="msgSect">
-				<span id="msgHead"></span>
-				<input class="form-control input-sm" id="txtMsg" type="text" size="25"/>
-				<button class="btn-default btn-xs" onclick="sendMsg()"><span class="glyphicon glyphicon-send blue"></button>
-			</div>
+			<button class="btn-default btn-sm" id="btnConn" data-toggle="modal" data-target="#hubInfo" data-keyboard="true" onclick="connectSvr('set')"><span class="glyphicon glyphicon-log-in grey"></button>
+			<button class="btn-default btn-sm" id="btnDisconn" onclick="connectSvr('disconn')"><span class="glyphicon glyphicon-log-out grey"></button>
+		</div>
+		<div id="msgSect" class="row">
+			<span id="msgHead"></span>
+			<input class="input-md" id="txtMsg" type="text" size="25"/>
+			<button class="btn-default btn-xs" onclick="sendMsg()"><span class="glyphicon glyphicon-send blue"></button>
+		</div>
 		</div>
 	</div>
     </body>
