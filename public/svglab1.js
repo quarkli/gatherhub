@@ -139,18 +139,24 @@ function connectSvr(opt){
 			if (msg.data.match("path")){
 				var ctx = JSON.parse(msg.data);
 				if (ctx.id == hubid && ctx.name != peername){
-					showDebug(">> " + ctx.name + " drawing:");
-					showDebug("<path stroke='" + ctx.stroke + "' stroke-width='" + ctx.strokeWidth +"'\n stroke-linecap='" + ctx.strokeLinecap + "' fill='" + ctx.fill + "'\n d='" + ctx.d + "'/>");
-					var node = document.createElementNS("http://www.w3.org/2000/svg", "path");
-					node.setAttribute("stroke-width", ctx.strokeWidth);
-					node.setAttribute("stroke", ctx.stroke);
-					node.setAttribute("stroke-linecap", ctx.strokeLinecap);
-					node.setAttribute("fill", ctx.fill);
-					node.setAttribute("d", ctx.d);
-					paths.appendChild(node);
-					$("#btnUndo").attr("disabled", false);
-					clearCanvasCache();
-					updateVispad();
+					if (ctx.ops && ctx.ops == 'clear') {		
+						clearDrawpad("");
+						showDebug("Remote clear");
+					}
+					else {
+						showDebug(">> " + ctx.name + " drawing:");
+						showDebug("<path stroke='" + ctx.stroke + "' stroke-width='" + ctx.strokeWidth +"'\n stroke-linecap='" + ctx.strokeLinecap + "' fill='" + ctx.fill + "'\n d='" + ctx.d + "'/>");
+						var node = document.createElementNS("http://www.w3.org/2000/svg", "path");
+						node.setAttribute("stroke-width", ctx.strokeWidth);
+						node.setAttribute("stroke", ctx.stroke);
+						node.setAttribute("stroke-linecap", ctx.strokeLinecap);
+						node.setAttribute("fill", ctx.fill);
+						node.setAttribute("d", ctx.d);
+						paths.appendChild(node);
+						$("#btnUndo").attr("disabled", false);
+						clearCanvasCache();
+						updateVispad();
+					}
 				}
 			}
 			else {
@@ -688,10 +694,11 @@ function resetDrawpad(){
 	$("#toolbar").css("top", window.innerHeight - hMargin + "px");
 }
 
-function clearDrawpad(){
+function clearDrawpad(msg){
 	while (undo()) {};
 	clearCanvasCache();
 	resetDrawpad();
+	if (bWsReady && msg == "ops") ws.send(JSON.stringify({id: hubid, name: peername, action: "path", ops: "clear"}));
 }
 
 function clearCanvasCache() {
