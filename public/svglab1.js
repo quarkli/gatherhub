@@ -1,4 +1,4 @@
-"use strict";
+'use strict';
 
 // SVG Section
 var wMargin = 5;
@@ -8,9 +8,9 @@ var drawpadHeight = window.innerHeight - hMargin;
 var drawpadVBoxX = 0, drawpadVBoxY = 0;
 var drawpadVBoxW = drawpadWidth;
 var drawpadVBoxH = drawpadHeight;
-var penColor = "black", penWidth = 5, penShape = "round";
+var penColor = 'black', penWidth = 5, penShape = 'round';
 
-var canvasCache = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+var canvasCache = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
 var curPath = -1;
 var visdivTap = false, taskVisdiv;
 var vispadVBoxX = 0, vispadVBoxY = 0, vispadVBoxW = 160, vispadVBoxH = 90;
@@ -30,9 +30,9 @@ var holdDrawing =  false;
 var falseTouch = false;
 
 // WebSocket Section
-var svraddr = "minichat.gatherhub.com";
+var svraddr = 'minichat.gatherhub.com';
 var hubid = 0 | Math.random() * 10000000;
-var peername = "Peer-" + (0 | Math.random() * 1000);
+var peername = 'Peer-' + (0 | Math.random() * 1000);
 var bWsReady = false;
 var taskKeepAlive = keepAlive();
 var ws;
@@ -42,12 +42,12 @@ var popStartX = window.innerWidth - 250;
 var popStartY = window.innerHeight - hMargin;
 
 $(function(){
-	drawpad = document.getElementById("sketchCanvas");
-	paths = document.getElementById("allpaths");
-	visdiv = document.getElementById("visualBoard");
-	vispad = document.getElementById("visualCanvas");
-	touchCursor = document.getElementById("touchCursor");
-	curImg = document.getElementById("curImg");
+	drawpad = document.getElementById('sketchCanvas');
+	paths = document.getElementById('allpaths');
+	visdiv = document.getElementById('visualBoard');
+	vispad = document.getElementById('visualCanvas');
+	touchCursor = document.getElementById('touchCursor');
+	curImg = document.getElementById('curImg');
 
 	drawpad.onmousedown = drawpadMouseDownHdl;
 	drawpad.onmousemove = drawpadMouseMoveHdl;
@@ -56,39 +56,39 @@ $(function(){
 	drawpad.onmouseleave = drawpadLostFocus;
 	drawpad.onwheel = drawpadMouseWheelHdl;
 	drawpad.oncontextmenu = function(){return false;};
-	drawpad.addEventListener("touchstart", drawpadTouchStartHdl);
-	drawpad.addEventListener("touchend", drawpadLostFocus);
-	drawpad.addEventListener("touchmove", drawpadTouchMoveHdl);
+	drawpad.addEventListener('touchstart', drawpadTouchStartHdl);
+	drawpad.addEventListener('touchend', drawpadLostFocus);
+	drawpad.addEventListener('touchmove', drawpadTouchMoveHdl);
 
 	visdiv.onwheel = visdivWheelHdl;
 	visdiv.onmousedown = visdivDblTapHdl;
-	visdiv.addEventListener("touchstart", visdivDblTapHdl);
+	visdiv.addEventListener('touchstart', visdivDblTapHdl);
 	setVisdivWH(160, 90);
 	setVispadViewbox(vispadVBoxX, vispadVBoxY, vispadVBoxW, vispadVBoxH);
 	setPenColor(penColor);
 	setPenWidth(penWidth);
 		
 	window.onresize = resetDrawpad;
-	window.onbeforeunload  = function(){if (bWsReady) ws.close(); drawpad.style.cursor = "auto";};
-	$("#txtMsg").keypress(function(e){
+	window.onbeforeunload  = function(){if (bWsReady) ws.close(); drawpad.style.cursor = 'auto';};
+	$('#txtMsg').keypress(function(e){
 		if (e.which == 13) sendMsg();
 	});
-	$("#hubInfo").keyup(function(e){
-		if (e.which == 13) $("#btnOK").click();
+	$('#hubInfo').keyup(function(e){
+		if (e.which == 13) $('#btnOK').click();
 		if (e.which == 27) connectSvr('cancel');
 	});
-	$("#btnDisconn").hide();
-	$("#msgSect").hide();
+	$('#btnDisconn').hide();
+	$('#msgSect').hide();
 	resetDrawpad();
 });
 
 function getProperStyleAttr(attr){
     var root=document.documentElement;
-    if ("-webkit-" + attr in root.style) return "-webkit-" + attr;
-    if ("-khtml-" + attr in root.style) return "-khtml-" + attr;
-    if ("-moz-" + attr in root.style) return "-moz-" + attr;
-    if ("-ms-" + attr in root.style) return "-ms-" + attr;
-    if ("-o-" + attr in root.style) return "-o-" + attr;
+    if ('-webkit-' + attr in root.style) return '-webkit-' + attr;
+    if ('-khtml-' + attr in root.style) return '-khtml-' + attr;
+    if ('-moz-' + attr in root.style) return '-moz-' + attr;
+    if ('-ms-' + attr in root.style) return '-ms-' + attr;
+    if ('-o-' + attr in root.style) return '-o-' + attr;
     if (attr in root.style) return attr;
 }
 
@@ -98,62 +98,62 @@ function showDebug(msg){
 
 function keepAlive(){
 	if (bWsReady) {
-		return setInterval(function(){if (bWsReady) ws.send("");}, 30000);
+		return setInterval(function(){if (bWsReady) ws.send('');}, 30000);
 	}
 	return null;
 }
 
 function connectSvr(opt){
-	if (opt == "disconn") {
+	if (opt == 'disconn') {
 		ws.close();
-		$("#btnDisconn").hide();
-		$("#btnConn").show();
+		$('#btnDisconn').hide();
+		$('#btnConn').show();
 	}
-	else if (opt == "set") {
-		$("#hubInfo").show();
-		$("#svrAddr").val(svraddr);
-		$("#hubId").val(hubid);
-		$("#peerName").val(peername);
-		$("#svrAddr").focus();
-		$("#svrAddr").select();
+	else if (opt == 'set') {
+		$('#hubInfo').show();
+		$('#svrAddr').val(svraddr);
+		$('#hubId').val(hubid);
+		$('#peerName').val(peername);
+		$('#svrAddr').focus();
+		$('#svrAddr').select();
 	}
-	else if (opt == "go") {
-		svraddr = $("#svrAddr").val();
-		hubid = $("#hubId").val();
-		peername = $("#peerName").val();
+	else if (opt == 'go') {
+		svraddr = $('#svrAddr').val();
+		hubid = $('#hubId').val();
+		peername = $('#peerName').val();
 
-		ws = new WebSocket("ws://" + svraddr + ":55688");
+		ws = new WebSocket('ws://' + svraddr + ':55688');
 		ws.onopen = function(){
-			ws.send(JSON.stringify({id: hubid, name: peername, action: "connect"}));
+			ws.send(JSON.stringify({id: hubid, name: peername, action: 'connect'}));
 			bWsReady = true;
 			taskKeepAlive = keepAlive();
-			$("#btnDisconn").show();
-			$("#btnConn").hide();
-			$("#msgHead").html(peername + "@" + hubid + ":");
-			$("#msgSect").show();
-			hMargin = $("#toolbar").outerHeight();
+			$('#btnDisconn').show();
+			$('#btnConn').hide();
+			$('#msgHead').html(peername + '@' + hubid + ':');
+			$('#msgSect').show();
+			hMargin = $('#toolbar').outerHeight();
 			setDrawpadWH(window.innerWidth - wMargin, window.innerHeight - hMargin);
-			$("#toolbar").css("top", window.innerHeight - hMargin + "px");
+			$('#toolbar').css('top', window.innerHeight - hMargin + 'px');
 		};
 		ws.onmessage = function(msg){
-			if (msg.data.match("path")){
+			if (msg.data.match('path')){
 				var ctx = JSON.parse(msg.data);
 				if (ctx.id == hubid && ctx.name != peername){
 					if (ctx.ops && ctx.ops == 'clear') {		
-						clearDrawpad("");
-						showDebug("Remote clear");
+						clearDrawpad('');
+						showDebug('Remote clear');
 					}
 					else {
-						showDebug(">> " + ctx.name + " drawing:");
-						showDebug("<path stroke='" + ctx.stroke + "' stroke-width='" + ctx.strokeWidth +"'\n stroke-linecap='" + ctx.strokeLinecap + "' fill='" + ctx.fill + "'\n d='" + ctx.d + "'/>");
-						var node = document.createElementNS("http://www.w3.org/2000/svg", "path");
-						node.setAttribute("stroke-width", ctx.strokeWidth);
-						node.setAttribute("stroke", ctx.stroke);
-						node.setAttribute("stroke-linecap", ctx.strokeLinecap);
-						node.setAttribute("fill", ctx.fill);
-						node.setAttribute("d", ctx.d);
+						showDebug('>> ' + ctx.name + ' drawing:');
+						showDebug('<path stroke="' + ctx.stroke + '" stroke-width="' + ctx.strokeWidth + '"\n stroke-linecap="' + ctx.strokeLinecap + '" fill="' + ctx.fill + '"\n d="' + ctx.d + '"/>');
+						var node = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+						node.setAttribute('stroke-width', ctx.strokeWidth);
+						node.setAttribute('stroke', ctx.stroke);
+						node.setAttribute('stroke-linecap', ctx.strokeLinecap);
+						node.setAttribute('fill', ctx.fill);
+						node.setAttribute('d', ctx.d);
 						paths.appendChild(node);
-						$("#btnUndo").attr("disabled", false);
+						$('#btnUndo').attr('disabled', false);
 						clearCanvasCache();
 						updateVispad();
 					}
@@ -165,46 +165,46 @@ function connectSvr(opt){
 			}
 		};
 		ws.onclose = function(){
-			showDebug("Connection closed!");
+			showDebug('Connection closed!');
 			clearInterval(taskKeepAlive);
 			bWsReady = false;
-			$("#btnDisconn").hide();
-			$("#btnConn").show();
-			$("#msgSect").hide();
-			hMargin = $("#toolbar").outerHeight();
+			$('#btnDisconn').hide();
+			$('#btnConn').show();
+			$('#msgSect').hide();
+			hMargin = $('#toolbar').outerHeight();
 			setDrawpadWH(window.innerWidth - wMargin, window.innerHeight - hMargin);
-			$("#toolbar").css("top", window.innerHeight - hMargin + "px");
+			$('#toolbar').css('top', window.innerHeight - hMargin + 'px');
 		};
 	}
 }
 
 function popupMsg(msg) {
 	var tmpid = (0 | Math.random() * 10000);
-	var divid = "#" + tmpid;
-	var tmpAry = msg.split(" says : ");
+	var divid = '#' + tmpid;
+	var tmpAry = msg.split(' says : ');
 	var dur = msg.length < 10 ? 2000 : msg.length / 3 * 1000;
-	var nodeDiv = document.createElementNS("http://www.w3.org/1999/xhtml", "div");
-	var nodeSpan = document.createElementNS("http://www.w3.org/1999/xhtml", "span");
+	var nodeDiv = document.createElementNS('http://www.w3.org/1999/xhtml', 'div');
+	var nodeSpan = document.createElementNS('http://www.w3.org/1999/xhtml', 'span');
 
-	if ($(".chatbox").length == 0 || (popStartY - nodeDiv.offsetHeight) < 40) {
+	if ($('.chatbox').length == 0 || (popStartY - nodeDiv.offsetHeight) < 40) {
 		popStartX = window.innerWidth - 250;
 		popStartY = window.innerHeight - hMargin;
 	}
 
-	nodeDiv.setAttribute("class", "chatbox");
-	nodeDiv.setAttribute("id", tmpid);
-	$("body").append(nodeDiv);
+	nodeDiv.setAttribute('class', 'chatbox');
+	nodeDiv.setAttribute('id', tmpid);
+	$('body').append(nodeDiv);
 
 	if (tmpAry.length > 1) {
-		if (tmpAry[0] == peername) nodeDiv.style["background"] = "#CCC";
-		msg = tmpAry[0] + ":<br>" + tmpAry[1]
+		if (tmpAry[0] == peername) nodeDiv.style['background'] = '#CCC';
+		msg = tmpAry[0] + ':<br>' + tmpAry[1]
 	}
 
 	nodeSpan.innerHTML = msg;
 	$(divid).append(nodeSpan);
-	$(divid).css("top", popStartY);
-	$(divid).css("left", popStartX);
-	$(divid).css("opacity", 0);
+	$(divid).css('top', popStartY);
+	$(divid).css('left', popStartX);
+	$(divid).css('opacity', 0);
 	popStartY -= nodeDiv.offsetHeight;
 	$(divid).animate({opacity: 0.8, top: popStartY}, 1000);
 	$(divid).animate({opacity: 0.8}, dur);
@@ -212,76 +212,76 @@ function popupMsg(msg) {
 }
 
 function sendMsg() {
-	if (bWsReady && $("#txtMsg").val().length > 0) {
-		ws.send(JSON.stringify({id: hubid, name: peername, action: "say", data: $("#txtMsg").val()}));
-		$("#txtMsg").val("");
-		$("#txtMsg").focus();
+	if (bWsReady && $('#txtMsg').val().length > 0) {
+		ws.send(JSON.stringify({id: hubid, name: peername, action: 'say', data: $('#txtMsg').val()}));
+		$('#txtMsg').val('');
+		$('#txtMsg').focus();
 	}
 }
 
 function setPenColor(c){
 	penColor = c;
 
-	$("#toolbar button").slice(0, 5).css("background", "");
+	$('#toolbar button').slice(0, 5).css('background', '');
 	switch (c) {
 		case 'black':
-			$("#toolbar button:nth-child(1)").css("background", "#BBB");
+			$('#toolbar button:nth-child(1)').css('background', '#BBB');
 			break;
 		case 'red':
-			$("#toolbar button:nth-child(2)").css("background", "#BBB");
+			$('#toolbar button:nth-child(2)').css('background', '#BBB');
 			break;
 		case 'green':
-			$("#toolbar button:nth-child(3)").css("background", "#BBB");
+			$('#toolbar button:nth-child(3)').css('background', '#BBB');
 			break;
 		case 'blue':
-			$("#toolbar button:nth-child(4)").css("background", "#BBB");
+			$('#toolbar button:nth-child(4)').css('background', '#BBB');
 			break;
 		case 'white':
-			$("#toolbar button:nth-child(5)").css("background", "#BBB");
+			$('#toolbar button:nth-child(5)').css('background', '#BBB');
 			break;
 	}
-	showDebug("Pen-color=" + c);
+	showDebug('Pen-color=' + c);
 }
 
 function setPenWidth(w){
 	penWidth = w;
 
-	$("#toolbar button").slice(5, 9).css("background", "");
+	$('#toolbar button').slice(5, 9).css('background', '');
 	switch (w) {
 		case 1:
-			$("#toolbar button:nth-child(6)").css("background", "#BBB");
+			$('#toolbar button:nth-child(6)').css('background', '#BBB');
 			break;
 		case 5:
-			$("#toolbar button:nth-child(7)").css("background", "#BBB");
+			$('#toolbar button:nth-child(7)').css('background', '#BBB');
 			break;
 		case 9:
-			$("#toolbar button:nth-child(8)").css("background", "#BBB");
+			$('#toolbar button:nth-child(8)').css('background', '#BBB');
 			break;
 		case 21:
-			$("#toolbar button:nth-child(9)").css("background", "#BBB");
+			$('#toolbar button:nth-child(9)').css('background', '#BBB');
 			break;
 	}
-	showDebug("Pen-width=" + w);
+	showDebug('Pen-width=' + w);
 }
 
 function setPenShape(s){
 	penShape = s;
-	showDebug("Pen-shape=" + s);
+	showDebug('Pen-shape=' + s);
 }
 
 function setVisdivWH(w, h){
 	w = precision(w, 3);
 	h = precision(h, 3);
-	$("#visualBoard").css("width", w + "px");
-	$("#visualBoard").css("height", h + "px");
-	vispad.setAttribute("width", w);
-	vispad.setAttribute("height", h);
+	$('#visualBoard').css('width', w + 'px');
+	$('#visualBoard').css('height', h + 'px');
+	vispad.setAttribute('width', w);
+	vispad.setAttribute('height', h);
 
-	$("#vispadSizeH").css("top", parseInt($("#visualBoard").css("top")) + $("#vispadSizeH").html().length * 2 + "px");
-	$("#vispadSizeH").css("left", parseInt($("#visualBoard").css("width")) - parseInt($("#vispadSizeH").css("font-size")) - 12 + "px");
-	$("#vispadSizeW").css("top", parseInt($("#visualBoard").css("height")) - parseInt($("#vispadSizeW").css("font-size")) - 4 + "px");
-	$("#vispadSizeW").css("left", parseInt($("#visualBoard").css("left")) - 1 + "px");
-	showDebug("vispad width=" + w + " height=" + h);
+	$('#vispadSizeH').css('top', parseInt($('#visualBoard').css('top')) + $('#vispadSizeH').html().length * 2 + 'px');
+	$('#vispadSizeH').css('left', parseInt($('#visualBoard').css('width')) - parseInt($('#vispadSizeH').css('font-size')) - 12 + 'px');
+	$('#vispadSizeW').css('top', parseInt($('#visualBoard').css('height')) - parseInt($('#vispadSizeW').css('font-size')) - 4 + 'px');
+	$('#vispadSizeW').css('left', parseInt($('#visualBoard').css('left')) - 1 + 'px');
+	showDebug('vispad width=' + w + ' height=' + h);
 }
 
 function setVispadViewbox(x, y, w, h){
@@ -289,14 +289,14 @@ function setVispadViewbox(x, y, w, h){
 	vispadVBoxY = precision(y, 3);
 	vispadVBoxW = precision(w, 3);
 	vispadVBoxH = precision(h, 3);
-	vispad.setAttribute("viewBox", vispadVBoxX + " " + vispadVBoxY + " " + vispadVBoxW + " " + vispadVBoxH);
-	showDebug("vispad viewBox=" + vispad.getAttribute("viewBox"));
+	vispad.setAttribute('viewBox', vispadVBoxX + ' ' + vispadVBoxY + ' ' + vispadVBoxW + ' ' + vispadVBoxH);
+	showDebug('vispad viewBox=' + vispad.getAttribute('viewBox'));
 }
 
 function visdivWheelHdl(e) {
 	e.preventDefault();
-	var w = parseInt(vispad.getAttribute("width"));
-	var h = parseInt(vispad.getAttribute("height"));
+	var w = parseInt(vispad.getAttribute('width'));
+	var h = parseInt(vispad.getAttribute('height'));
 	var wheelDelta = (e.wheelDelta ? e.wheelDelta : -e.deltaY);
 
 	if (wheelDelta < 0){
@@ -330,7 +330,7 @@ function visdivDblTapHdl(e) {
 			h = window.innerHeight - hMargin - 10;
 			w = precision(h / 9 * 16, 3);
 		}
-		if (parseInt($("#visualBoard").css("width")) != w && parseInt($("#visualBoard").css("height")) != h) setVisdivWH(w, h);
+		if (parseInt($('#visualBoard').css('width')) != w && parseInt($('#visualBoard').css('height')) != h) setVisdivWH(w, h);
 		else setVisdivWH(160, 90);
 		visdivTap = false;
 	}
@@ -346,7 +346,7 @@ function updateVispad() {
 	var py = precision(paths.getBBox().y, 3);
 	var pw = precision(paths.getBBox().width, 3);
 	var ph = precision(paths.getBBox().height, 3);
-	console.log("paths BBox= " + px + " " + py + " " + pw + " " + ph);
+	console.log('paths BBox= ' + px + ' ' + py + ' ' + pw + ' ' + ph);
 
 	if (px != vispadVBoxX) {
 		vispadVBoxX = px;
@@ -361,23 +361,23 @@ function updateVispad() {
 		vispadVBoxW = scale * 16;
 		vispadVBoxH = scale * 9;
 		setVispadViewbox(vispadVBoxX, vispadVBoxY, vispadVBoxW, vispadVBoxH);
-		$("#vispadSizeH").html(vispadVBoxH);
-		$("#vispadSizeW").html(vispadVBoxW);
-		$("#vispadSizeH").css("top", parseInt($("#visualBoard").css("top")) + $("#vispadSizeH").html().length * 2 + "px");
-		$("#vispadSizeH").css("left", parseInt($("#visualBoard").css("width")) - parseInt($("#vispadSizeH").css("font-size")) - $("#vispadSizeH").html().length * 3 + "px");
-		$("#vispadSizeW").css("top", parseInt($("#visualBoard").css("height")) - parseInt($("#vispadSizeW").css("font-size")) - 2 + "px");
-		$("#vispadSizeW").css("left", parseInt($("#visualBoard").css("left")) - 1 + "px");
-		$("#vispadSizeH").show();
-		$("#vispadSizeW").show();
+		$('#vispadSizeH').html(vispadVBoxH);
+		$('#vispadSizeW').html(vispadVBoxW);
+		$('#vispadSizeH').css('top', parseInt($('#visualBoard').css('top')) + $('#vispadSizeH').html().length * 2 + 'px');
+		$('#vispadSizeH').css('left', parseInt($('#visualBoard').css('width')) - parseInt($('#vispadSizeH').css('font-size')) - $('#vispadSizeH').html().length * 3 + 'px');
+		$('#vispadSizeW').css('top', parseInt($('#visualBoard').css('height')) - parseInt($('#vispadSizeW').css('font-size')) - 2 + 'px');
+		$('#vispadSizeW').css('left', parseInt($('#visualBoard').css('left')) - 1 + 'px');
+		$('#vispadSizeH').show();
+		$('#vispadSizeW').show();
 	}
 }
 
 function setDrawpadWH(w, h){
 	drawpadWidth = precision(w, 3);
 	drawpadHeight = precision(h - 10, 3);
-	drawpad.setAttribute("width", drawpadWidth);
-	drawpad.setAttribute("height", drawpadHeight);
-	showDebug("drawpad width=" + drawpadWidth + " height=" + drawpadHeight);
+	drawpad.setAttribute('width', drawpadWidth);
+	drawpad.setAttribute('height', drawpadHeight);
+	showDebug('drawpad width=' + drawpadWidth + ' height=' + drawpadHeight);
 }
 
 function setDrawpadViewbox(x, y, w, h){
@@ -385,14 +385,14 @@ function setDrawpadViewbox(x, y, w, h){
 	drawpadVBoxY = precision(y, 3);
 	drawpadVBoxW = precision(w, 3);
 	drawpadVBoxH = precision(h, 3);
-	drawpad.setAttribute("viewBox", drawpadVBoxX + " " + drawpadVBoxY + " " + drawpadVBoxW + " " + drawpadVBoxH);
-	showDebug("drawpad viewBox=" + drawpad.getAttribute("viewBox"));
+	drawpad.setAttribute('viewBox', drawpadVBoxX + ' ' + drawpadVBoxY + ' ' + drawpadVBoxW + ' ' + drawpadVBoxH);
+	showDebug('drawpad viewBox=' + drawpad.getAttribute('viewBox'));
 }
 
 function setDrawpadCursor(){
-	drawpad.style.cursor = "url(marker_" + penColor + (penColor != "white" && penShape == "round" ? "_round" : "") + "_" + penWidth + ".png), auto";
-	if (bBtnMiddle || (bBtnLeft && bBtnRight)) drawpad.style.cursor = "url(hand.png), auto";
-	if (bUseRBtnEraser) drawpad.style.cursor = "url(marker_white_" + penWidth + ".png), auto";
+	drawpad.style.cursor = 'url(marker_' + penColor + (penColor != 'white' && penShape == 'round' ? '_round' : '') + '_' + penWidth + '.png), auto';
+	if (bBtnMiddle || (bBtnLeft && bBtnRight)) drawpad.style.cursor = 'url(hand.png), auto';
+	if (bUseRBtnEraser) drawpad.style.cursor = 'url(marker_white_' + penWidth + '.png), auto';
 }
 
 function drawpadSizeup(t){
@@ -472,8 +472,8 @@ function drawpadLostFocus(e) {
 	bBtnLeft = bBtnMiddle = bBtnRight = false;
 	touchDist = touchDistDelta = 0;
 	if (curPath >= 0 && paths.childNodes[curPath]) drawEnd();
-	drawpad.style.cursor = "auto";
-	touchCursor.style.display = "none";
+	drawpad.style.cursor = 'auto';
+	touchCursor.style.display = 'none';
 	drawpadTouchStartHdl(e);
 	setTimeout(function(){holdDrawing = false;}, 200);
 }
@@ -500,11 +500,11 @@ function drawpadMouseWheelHdl(e){
 	}
 	else {
 		if (wheelDelta > 0){
-			drawpad.style.cursor = "url(magnifier_plus.png), auto";
+			drawpad.style.cursor = 'url(magnifier_plus.png), auto';
 			drawpadSizeup(true);
 		}
 		else {
-			drawpad.style.cursor = "url(magnifier_minus.png), auto";
+			drawpad.style.cursor = 'url(magnifier_minus.png), auto';
 			drawpadSizeup(false);
 		}
 	}
@@ -512,7 +512,7 @@ function drawpadMouseWheelHdl(e){
 
 function drawpadTouchStartHdl(e){
 	e.preventDefault();
-	$("#txtMsg").blur();
+	$('#txtMsg').blur();
 	
 	if (e.touches){
 		var t = e.touches;
@@ -521,20 +521,20 @@ function drawpadTouchStartHdl(e){
 
 		if (t.length == 3) {
 			if (curPath >= 0) drawEnd();
-			curImg.src = "hand.png";
-			curImg.style[getProperStyleAttr("transform")] = "rotate(0deg)";
-			touchCursor.style.display = "block";
-			touchCursor.style.top = t0_y - touchCursorAdjustY + "px";
-			touchCursor.style.left = t0_x - touchCursorAdjustX + "px";
+			curImg.src = 'hand.png';
+			curImg.style[getProperStyleAttr('transform')] = 'rotate(0deg)';
+			touchCursor.style.display = 'block';
+			touchCursor.style.top = t0_y - touchCursorAdjustY + 'px';
+			touchCursor.style.left = t0_x - touchCursorAdjustX + 'px';
 			holdDrawing = true;
 		}
 		else if (t.length == 2){
 			if (curPath >= 0) drawEnd();
-			curImg.src = "magnifier_null.png";
-			curImg.style[getProperStyleAttr("transform")] = "rotate(0deg)";
-			touchCursor.style.top = drawpadHeight / 2 + "px";
-			touchCursor.style.left = drawpadWidth / 2 + "px";
-			touchCursor.style.display = "block";
+			curImg.src = 'magnifier_null.png';
+			curImg.style[getProperStyleAttr('transform')] = 'rotate(0deg)';
+			touchCursor.style.top = drawpadHeight / 2 + 'px';
+			touchCursor.style.left = drawpadWidth / 2 + 'px';
+			touchCursor.style.display = 'block';
 			touchDist = Math.pow(t0_x - t[1].pageX, 2) + Math.pow(t0_y -t[1].pageY, 2);
 			holdDrawing = true;
 		}
@@ -543,11 +543,11 @@ function drawpadTouchStartHdl(e){
 			startY = t0_y;
 			if (curPath < 0 &&  t.length == 1) {
 				bBtnLeft = true;
-				curImg.src = "marker_" + penColor + (penColor != "white" && penShape == "round" ? "_round" : "") + "_" + penWidth + ".png";
-				curImg.style[getProperStyleAttr("transform")] = "rotate(270deg)";
-				touchCursor.style.top = t0_y - touchCursorAdjustY + "px";
-				touchCursor.style.left = t0_x - touchCursorAdjustX + "px";
-				touchCursor.style.display = "block";
+				curImg.src = 'marker_' + penColor + (penColor != 'white' && penShape == 'round' ? '_round' : '') + '_' + penWidth + '.png';
+				curImg.style[getProperStyleAttr('transform')] = 'rotate(270deg)';
+				touchCursor.style.top = t0_y - touchCursorAdjustY + 'px';
+				touchCursor.style.left = t0_x - touchCursorAdjustX + 'px';
+				touchCursor.style.display = 'block';
 				drawStart(startX, startY);
 				falseTouch = true;
 				setTimeout(function(){falseTouch=false;}, 5);
@@ -565,8 +565,8 @@ function drawpadTouchMoveHdl(e){
 
 		if (t.length == 1) {
 			bBtnLeft = true;
-			touchCursor.style.top = t0_y - touchCursorAdjustY + "px";
-			touchCursor.style.left = t0_x - touchCursorAdjustX + "px";
+			touchCursor.style.top = t0_y - touchCursorAdjustY + 'px';
+			touchCursor.style.left = t0_x - touchCursorAdjustX + 'px';
 			drawPath(t0_x, t0_y);
 		}
 		else if (t.length == 2){
@@ -575,21 +575,21 @@ function drawpadTouchMoveHdl(e){
 			touchDistDelta += (tmpDist - touchDist);
 			touchDist = tmpDist;
 			if (touchDistDelta > Math.pow(pinchDelta, 2)){
-				curImg.src = "magnifier_plus.png";
+				curImg.src = 'magnifier_plus.png';
 				drawpadSizeup(true);
 				touchDistDelta = 0;
 			}
 			if (touchDistDelta < -Math.pow(pinchDelta, 2)){
-				curImg.src = "magnifier_minus.png";
+				curImg.src = 'magnifier_minus.png';
 				drawpadSizeup(false);
 				touchDistDelta = 0;
 			}
-			touchCursor.style.display = "block";
+			touchCursor.style.display = 'block';
 		}
 		else if (t.length == 3){
 			if (curPath >= 0) drawEnd();
-			touchCursor.style.top = t0_y - touchCursorAdjustY + "px";
-			touchCursor.style.left = t0_x - touchCursorAdjustX + "px";
+			touchCursor.style.top = t0_y - touchCursorAdjustY + 'px';
+			touchCursor.style.left = t0_x - touchCursorAdjustX + 'px';
 			drawpadShift(t0_x, t0_y);
 		}
 	}
@@ -599,17 +599,17 @@ function drawStart(x, y){
 	x = precision(x * drawpadVBoxW / drawpadWidth + drawpadVBoxX, 3);
 	y = precision(y * drawpadVBoxH / drawpadHeight + drawpadVBoxY, 3);
 
-	var node = document.createElementNS("http://www.w3.org/2000/svg", "path");
-	node.setAttribute("stroke-width", penWidth);
-	node.setAttribute("stroke-linecap", penShape);
+	var node = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+	node.setAttribute('stroke-width', penWidth);
+	node.setAttribute('stroke-linecap', penShape);
 	if (bUseRBtnEraser) {
-		node.setAttribute("stroke", "white");
+		node.setAttribute('stroke', 'white');
 	}
 	else {
-		node.setAttribute("stroke", penColor);
+		node.setAttribute('stroke', penColor);
 	}
-	node.setAttribute("fill", "none");
-	node.setAttribute("d", "M" + x + "," + y);
+	node.setAttribute('fill', 'none');
+	node.setAttribute('d', 'M' + x + ',' + y);
 
 	paths.appendChild(node);
 	clearCanvasCache();
@@ -621,14 +621,14 @@ function drawPath(x, y){
 		x = precision(x * drawpadVBoxW / drawpadWidth + drawpadVBoxX, 3);
 		y = precision(y * drawpadVBoxH / drawpadHeight + drawpadVBoxY, 3);
 		var node = paths.childNodes[curPath];
-		node.setAttribute("d", node.getAttribute("d") + "L" + x + "," + y);
+		node.setAttribute('d', node.getAttribute('d') + 'L' + x + ',' + y);
 	}
 }
 
 function drawEnd(){
 	if (curPath >=0) {
 		var node = paths.childNodes[curPath];
-		var move = node.getAttribute("d").split("L").length;
+		var move = node.getAttribute('d').split('L').length;
 		curPath = -1;
 		
 		if (move < 2 || (falseTouch && move < 3)) {
@@ -637,7 +637,7 @@ function drawEnd(){
 		}
 		
 		updateVispad();
-		$("#btnUndo").attr("disabled", false);
+		$('#btnUndo').attr('disabled', false);
 
 		if (bWsReady) {
 			ws.send(
@@ -645,12 +645,12 @@ function drawEnd(){
 					{
 						id: hubid,
 						name: peername,
-						action: "path",
-						stroke: node.getAttribute("stroke"),
-						strokeWidth: node.getAttribute("stroke-width"),
-						strokeLinecap: node.getAttribute("stroke-linecap"),
-						fill: node.getAttribute("fill"),
-						d: node.getAttribute("d")
+						action: 'path',
+						stroke: node.getAttribute('stroke'),
+						strokeWidth: node.getAttribute('stroke-width'),
+						strokeLinecap: node.getAttribute('stroke-linecap'),
+						fill: node.getAttribute('fill'),
+						d: node.getAttribute('d')
 					}
 				)
 			);
@@ -661,10 +661,10 @@ function drawEnd(){
 function undo(){
 	if (paths.childNodes && paths.childNodes.length > 0){
 		var node = paths.childNodes[paths.childNodes.length - 1];
-		if (node.tagName == "path") {
+		if (node.tagName == 'path') {
 			canvasCache.appendChild(node);
-			$("#btnRedo").attr("disabled", false);
-			if (paths.childNodes.length == 0) $("#btnUndo").attr("disabled", true);
+			$('#btnRedo').attr('disabled', false);
+			if (paths.childNodes.length == 0) $('#btnUndo').attr('disabled', true);
 			updateVispad();
 			return true;
 		}
@@ -676,35 +676,35 @@ function redo(){
 	var nodes = canvasCache.childNodes;
 	if (nodes && nodes.length > 0) {
 		var node = nodes[nodes.length - 1];
-		if (node.tagName == "path") {
+		if (node.tagName == 'path') {
 			paths.appendChild(node);
-			$("#btnUndo").attr("disabled", false);
-			if (nodes.length == 0) $("#btnRedo").attr("disabled", true);
+			$('#btnUndo').attr('disabled', false);
+			if (nodes.length == 0) $('#btnRedo').attr('disabled', true);
 			updateVispad();
 		}
 	}
 }
 
 function resetDrawpad(){
-	hMargin = $("#toolbar").outerHeight();
+	hMargin = $('#toolbar').outerHeight();
 	setDrawpadWH(window.innerWidth - wMargin, window.innerHeight - hMargin);
 	setDrawpadViewbox(0, 0, drawpadWidth, drawpadHeight);
 	popStartX = window.innerWidth - 250;
 	popStartY = window.innerHeight - hMargin;
-	$("#toolbar").css("top", window.innerHeight - hMargin + "px");
+	$('#toolbar').css('top', window.innerHeight - hMargin + 'px');
 }
 
 function clearDrawpad(msg){
 	while (undo()) {};
 	clearCanvasCache();
 	resetDrawpad();
-	if (bWsReady && msg == "ops") ws.send(JSON.stringify({id: hubid, name: peername, action: "path", ops: "clear"}));
+	if (bWsReady && msg == 'ops') ws.send(JSON.stringify({id: hubid, name: peername, action: 'path', ops: 'clear'}));
 }
 
 function clearCanvasCache() {
 	var nodes = canvasCache.childNodes;
 	while (nodes.length > 0) canvasCache.removeChild(nodes[nodes.length - 1]);
-	$("#btnRedo").attr("disabled", true);
+	$('#btnRedo').attr('disabled', true);
 }
 
 function precision(num, p) {
