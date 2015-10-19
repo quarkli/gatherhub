@@ -82,6 +82,10 @@ $(function(){
 	resetDrawpad();
 });
 
+function precision(num, p) {
+	return Math.round(num * Math.pow(10,p)) / Math.pow(10,p);
+}
+
 function getProperStyleAttr(attr){
     var root=document.documentElement;
     if ('-webkit-' + attr in root.style) return '-webkit-' + attr;
@@ -219,6 +223,55 @@ function sendMsg() {
 	}
 }
 
+function clearCanvasCache() {
+	var nodes = canvasCache.childNodes;
+	while (nodes.length > 0) canvasCache.removeChild(nodes[nodes.length - 1]);
+	$('#btnRedo').attr('disabled', true);
+}
+
+function resetDrawpad(){
+	hMargin = $('#toolbar').outerHeight();
+	setDrawpadWH(window.innerWidth - wMargin, window.innerHeight - hMargin);
+	setDrawpadViewbox(0, 0, drawpadWidth, drawpadHeight);
+	popStartX = window.innerWidth - 250;
+	popStartY = window.innerHeight - hMargin;
+	$('#toolbar').css('top', window.innerHeight - hMargin + 'px');
+}
+
+function clearDrawpad(msg){
+	while (undo()) {};
+	clearCanvasCache();
+	resetDrawpad();
+	if (bWsReady && msg == 'ops') ws.send(JSON.stringify({id: hubid, name: peername, action: 'path', ops: 'clear'}));
+}
+
+function undo(){
+	if (paths.childNodes && paths.childNodes.length > 0){
+		var node = paths.childNodes[paths.childNodes.length - 1];
+		if (node.tagName == 'path') {
+			canvasCache.appendChild(node);
+			$('#btnRedo').attr('disabled', false);
+			if (paths.childNodes.length == 0) $('#btnUndo').attr('disabled', true);
+			updateVispad();
+			return true;
+		}
+	}
+	return false;
+}
+
+function redo(){
+	var nodes = canvasCache.childNodes;
+	if (nodes && nodes.length > 0) {
+		var node = nodes[nodes.length - 1];
+		if (node.tagName == 'path') {
+			paths.appendChild(node);
+			$('#btnUndo').attr('disabled', false);
+			if (nodes.length == 0) $('#btnRedo').attr('disabled', true);
+			updateVispad();
+		}
+	}
+}
+
 function setPenColor(c){
 	penColor = c;
 
@@ -291,53 +344,6 @@ function setVispadViewbox(x, y, w, h){
 	vispadVBoxH = precision(h, 3);
 	vispad.setAttribute('viewBox', vispadVBoxX + ' ' + vispadVBoxY + ' ' + vispadVBoxW + ' ' + vispadVBoxH);
 	showDebug('vispad viewBox=' + vispad.getAttribute('viewBox'));
-}
-
-function visdivWheelHdl(e) {
-	e.preventDefault();
-	var w = parseInt(vispad.getAttribute('width'));
-	var h = parseInt(vispad.getAttribute('height'));
-	var wheelDelta = (e.wheelDelta ? e.wheelDelta : -e.deltaY);
-
-	if (wheelDelta < 0){
-		w -= 80;
-		h -= 45;
-		if (w < 160 ) {
-			w = 160;
-			h = 90;
-		}
-	}
-	else {
-		w += 80;
-		h += 45;
-		if (w > window.innerWidth - 10) {
-			w = window.innerWidth - 10;
-			h = precision(w / 16 * 9, 3);
-		}
-		if (h > window.innerHeight - hMargin - 10) {
-			h = window.innerHeight - hMargin - 10;
-			w = precision(h / 9 * 16, 3);
-		}
-	}
-	setVisdivWH(w, h);
-}
-
-function visdivDblTapHdl(e) {
-	e.preventDefault();
-	if (visdivTap) {
-		var w = window.innerWidth - 10, h = precision(w / 16 * 9, 3);
-		if (w / 16 * 9 > window.innerHeight - hMargin - 10) {
-			h = window.innerHeight - hMargin - 10;
-			w = precision(h / 9 * 16, 3);
-		}
-		if (parseInt($('#visualBoard').css('width')) != w && parseInt($('#visualBoard').css('height')) != h) setVisdivWH(w, h);
-		else setVisdivWH(160, 90);
-		visdivTap = false;
-	}
-	else {
-		visdivTap = true;
-		taskVisdiv = setTimeout(function(){visdivTap = false;}, 400);
-	}
 }
 
 function updateVispad() {
@@ -418,6 +424,53 @@ function drawpadShift(x, y){
 	startX = x;
 	startY = y;
 	setDrawpadViewbox(drawpadVBoxX, drawpadVBoxY, drawpadVBoxW, drawpadVBoxH);
+}
+
+function visdivWheelHdl(e) {
+	e.preventDefault();
+	var w = parseInt(vispad.getAttribute('width'));
+	var h = parseInt(vispad.getAttribute('height'));
+	var wheelDelta = (e.wheelDelta ? e.wheelDelta : -e.deltaY);
+
+	if (wheelDelta < 0){
+		w -= 80;
+		h -= 45;
+		if (w < 160 ) {
+			w = 160;
+			h = 90;
+		}
+	}
+	else {
+		w += 80;
+		h += 45;
+		if (w > window.innerWidth - 10) {
+			w = window.innerWidth - 10;
+			h = precision(w / 16 * 9, 3);
+		}
+		if (h > window.innerHeight - hMargin - 10) {
+			h = window.innerHeight - hMargin - 10;
+			w = precision(h / 9 * 16, 3);
+		}
+	}
+	setVisdivWH(w, h);
+}
+
+function visdivDblTapHdl(e) {
+	e.preventDefault();
+	if (visdivTap) {
+		var w = window.innerWidth - 10, h = precision(w / 16 * 9, 3);
+		if (w / 16 * 9 > window.innerHeight - hMargin - 10) {
+			h = window.innerHeight - hMargin - 10;
+			w = precision(h / 9 * 16, 3);
+		}
+		if (parseInt($('#visualBoard').css('width')) != w && parseInt($('#visualBoard').css('height')) != h) setVisdivWH(w, h);
+		else setVisdivWH(160, 90);
+		visdivTap = false;
+	}
+	else {
+		visdivTap = true;
+		taskVisdiv = setTimeout(function(){visdivTap = false;}, 400);
+	}
 }
 
 function drawpadMouseDownHdl(e){
@@ -656,57 +709,4 @@ function drawEnd(){
 			);
 		}
 	}
-}
-
-function undo(){
-	if (paths.childNodes && paths.childNodes.length > 0){
-		var node = paths.childNodes[paths.childNodes.length - 1];
-		if (node.tagName == 'path') {
-			canvasCache.appendChild(node);
-			$('#btnRedo').attr('disabled', false);
-			if (paths.childNodes.length == 0) $('#btnUndo').attr('disabled', true);
-			updateVispad();
-			return true;
-		}
-	}
-	return false;
-}
-
-function redo(){
-	var nodes = canvasCache.childNodes;
-	if (nodes && nodes.length > 0) {
-		var node = nodes[nodes.length - 1];
-		if (node.tagName == 'path') {
-			paths.appendChild(node);
-			$('#btnUndo').attr('disabled', false);
-			if (nodes.length == 0) $('#btnRedo').attr('disabled', true);
-			updateVispad();
-		}
-	}
-}
-
-function resetDrawpad(){
-	hMargin = $('#toolbar').outerHeight();
-	setDrawpadWH(window.innerWidth - wMargin, window.innerHeight - hMargin);
-	setDrawpadViewbox(0, 0, drawpadWidth, drawpadHeight);
-	popStartX = window.innerWidth - 250;
-	popStartY = window.innerHeight - hMargin;
-	$('#toolbar').css('top', window.innerHeight - hMargin + 'px');
-}
-
-function clearDrawpad(msg){
-	while (undo()) {};
-	clearCanvasCache();
-	resetDrawpad();
-	if (bWsReady && msg == 'ops') ws.send(JSON.stringify({id: hubid, name: peername, action: 'path', ops: 'clear'}));
-}
-
-function clearCanvasCache() {
-	var nodes = canvasCache.childNodes;
-	while (nodes.length > 0) canvasCache.removeChild(nodes[nodes.length - 1]);
-	$('#btnRedo').attr('disabled', true);
-}
-
-function precision(num, p) {
-	return Math.round(num * Math.pow(10,p)) / Math.pow(10,p);
 }
