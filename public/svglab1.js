@@ -10,11 +10,11 @@ var drawpadVBoxW = drawpadWidth;
 var drawpadVBoxH = drawpadHeight;
 var penColor = 'black', penWidth = 5, penShape = 'round';
 
-var canvasCache = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+var $pathsCache = $(document.createElementNS("http://www.w3.org/2000/svg", "g"));
 var curPath = -1;
 var visdivTap = false, taskVisdiv;
 var vispadVBoxX = 0, vispadVBoxY = 0, vispadVBoxW = 160, vispadVBoxH = 90;
-var drawpad, paths, visdiv, vispad;
+var drawpad, visdiv, vispad;
 
 // Mouse and Touch Section
 var startX = 0, startY = 0;
@@ -43,7 +43,6 @@ var popStartY = window.innerHeight - hMargin;
 
 $(function(){
 	drawpad = document.getElementById('sketchCanvas');
-	paths = document.getElementById('allpaths');
 	visdiv = document.getElementById('visualBoard');
 	vispad = document.getElementById('visualCanvas');
 	touchCursor = document.getElementById('touchCursor');
@@ -150,15 +149,15 @@ function connectSvr(opt){
 					else {
 						showDebug('>> ' + ctx.name + ' drawing:');
 						showDebug('<path stroke="' + ctx.stroke + '" stroke-width="' + ctx.strokeWidth + '"\n stroke-linecap="' + ctx.strokeLinecap + '" fill="' + ctx.fill + '"\n d="' + ctx.d + '"/>');
-						var node = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-						node.setAttribute('stroke-width', ctx.strokeWidth);
-						node.setAttribute('stroke', ctx.stroke);
-						node.setAttribute('stroke-linecap', ctx.strokeLinecap);
-						node.setAttribute('fill', ctx.fill);
-						node.setAttribute('d', ctx.d);
-						paths.appendChild(node);
+						var $node = $(document.createElementNS('http://www.w3.org/2000/svg', 'path'));
+						$node.attr('stroke-width', ctx.strokeWidth);
+						$node.attr('stroke', ctx.stroke);
+						$node.attr('stroke-linecap', ctx.strokeLinecap);
+						$node.attr('fill', ctx.fill);
+						$node.attr('d', ctx.d);
+						$('#paths').append($node);
 						$('#btnUndo').attr('disabled', false);
-						clearCanvasCache();
+						clearPathsCache();
 						updateVispad();
 					}
 				}
@@ -223,9 +222,8 @@ function sendMsg() {
 	}
 }
 
-function clearCanvasCache() {
-	var nodes = canvasCache.childNodes;
-	while (nodes.length > 0) canvasCache.removeChild(nodes[nodes.length - 1]);
+function clearPathsCache() {
+	while ($pathsCache.children().length > 0) $pathsCache.children().last().remove();
 	$('#btnRedo').attr('disabled', true);
 }
 
@@ -240,35 +238,28 @@ function resetDrawpad(){
 
 function clearDrawpad(msg){
 	while (undo()) {};
-	clearCanvasCache();
+	clearPathsCache();
 	resetDrawpad();
 	if (bWsReady && msg == 'ops') ws.send(JSON.stringify({id: hubid, name: peername, action: 'path', ops: 'clear'}));
 }
 
 function undo(){
-	if (paths.childNodes && paths.childNodes.length > 0){
-		var node = paths.childNodes[paths.childNodes.length - 1];
-		if (node.tagName == 'path') {
-			canvasCache.appendChild(node);
-			$('#btnRedo').attr('disabled', false);
-			if (paths.childNodes.length == 0) $('#btnUndo').attr('disabled', true);
-			updateVispad();
-			return true;
-		}
+	if ($('#paths').children('path').length > 0){
+		$pathsCache.append($('#paths').children('path').last());
+		$('#btnRedo').attr('disabled', false);
+		if ($('#paths').children().length == 0) $('#btnUndo').attr('disabled', true);
+		updateVispad();
+		return true;
 	}
 	return false;
 }
 
 function redo(){
-	var nodes = canvasCache.childNodes;
-	if (nodes && nodes.length > 0) {
-		var node = nodes[nodes.length - 1];
-		if (node.tagName == 'path') {
-			paths.appendChild(node);
-			$('#btnUndo').attr('disabled', false);
-			if (nodes.length == 0) $('#btnRedo').attr('disabled', true);
-			updateVispad();
-		}
+	if ($pathsCache.children('path').length > 0) {
+		$("#paths").append($pathsCache.children('path').last());
+		$('#btnUndo').attr('disabled', false);
+		if ($pathsCache.children('path').length == 0) $('#btnRedo').attr('disabled', true);
+		updateVispad();
 	}
 }
 
@@ -348,11 +339,10 @@ function setVispadViewbox(x, y, w, h){
 
 function updateVispad() {
 	var needUpdate = false;
-	var px = precision(paths.getBBox().x, 3);
-	var py = precision(paths.getBBox().y, 3);
-	var pw = precision(paths.getBBox().width, 3);
-	var ph = precision(paths.getBBox().height, 3);
-	console.log('paths BBox= ' + px + ' ' + py + ' ' + pw + ' ' + ph);
+	var px = precision($('#paths')[0].getBBox().x, 3);
+	var py = precision($('#paths')[0].getBBox().y, 3);
+	var pw = precision($('#paths')[0].getBBox().width, 3);
+	var ph = precision($('#paths')[0].getBBox().height, 3);
 
 	if (px != vispadVBoxX) {
 		vispadVBoxX = px;
@@ -510,7 +500,7 @@ function drawpadMouseUpHdl(e) {
 	if (e.button==2) bBtnRight = false;
 
 	e.preventDefault();
-	if (curPath >= 0 && paths.childNodes[curPath]) drawEnd();
+	if (curPath >= 0) drawEnd();
 	if (!bBtnLeft && !bBtnMiddle && bBtnRight) {
 		bUseRBtnEraser = true;
 	}
@@ -524,7 +514,7 @@ function drawpadLostFocus(e) {
 	e.preventDefault();
 	bBtnLeft = bBtnMiddle = bBtnRight = false;
 	touchDist = touchDistDelta = 0;
-	if (curPath >= 0 && paths.childNodes[curPath]) drawEnd();
+	if (curPath >= 0) drawEnd();
 	drawpad.style.cursor = 'auto';
 	touchCursor.style.display = 'none';
 	drawpadTouchStartHdl(e);
@@ -544,7 +534,7 @@ function drawpadMouseWheelHdl(e){
 			else if (parseInt(penWidth) != 1) penWidth = parseInt(penWidth) - 4;
 		}
 		setDrawpadCursor();
-		if (curPath >= 0 && paths.childNodes[curPath]) drawEnd();
+		if (curPath >= 0) drawEnd();
 		if ((bBtnLeft && !bBtnMiddle && !bBtnRight) || (!bBtnLeft && !bBtnMiddle && bBtnRight)) {
 			startX = precision(e.pageX, 3);
 			startY = precision(e.pageY, 3);
@@ -652,40 +642,34 @@ function drawStart(x, y){
 	x = precision(x * drawpadVBoxW / drawpadWidth + drawpadVBoxX, 3);
 	y = precision(y * drawpadVBoxH / drawpadHeight + drawpadVBoxY, 3);
 
-	var node = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-	node.setAttribute('stroke-width', penWidth);
-	node.setAttribute('stroke-linecap', penShape);
-	if (bUseRBtnEraser) {
-		node.setAttribute('stroke', 'white');
-	}
-	else {
-		node.setAttribute('stroke', penColor);
-	}
-	node.setAttribute('fill', 'none');
-	node.setAttribute('d', 'M' + x + ',' + y);
+	var $node =  $(document.createElementNS("http://www.w3.org/2000/svg", "path"));
+	$node.attr('stroke-width', penWidth);
+	$node.attr('stroke-linecap', penShape);
+	(bUseRBtnEraser) ? $node.attr('stroke', 'white') : $node.attr('stroke', penColor);
+	$node.attr('fill', 'none');
+	$node.attr('d', 'M' + x + ',' + y);
 
-	paths.appendChild(node);
-	clearCanvasCache();
-	curPath = paths.childNodes.length - 1;
+	$('#paths').append($node);
+	clearPathsCache();
+	curPath = $('#paths').children('path').length - 1;
 }
 
 function drawPath(x, y){
 	if (curPath >= 0) {
 		x = precision(x * drawpadVBoxW / drawpadWidth + drawpadVBoxX, 3);
 		y = precision(y * drawpadVBoxH / drawpadHeight + drawpadVBoxY, 3);
-		var node = paths.childNodes[curPath];
-		node.setAttribute('d', node.getAttribute('d') + 'L' + x + ',' + y);
+		$('#paths').children('path').eq(curPath).attr('d', $('#paths').children('path').eq(curPath).attr('d') + 'L' + x + ',' + y);
 	}
 }
 
 function drawEnd(){
 	if (curPath >=0) {
-		var node = paths.childNodes[curPath];
-		var move = node.getAttribute('d').split('L').length;
+		var $node = $('#paths').children('path').eq(curPath);
+		var move = $node.attr('d').split('L').length;
 		curPath = -1;
 		
 		if (move < 2 || (falseTouch && move < 3)) {
-			paths.removeChild(node);
+			$('#paths').children('path').eq(curPath).remove();
 			return;
 		}
 		
@@ -699,11 +683,11 @@ function drawEnd(){
 						id: hubid,
 						name: peername,
 						action: 'path',
-						stroke: node.getAttribute('stroke'),
-						strokeWidth: node.getAttribute('stroke-width'),
-						strokeLinecap: node.getAttribute('stroke-linecap'),
-						fill: node.getAttribute('fill'),
-						d: node.getAttribute('d')
+						stroke: $node.attr('stroke'),
+						strokeWidth: $node.attr('stroke-width'),
+						strokeLinecap: $node.attr('stroke-linecap'),
+						fill: $node.attr('fill'),
+						d: $node.attr('d')
 					}
 				)
 			);
