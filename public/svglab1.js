@@ -10,7 +10,7 @@ var drawpadVBoxW = drawpadWidth;
 var drawpadVBoxH = drawpadHeight;
 var penColor = 'black', penWidth = 5, penShape = 'round';
 
-var $pathsCache = $(document.createElementNS("http://www.w3.org/2000/svg", "g"));
+var $pathsCache = $(document.createElementNS('http://www.w3.org/2000/svg', 'g'));
 var curPath = -1;
 var visdivTap = false, taskVisdiv;
 var vispadVBoxX = 0, vispadVBoxY = 0, vispadVBoxW = 160, vispadVBoxH = 90;
@@ -256,7 +256,7 @@ function undo(){
 
 function redo(){
 	if ($pathsCache.children('path').length > 0) {
-		$("#paths").append($pathsCache.children('path').last());
+		$('#paths').append($pathsCache.children('path').last());
 		$('#btnUndo').attr('disabled', false);
 		if ($pathsCache.children('path').length == 0) $('#btnRedo').attr('disabled', true);
 		updateVispad();
@@ -642,7 +642,7 @@ function drawStart(x, y){
 	x = precision(x * drawpadVBoxW / drawpadWidth + drawpadVBoxX, 3);
 	y = precision(y * drawpadVBoxH / drawpadHeight + drawpadVBoxY, 3);
 
-	var $node =  $(document.createElementNS("http://www.w3.org/2000/svg", "path"));
+	var $node =  $(document.createElementNS('http://www.w3.org/2000/svg', 'path'));
 	$node.attr('stroke-width', penWidth);
 	$node.attr('stroke-linecap', penShape);
 	(bUseRBtnEraser) ? $node.attr('stroke', 'white') : $node.attr('stroke', penColor);
