@@ -15,14 +15,14 @@
 	  sc.margin(5);
 	  sc.fit();
 	  sc.calibration();
-      console.log('zoom=' + sc.zoom(1));
+      console.log('zoom=' + sc.zoom(1.5));
 	  //console.log(sc.toString());
 	  
 	  var vp = new gatherhub.VisualPad(sc.width()/4, sc.height()/4, '#grid');
 	  vp.appendTo('body');
-	  vp.zoom(vp.width()/sc.width());
-	  vp.offset('x', -vp.x);
-	  vp.offset('y', -vp.y);
+	  vp.moveTo('left', 0);
+	  vp.moveTo('top', 0);
+	  vp.show();
     });
     </script>
   </head>

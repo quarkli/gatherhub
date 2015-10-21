@@ -8,6 +8,7 @@ function precision(num, p) {
 }
 
 (function(){
+	// Properties Prototype Declaration
 	SvgCanvas.prototype.z = 1;  // zoom ratio, 0.1 <= z <= 10
 	SvgCanvas.prototype.m = 5;  // canvas margin
 	SvgCanvas.prototype.x = 0;  // canvas viewBox_x
@@ -16,6 +17,7 @@ function precision(num, p) {
 	SvgCanvas.prototype.h = 0;  // canvas viewBox_h
 	SvgCanvas.prototype.canvas;
 
+	// Fucntions Prototype Declaration
 	SvgCanvas.prototype.toString = function() {
 		return this.canvas.html();
 	}
@@ -91,32 +93,64 @@ function precision(num, p) {
 		this.canvas[0].setAttribute('viewBox', this.x + ' ' + this.y + ' ' + this.w + ' ' + this.h);
 	}
 
+	// Constructor
 	function SvgCanvas(w, h) {
 		this.canvas = $(document.createElementNS('http://www.w3.org/2000/svg', 'svg'));
 		this.fit(w, h);
 	}
 	
-	// add class SvgCanvas to the namespace
+	// Append to Namespace
 	gatherhub.SvgCanvas = SvgCanvas;
 })();
 
 (function(){
-	function VisualPad(w, h, src){
-		gatherhub.SvgCanvas.call(this, w, h);
-		if ($(src)) this.src(src);
-		this.canvas.css('display', 'block');
-		this.canvas.css('position', 'absolute');
-		this.canvas.css('top', '0px');
-		this.canvas.css('left', '0px');
+	// Properties Prototype Declaration
+	VisualPad.prototype.sc;  // Source Canvas
+	
+	// Fucntions Prototype Declaration
+	VisualPad.prototype.constructor = VisualPad;
+	VisualPad.prototype = new gatherhub.SvgCanvas();  // Inherit from SvgCanvas
+	
+	VisualPad.prototype.hide = function() {
+		this.canvas.css('display', 'none');
 	}
 	
-	VisualPad.prototype = new gatherhub.SvgCanvas();
+	VisualPad.prototype.show = function() {
+		this.canvas.css('display', 'block');
+	}
 	
-	VisualPad.prototype.constructor = VisualPad;
+	VisualPad.prototype.moveTo = function(pos, px) {
+		this.canvas.css(pos, px + 'px');  // pos: {top, bottom, left, right}
+	}
+	
+	VisualPad.prototype.refresh = function() {
+		if (this.sc) {
+			this.x = this.sc[0].getBBox().x;
+			this.y = this.sc[0].getBBox().y;
+			this.w = this.sc[0].getBBox().width;
+			this.h = this.sc[0].getBBox().height;
+			this.canvas[0].setAttribute('viewBox', this.x + ' ' + this.y + ' ' + this.w + ' ' + this.h);
+			this.offset('x', -this.x);
+			this.offset('y', -this.y);			
+		}
+	}
 	
 	VisualPad.prototype.src = function(src) {
 		this.canvas.html('<use xlink:href=' + src + '/>');
+		this.sc = $(src);
 	}
 	
+	// Constructor
+	function VisualPad(w, h, src){
+		gatherhub.SvgCanvas.call(this, w, h);
+		this.canvas.css('position', 'absolute');
+		if ($(src)) this.src(src);
+		this.moveTo('bottom', 0);
+		this.moveTo('right', 0);
+		this.refresh();
+		this.show();
+	}
+	
+	// Append to Namespace
 	gatherhub.VisualPad = VisualPad;
 })();
