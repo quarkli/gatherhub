@@ -9,26 +9,23 @@
     <script src="gatherhub.teleboard.js"></script>
     <script>
     $(function(){
-      var pad = new gatherhub.SvgCanvas();
-
-	  console.log(pad.width() + 'x' + pad.height());
-      pad.inserInto('body');
-	  pad.margin(5);
-	  pad.fit();
-	  pad.calibration();
-      console.log('zoom=' + pad.zoom(1.5));
-	  console.log(pad.toString());
+      var sc = new gatherhub.SvgCanvas();
+	  console.log(sc.width() + 'x' + sc.height());
+      sc.appendTo('body');
+	  sc.margin(5);
+	  sc.fit();
+	  sc.calibration();
+      console.log('zoom=' + sc.zoom(1));
+	  //console.log(sc.toString());
 	  
-	  var vw = new gatherhub.VisualPad(pad.width()/4, pad.height()/4);
-	  vw.inserInto('#vpad');
-	  vw.src('#grid');
-	  vw.zoom(vw.width()/pad.width());
-	  vw.offset('x', -vw.x);
-	  vw.offset('y', -vw.y);
+	  var vp = new gatherhub.VisualPad(sc.width()/4, sc.height()/4, '#grid');
+	  vp.appendTo('body');
+	  vp.zoom(vp.width()/sc.width());
+	  vp.offset('x', -vp.x);
+	  vp.offset('y', -vp.y);
     });
     </script>
   </head>
   <body>
-  <div id="vpad" style="display: block; position: absolute; top: 0px; left 0px"></div>
   </body>
 </html>
