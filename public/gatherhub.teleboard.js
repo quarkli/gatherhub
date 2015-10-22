@@ -22,6 +22,10 @@ function precision(num, p) {
 		return this.canvas.html();
 	}
 
+	SvgCanvas.prototype.clear = function() {
+		while (this.canvas.children().length > 0) this.canvas.children().last().remove();
+	}
+
 	SvgCanvas.prototype.calibration = function() {
 		var w = this.width();
 		var h = this.height();
@@ -39,7 +43,7 @@ function precision(num, p) {
 	}
 
 	SvgCanvas.prototype.appendTo = function(elem) {
-		if ($(elem)) $(elem).append(this.canvas);
+		if ($(elem).length) $(elem).append(this.canvas);
 	}
 
 	SvgCanvas.prototype.offset = function(axis, offset) {
@@ -105,11 +109,11 @@ function precision(num, p) {
 
 (function(){
 	// Properties Prototype Declaration
-	VisualPad.prototype.sc;  // Source Canvas
+	VisualPad.prototype.sc = {};  // Source Canvas
 	
 	// Fucntions Prototype Declaration
-	VisualPad.prototype.constructor = VisualPad;
-	VisualPad.prototype = new gatherhub.SvgCanvas();  // Inherit from SvgCanvas
+	VisualPad.prototype = new gatherhub.SvgCanvas();  	// Inherit from SvgCanvas
+	VisualPad.prototype.constructor = VisualPad;	  	// Assign constructor
 	
 	VisualPad.prototype.hide = function() {
 		this.canvas.css('display', 'none');
@@ -120,11 +124,13 @@ function precision(num, p) {
 	}
 	
 	VisualPad.prototype.moveTo = function(pos, px) {
-		this.canvas.css(pos, px + 'px');  // pos: {top, bottom, left, right}
+		if ((pos == 'top' || pos == 'bottom' || pos == 'left' || pos == 'right') && $.isNumeric(px)) {
+			this.canvas.css(pos, px + 'px');
+		}
 	}
 	
 	VisualPad.prototype.refresh = function() {
-		if (this.sc) {
+		if (this.sc.length) {
 			this.x = this.sc[0].getBBox().x;
 			this.y = this.sc[0].getBBox().y;
 			this.w = this.sc[0].getBBox().width;
@@ -136,15 +142,17 @@ function precision(num, p) {
 	}
 	
 	VisualPad.prototype.src = function(src) {
-		this.canvas.html('<use xlink:href=' + src + '/>');
-		this.sc = $(src);
+		if ($(src).length) {
+			this.canvas.html('<use xlink:href=' + src + '/>');
+			this.sc = $(src);			
+		}
 	}
 	
 	// Constructor
 	function VisualPad(w, h, src){
 		gatherhub.SvgCanvas.call(this, w, h);
 		this.canvas.css('position', 'absolute');
-		if ($(src)) this.src(src);
+		this.src(src);
 		this.moveTo('bottom', 0);
 		this.moveTo('right', 0);
 		this.refresh();
