@@ -123,6 +123,10 @@ function precision(num, p) {
 		this.canvas.css('display', 'block');
 	}
 	
+	VisualPad.prototype.pinchSensitivity = function(s) {
+		this.canvas[0].pinchSensitivity = s;
+	}
+	
 	VisualPad.prototype.bgcolor = function(color) {
 		this.canvas.css('background-color', color);
 	}
@@ -166,6 +170,8 @@ function precision(num, p) {
 		// Mouse / Touch event handlers
 		this.canvas[0].defaultWidth = this.canvas.attr('width');
 		this.canvas[0].defaultHeight = this.canvas.attr('height');
+		this.canvas[0].size = 1;
+		this.pinchSensitivity(8);
 		
 		this.canvas[0].mousedownHdl = function(x, y) {
 			if ($.now() - this.logtime < 400) {
@@ -226,19 +232,33 @@ function precision(num, p) {
 		};
 
 		this.canvas[0].mousewheelHdl = function(delta) {
-			var r = 1.1;
-			var w =	$(this).attr('width');
-			var h =	$(this).attr('height');					
+			var r = 0.1;
+			var w =	this.defaultWidth;
+			var h =	this.defaultHeight;
+			var dx = r * w / 2;
+			var dy = r * h / 2;
+
 			if (delta > 0) {
-				w *= r;
-				h *= r;
+				if ($(this).attr('width') >= window.innerWidth) return;
+				this.size += r;
+				dx *= -1;
+				dy *= -1
+			}
+			else if (this.size > 1){
+				this.size -= r;
 			}
 			else {
-				w /= r;
-				h /= r;
+				return;
 			}
-			$(this).attr('width' , w > window.innerWidth ? window.innerWidth : w < this.defaultWidth ? this.defaultWidth : w);
-			$(this).attr('height', h > window.innerHeight ? window.innerHeight : h < this.defaultHeight ? this.defaultHeight : h);						
+			
+			w *= this.size;
+			h *= this.size;
+			$(this).css('bottom', 'auto');
+			$(this).css('right', 'auto');
+			$(this).css('top', $(this).position().top + dy);
+			$(this).css('left', $(this).position().left + dx);
+			$(this).attr('width' , w > window.innerWidth ? window.innerWidth : w);
+			$(this).attr('height', h > window.innerHeight ? window.innerHeight : h);						
 		};
 		
 		// Bind event handlers to Mouse events
@@ -273,7 +293,7 @@ function precision(num, p) {
 			}
 			else if (e.touches.length == 2) {
 				this.pinch += 1;
-				if (this.pinch > 10) {
+				if (this.pinch > this.pinchSensitivity) {
 					var delta = Math.pow(e.touches[1].pageX - x, 2) + Math.pow(e.touches[1].pageY - y, 2) - this.pinchDelta;
 					this.mousewheelHdl(delta);
 					this.pinchDelta = Math.pow(e.touches[1].pageX - x, 2) + Math.pow(e.touches[1].pageY - y, 2);
