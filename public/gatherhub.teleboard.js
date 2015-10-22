@@ -22,6 +22,14 @@ function precision(num, p) {
 		return this.canvas.html();
 	}
 
+	SvgCanvas.prototype.pinchSensitivity = function(s) {
+		this.canvas[0].pinchSensitivity = s;
+	}
+	
+	SvgCanvas.prototype.bgcolor = function(color) {
+		this.canvas.css('background-color', color);
+	}
+	
 	SvgCanvas.prototype.clear = function() {
 		while (this.canvas.children().length > 0) this.canvas.children().last().remove();
 	}
@@ -121,14 +129,6 @@ function precision(num, p) {
 	
 	VisualPad.prototype.show = function() {
 		this.canvas.css('display', 'block');
-	}
-	
-	VisualPad.prototype.pinchSensitivity = function(s) {
-		this.canvas[0].pinchSensitivity = s;
-	}
-	
-	VisualPad.prototype.bgcolor = function(color) {
-		this.canvas.css('background-color', color);
 	}
 	
 	VisualPad.prototype.moveTo = function(pos, px) {
@@ -264,10 +264,10 @@ function precision(num, p) {
 		// Bind event handlers to Mouse events
 		this.canvas.on('mousedown touchstart', function(evt){
 			var e = evt.originalEvent;
-			var x = e.pageX || e.touches[0].pageX;
-			var y = e.pageY || e.touches[0].pageY;
+			var x = Math.round(e.pageX + 0.1 || e.touches[0].pageX);
+			var y = Math.round(e.pageY + 0.1 || e.touches[0].pageY);
 			e.preventDefault();
-			if (e.pageX || e.touches.length == 1) {
+			if (e.pageX + 0.1 || e.touches.length == 1) {
 				this.mousedownHdl(x, y);
 			}
 			else if (e.touches.length == 2){
@@ -285,10 +285,10 @@ function precision(num, p) {
 		});
 		this.canvas.on('mousemove touchmove', function(evt){
 			var e = evt.originalEvent;
-			var x = e.pageX || e.touches[0].pageX;
-			var y = e.pageY || e.touches[0].pageY;
+			var x = Math.round(e.pageX + 0.1 || e.touches[0].pageX);
+			var y = Math.round(e.pageY + 0.1 || e.touches[0].pageY);
 			e.preventDefault();
-			if (e.pageX || e.touches.length == 1) {
+			if (e.pageX + 0.1 || e.touches.length == 1) {
 				this.mousemoveHdl(x, y);
 			}
 			else if (e.touches.length == 2) {
@@ -310,4 +310,161 @@ function precision(num, p) {
 	
 	// Append to Namespace
 	gatherhub.VisualPad = VisualPad;
+})();
+
+(function(){
+	// Properties Prototype Declaration
+	
+	// Fucntions Prototype Declaration
+	SketchPad.prototype = new gatherhub.SvgCanvas();  	// Inherit from SvgCanvas
+	SketchPad.prototype.constructor = SketchPad;	  	// Assign constructor
+	
+	
+	// Constructor
+	function SketchPad(w, h){
+		gatherhub.SvgCanvas.call(this, w, h);
+		
+		// Mouse / Touch event handlers
+		this.canvas[0].defaultWidth = this.canvas.attr('width');
+		this.canvas[0].defaultHeight = this.canvas.attr('height');
+		this.canvas[0].size = 1;
+		this.pinchSensitivity(8);
+		
+		this.canvas[0].mousedownHdl = function(x, y) {
+			if ($.now() - this.logtime < 400) {
+				if ($(this).attr('width') == this.defaultWidth) {
+					console.log('maximize');
+					$(this).attr('width' , window.innerWidth);
+					$(this).attr('height', window.innerHeight);					
+				}
+				else {
+					console.log('minimize');
+					$(this).attr('width' , this.defaultWidth);
+					$(this).attr('height', this.defaultHeight);					
+				}
+			}
+			else {
+				this.dragging = true;
+				this.mouseX = x;
+				this.mouseY = y;				
+			}
+			this.logtime = $.now();			
+		};
+		
+		this.canvas[0].mouseupHdl = function() {
+			var top = $(this).position().top;
+			var left = $(this).position().left;
+			if (top + $(this).height() - 5 > window.innerHeight) {
+				$(this).css('top', 'auto');
+				$(this).css('bottom', 	5);			
+			}
+			else {
+				$(this).css('bottom', 'auto');
+				$(this).css('top', (top < 5) ? 0: top);
+			}
+			if (left + $(this).width() - 5> window.innerWidth) {
+				$(this).css('left', 'auto');
+				$(this).css('right', 5);
+			}
+			else {
+				$(this).css('right', 'auto');
+				$(this).css('left', (left < 5) ? 0 : left);
+			}
+			this.dragging = false;
+			this.pinch = 0;			
+		};
+		
+		this.canvas[0].mousemoveHdl = function(x, y) {
+			if (this.dragging == true) {
+				var top = $(this).position().top + y - this.mouseY;
+				var left = $(this).position().left + x - this.mouseX;
+								
+				$(this).css('bottom', 'auto');
+				$(this).css('right', 'auto');
+				$(this).css('top', top);
+				$(this).css('left', left);
+				this.mouseX = x;
+				this.mouseY = y;
+			}			
+		};
+
+		this.canvas[0].mousewheelHdl = function(delta) {
+			var r = 0.1;
+			var w =	this.defaultWidth;
+			var h =	this.defaultHeight;
+			var dx = r * w / 2;
+			var dy = r * h / 2;
+
+			if (delta > 0) {
+				if ($(this).attr('width') >= window.innerWidth) return;
+				this.size += r;
+				dx *= -1;
+				dy *= -1
+			}
+			else if (this.size > 1){
+				this.size -= r;
+			}
+			else {
+				return;
+			}
+			
+			w *= this.size;
+			h *= this.size;
+			$(this).css('bottom', 'auto');
+			$(this).css('right', 'auto');
+			$(this).css('top', $(this).position().top + dy);
+			$(this).css('left', $(this).position().left + dx);
+			$(this).attr('width' , w > window.innerWidth ? window.innerWidth : w);
+			$(this).attr('height', h > window.innerHeight ? window.innerHeight : h);						
+		};
+		
+		// Bind event handlers to Mouse events
+		this.canvas.on('mousedown touchstart', function(evt){
+			var e = evt.originalEvent;
+			var x = Math.round(e.pageX + 0.1 || e.touches[0].pageX);
+			var y = Math.round(e.pageY + 0.1 || e.touches[0].pageY);
+			e.preventDefault();
+			if (e.pageX + 0.1 || e.touches.length == 1) {
+				this.mousedownHdl(x, y);
+			}
+			else if (e.touches.length == 2){
+				this.pinchDelta = Math.pow(e.touches[1].pageX - x, 2) + Math.pow(e.touches[1].pageY - y, 2);
+				this.pinch = 1;
+			}
+			else {
+				this.mouseupHdl();	
+			}
+		});
+		this.canvas.on('mouseup mouseleave touchend',function(evt){
+			var e = evt.originalEvent;
+			e.preventDefault();
+			this.mouseupHdl();
+		});
+		this.canvas.on('mousemove touchmove', function(evt){
+			var e = evt.originalEvent;
+			var x = Math.round(e.pageX + 0.1 || e.touches[0].pageX);
+			var y = Math.round(e.pageY + 0.1 || e.touches[0].pageY);
+			e.preventDefault();
+			if (e.pageX + 0.1 || e.touches.length == 1) {
+				this.mousemoveHdl(x, y);
+			}
+			else if (e.touches.length == 2) {
+				this.pinch += 1;
+				if (this.pinch > this.pinchSensitivity) {
+					var delta = Math.pow(e.touches[1].pageX - x, 2) + Math.pow(e.touches[1].pageY - y, 2) - this.pinchDelta;
+					this.mousewheelHdl(delta);
+					this.pinchDelta = Math.pow(e.touches[1].pageX - x, 2) + Math.pow(e.touches[1].pageY - y, 2);
+					this.pinch = 0;
+				}
+			}
+		});
+		this.canvas.on('mousewheel', function (evt){
+			var e = evt.originalEvent;
+			e.preventDefault();
+			this.mousewheelHdl(e.wheelDelta);
+		});
+	}
+	
+	// Append to Namespace
+	gatherhub.SketchPad = SketchPad;
 })();
