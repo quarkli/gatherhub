@@ -109,6 +109,7 @@ function precision(num, p) {
 	function SvgCanvas(w, h) {
 		this.canvas = $(document.createElementNS('http://www.w3.org/2000/svg', 'svg'));
 		this.fit(w, h);
+		this.canvas[0].creator = this;
 	}
 	
 	// Append to Namespace
@@ -318,7 +319,6 @@ function precision(num, p) {
 	// Fucntions Prototype Declaration
 	SketchPad.prototype = new gatherhub.SvgCanvas();  	// Inherit from SvgCanvas
 	SketchPad.prototype.constructor = SketchPad;	  	// Assign constructor
-	
 	
 	// Constructor
 	function SketchPad(w, h){
