@@ -28,16 +28,13 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
     <script src="gatherhub.teleboard.js"></script>
     <script>
     $(function(){
-      var sc = new gatherhub.SvgCanvas();
-	  console.log(sc.width() + 'x' + sc.height());
-      sc.appendTo('body');
-	  sc.margin(5);
-	  sc.fit();
-	  sc.calibration();
-      console.log('zoom=' + sc.zoom(1.5));
-	  //console.log(sc.toString());
+      var sp = new gatherhub.SketchPad();
+      sp.appendTo('body');
+	  sp.margin(5);
+	  sp.fit();
+	  sp.calibration();
 	  
-	  var vp = new gatherhub.VisualPad(sc.width()/4, sc.height()/4, '#grid');
+	  var vp = new gatherhub.VisualPad(sp.width()/4, sp.height()/4, '#grid');
 	  vp.appendTo('body');
 	  //vp.moveTo('left', 0);
 	  //vp.moveTo('top', 0);

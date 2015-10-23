@@ -34,6 +34,8 @@ function precision(num, p) {
 	SvgCanvas.prototype.y = 0;  // canvas viewBox_y
 	SvgCanvas.prototype.w = 0;  // canvas viewBox_w
 	SvgCanvas.prototype.h = 0;  // canvas viewBox_h
+	SvgCanvas.prototype.zcenterX = 0.5;  // Zoom center X % in current screen
+	SvgCanvas.prototype.zcenterY = 0.5;  // Zoom center Y % in current screen
 	SvgCanvas.prototype.canvas;
 
 	// Fucntions Prototype Declaration
@@ -75,8 +77,8 @@ function precision(num, p) {
 
 	SvgCanvas.prototype.offset = function(axis, offset) {
 		if ($.isNumeric(offset)) {
-			if (axis == 'x') this.x = precision(this.x + offset, 3);
-			if (axis == 'y') this.y = precision(this.y + offset, 3);
+			if (axis == 'x') this.x = precision(this.x - offset / this.z, 3);
+			if (axis == 'y') this.y = precision(this.y - offset / this.z, 3);
 			// when there are upper case letter in attribute name, 
 			// we must use native javascript setAttribute() instead of 
 			// JQuery .attr() which always convert attribute name to lower case
@@ -88,16 +90,19 @@ function precision(num, p) {
 
 	SvgCanvas.prototype.zoom = function(z) {
 		if (z >= 0.1 && z <= 10) {
-			this.w = precision(this.w / z, 3);
-			this.h = precision(this.h / z, 3);
-			this.x = precision((this.width() - this.w) / 2, 3);
-			this.y = precision((this.height() - this.h ) / 2, 3);
-			this.z = z;
+			var zx = this.zcenterX * this.w + this.x;
+			var zy = this.zcenterY * this.h + this.y;
+			this.w = this.width() / z;
+			this.h = this.height() / z;
+			this.x = precision(zx - this.zcenterX * this.w, 3);
+			this.y = precision(zy - this.zcenterY * this.h, 3);
+			this.z = precision(z, 1);
 			// when there are upper case letter in attribute name, 
 			// we must use native javascript setAttribute() instead of 
 			// JQuery .attr() which always convert attribute name to lower case
 			this.canvas[0].setAttribute('viewBox', this.x + ' ' + this.y + ' ' + this.w + ' ' + this.h);
 		}
+		console.log('zoom=' + this.z);
 		return this.z;
 	}
 
@@ -196,12 +201,10 @@ function precision(num, p) {
 		this.canvas[0].mousedownHdl = function(x, y) {
 			if ($.now() - this.logtime < 400) {
 				if ($(this).attr('width') == this.defaultWidth) {
-					console.log('maximize');
 					$(this).attr('width' , window.innerWidth);
 					$(this).attr('height', window.innerHeight);					
 				}
 				else {
-					console.log('minimize');
 					$(this).attr('width' , this.defaultWidth);
 					$(this).attr('height', this.defaultHeight);					
 				}
@@ -341,6 +344,7 @@ function precision(num, p) {
 	SketchPad.prototype.penColor = 'black';
 	SketchPad.prototype.penWidth = 5;
 	SketchPad.prototype.penShape = 'round';
+	SketchPad.prototype.redocache;
 	
 	
 	// Constructor
@@ -354,91 +358,22 @@ function precision(num, p) {
 		this.pinchSensitivity(8);
 		
 		this.canvas[0].mousedownHdl = function(x, y) {
-			if ($.now() - this.logtime < 400) {
-				if ($(this).attr('width') == this.defaultWidth) {
-					console.log('maximize');
-					$(this).attr('width' , window.innerWidth);
-					$(this).attr('height', window.innerHeight);					
-				}
-				else {
-					console.log('minimize');
-					$(this).attr('width' , this.defaultWidth);
-					$(this).attr('height', this.defaultHeight);					
-				}
-			}
-			else {
-				this.dragging = true;
-				this.mouseX = x;
-				this.mouseY = y;				
-			}
 			this.logtime = $.now();			
 		};
 		
 		this.canvas[0].mouseupHdl = function() {
-			var top = $(this).position().top;
-			var left = $(this).position().left;
-			if (top + $(this).height() - 5 > window.innerHeight) {
-				$(this).css('top', 'auto');
-				$(this).css('bottom', 	5);			
-			}
-			else {
-				$(this).css('bottom', 'auto');
-				$(this).css('top', (top < 5) ? 0: top);
-			}
-			if (left + $(this).width() - 5> window.innerWidth) {
-				$(this).css('left', 'auto');
-				$(this).css('right', 5);
-			}
-			else {
-				$(this).css('right', 'auto');
-				$(this).css('left', (left < 5) ? 0 : left);
-			}
-			this.dragging = false;
-			this.pinch = 0;			
 		};
 		
 		this.canvas[0].mousemoveHdl = function(x, y) {
-			if (this.dragging == true) {
-				var top = $(this).position().top + y - this.mouseY;
-				var left = $(this).position().left + x - this.mouseX;
-								
-				$(this).css('bottom', 'auto');
-				$(this).css('right', 'auto');
-				$(this).css('top', top);
-				$(this).css('left', left);
-				this.mouseX = x;
-				this.mouseY = y;
-			}			
 		};
 
 		this.canvas[0].mousewheelHdl = function(delta) {
-			var r = 0.1;
-			var w =	this.defaultWidth;
-			var h =	this.defaultHeight;
-			var dx = r * w / 2;
-			var dy = r * h / 2;
-
 			if (delta > 0) {
-				if ($(this).attr('width') >= window.innerWidth) return;
-				this.size += r;
-				dx *= -1;
-				dy *= -1
-			}
-			else if (this.size > 1){
-				this.size -= r;
+				this.creator.zoom(this.creator.z + (this.creator.z < 1 ? 0.1 : 1));
 			}
 			else {
-				return;
+				this.creator.zoom(this.creator.z - (this.creator.z <= 1 ? 0.1 : 1));
 			}
-			
-			w *= this.size;
-			h *= this.size;
-			$(this).css('bottom', 'auto');
-			$(this).css('right', 'auto');
-			$(this).css('top', $(this).position().top + dy);
-			$(this).css('left', $(this).position().left + dx);
-			$(this).attr('width' , w > window.innerWidth ? window.innerWidth : w);
-			$(this).attr('height', h > window.innerHeight ? window.innerHeight : h);						
 		};
 		
 		// Bind event handlers to Mouse events
@@ -447,6 +382,14 @@ function precision(num, p) {
 			var x = Math.round(e.pageX + 0.1 || e.touches[0].pageX);
 			var y = Math.round(e.pageY + 0.1 || e.touches[0].pageY);
 			e.preventDefault();
+
+			this.mouseX = x;
+			this.mouseY = y;				
+
+			if (e.button==0) this.bBtnLeft = true;
+			if (e.button==1) this.bBtnMiddle = true;
+			if (e.button==2) this.bBtnRight = true;
+
 			if (e.pageX + 0.1 || e.touches.length == 1) {
 				this.mousedownHdl(x, y);
 			}
@@ -461,6 +404,9 @@ function precision(num, p) {
 		this.canvas.on('mouseup mouseleave touchend',function(evt){
 			var e = evt.originalEvent;
 			e.preventDefault();
+			if (e.button==0) this.bBtnLeft = false;
+			if (e.button==1) this.bBtnMiddle = false;
+			if (e.button==2) this.bBtnRight = false;
 			this.mouseupHdl();
 		});
 		this.canvas.on('mousemove touchmove', function(evt){
@@ -468,6 +414,10 @@ function precision(num, p) {
 			var x = Math.round(e.pageX + 0.1 || e.touches[0].pageX);
 			var y = Math.round(e.pageY + 0.1 || e.touches[0].pageY);
 			e.preventDefault();
+			if (this.bBtnMiddle || (this.bBtnLeft && this.bBtnRight)) {
+				this.creator.offset('x', precision(e.pageX, 3) - this.mouseX);
+				this.creator.offset('y', precision(e.pageY, 3) - this.mouseY);
+			}
 			if (e.pageX + 0.1 || e.touches.length == 1) {
 				this.mousemoveHdl(x, y);
 			}
@@ -480,10 +430,16 @@ function precision(num, p) {
 					this.pinch = 0;
 				}
 			}
+			this.mouseX = x;
+			this.mouseY = y;
 		});
 		this.canvas.on('mousewheel', function (evt){
 			var e = evt.originalEvent;
+			var x = Math.round(e.pageX + 0.1 || e.touches[0].pageX);
+			var y = Math.round(e.pageY + 0.1 || e.touches[0].pageY);
 			e.preventDefault();
+			this.creator.zcenterX = x / this.creator.width();
+			this.creator.zcenterY = y / this.creator.height();
 			this.mousewheelHdl(e.wheelDelta);
 		});
 	}
