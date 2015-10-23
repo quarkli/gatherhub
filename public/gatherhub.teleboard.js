@@ -196,7 +196,7 @@ function precision(num, p) {
 		this.canvas[0].defaultWidth = this.canvas.attr('width');
 		this.canvas[0].defaultHeight = this.canvas.attr('height');
 		this.canvas[0].size = 1;
-		this.pinchSensitivity(8);
+		this.pinchSensitivity(3);
 		
 		this.canvas[0].mousedownHdl = function(x, y) {
 			if ($.now() - this.logtime < 400) {
@@ -287,19 +287,20 @@ function precision(num, p) {
 		// Bind event handlers to Mouse events
 		this.canvas.on('mousedown touchstart', function(evt){
 			var e = evt.originalEvent;
-			var x = Math.round(e.pageX + 0.1 || e.touches[0].pageX);
-			var y = Math.round(e.pageY + 0.1 || e.touches[0].pageY);
+			var x = e.touches ? e.touches[0].pageX : e.pageX;
+			var y = e.touches ? e.touches[0].pageY : e.pageY;
 			e.preventDefault();
-			if (e.pageX + 0.1 || e.touches.length == 1) {
-				this.mousedownHdl(x, y);
+			if (e.touches) {
+				if (e.touches.length == 2) {
+					this.pinchDelta = Math.pow(e.touches[1].pageX - x, 2) + Math.pow(e.touches[1].pageY - y, 2);
+					this.pinch = 1;
+				}
+				if (e.touches.length > 1) {
+					this.mouseupHdl();
+					return;
+				}
 			}
-			else if (e.touches.length == 2){
-				this.pinchDelta = Math.pow(e.touches[1].pageX - x, 2) + Math.pow(e.touches[1].pageY - y, 2);
-				this.pinch = 1;
-			}
-			else {
-				this.mouseupHdl();	
-			}
+			this.mousedownHdl(x, y);			
 		});
 		this.canvas.on('mouseup mouseleave touchend',function(evt){
 			var e = evt.originalEvent;
@@ -308,21 +309,22 @@ function precision(num, p) {
 		});
 		this.canvas.on('mousemove touchmove', function(evt){
 			var e = evt.originalEvent;
-			var x = Math.round(e.pageX + 0.1 || e.touches[0].pageX);
-			var y = Math.round(e.pageY + 0.1 || e.touches[0].pageY);
+			var x = e.touches ? e.touches[0].pageX : e.pageX;
+			var y = e.touches ? e.touches[0].pageY : e.pageY;
 			e.preventDefault();
-			if (e.pageX + 0.1 || e.touches.length == 1) {
-				this.mousemoveHdl(x, y);
-			}
-			else if (e.touches.length == 2) {
-				this.pinch += 1;
-				if (this.pinch > this.pinchSensitivity) {
-					var delta = Math.pow(e.touches[1].pageX - x, 2) + Math.pow(e.touches[1].pageY - y, 2) - this.pinchDelta;
-					this.mousewheelHdl(delta);
-					this.pinchDelta = Math.pow(e.touches[1].pageX - x, 2) + Math.pow(e.touches[1].pageY - y, 2);
-					this.pinch = 0;
+			if (e.touches) {
+				if (e.touches.length == 2) {
+					this.pinch += 1;
+					if (this.pinch > this.pinchSensitivity) {
+						var delta = Math.pow(e.touches[1].pageX - x, 2) + Math.pow(e.touches[1].pageY - y, 2) - this.pinchDelta;
+						this.mousewheelHdl(delta);
+						this.pinchDelta = Math.pow(e.touches[1].pageX - x, 2) + Math.pow(e.touches[1].pageY - y, 2);
+						this.pinch = 0;
+					}
 				}
+				if (e.touches.length > 1) return;
 			}
+			this.mousemoveHdl(x, y);
 		});
 		this.canvas.on('mousewheel DOMMouseScroll', function (evt){
 			var e = evt.originalEvent;
@@ -358,7 +360,7 @@ function precision(num, p) {
 		this.canvas.append(pathholder);
 		this.canvas[0].redocache = $(document.createElementNS('http://www.w3.org/2000/svg', 'g'));
 		this.canvas[0].activepath = -1;
-		this.pinchSensitivity(8);
+		this.pinchSensitivity(3);
 		
 		this.canvas[0].drawStart =  function(x, y){
 			x = precision(x * this.creator.w / this.creator.width() + this.creator.x, 3);
@@ -385,7 +387,7 @@ function precision(num, p) {
 		}
 
 		this.canvas[0].drawEnd = function(){
-			if (this.activepath >=0) {
+			if (this.activepath >= 0) {
 				var $node = this.pathholder.children('path').eq(this.activepath);
 				var move = $node.attr('d').split('L').length;
 				this.activepath = -1;
@@ -438,8 +440,8 @@ function precision(num, p) {
 		// Bind event handlers to Mouse events
 		this.canvas.on('mousedown touchstart', function(evt){
 			var e = evt.originalEvent;
-			var x = Math.round(e.pageX + 0.1 || e.touches[0].pageX);
-			var y = Math.round(e.pageY + 0.1 || e.touches[0].pageY);
+			var x = e.touches ? e.touches[0].pageX : e.pageX;
+			var y = e.touches ? e.touches[0].pageY : e.pageY;
 			e.preventDefault();
 
 			this.mouseX = x;
@@ -449,16 +451,17 @@ function precision(num, p) {
 			if (e.button==1) this.bBtnMiddle = true;
 			if (e.button==2) this.bBtnRight = true;
 
-			if (e.pageX + 0.1 || e.touches.length == 1) {
-				this.mousedownHdl(x, y);
+			if (e.touches) {
+				if (e.touches.length == 2){
+					this.pinchDelta = Math.pow(e.touches[1].pageX - x, 2) + Math.pow(e.touches[1].pageY - y, 2);
+					this.pinch = 1;
+				}
+				if (e.touches.length > 1) {
+					this.mouseupHdl();
+					return;
+				}
 			}
-			else if (e.touches.length == 2){
-				this.pinchDelta = Math.pow(e.touches[1].pageX - x, 2) + Math.pow(e.touches[1].pageY - y, 2);
-				this.pinch = 1;
-			}
-			else {
-				this.mouseupHdl();	
-			}
+			this.mousedownHdl(x, y);			
 		});
 		this.canvas.on('mouseup mouseleave touchend',function(evt){
 			var e = evt.originalEvent;
@@ -470,33 +473,36 @@ function precision(num, p) {
 		});
 		this.canvas.on('mousemove touchmove', function(evt){
 			var e = evt.originalEvent;
-			var x = Math.round(e.pageX + 0.1 || e.touches[0].pageX);
-			var y = Math.round(e.pageY + 0.1 || e.touches[0].pageY);
+			var x = e.touches ? e.touches[0].pageX : e.pageX;
+			var y = e.touches ? e.touches[0].pageY : e.pageY;
 			e.preventDefault();
+			this.mouseX = x;
+			this.mouseY = y;
 			if (this.bBtnMiddle || (this.bBtnLeft && this.bBtnRight)) {
 				this.creator.offset('x', precision(e.pageX, 3) - this.mouseX);
 				this.creator.offset('y', precision(e.pageY, 3) - this.mouseY);
 			}
-			if (e.pageX + 0.1 || e.touches.length == 1) {
-				this.mousemoveHdl(x, y);
-			}
-			else if (e.touches.length == 2) {
-				this.pinch += 1;
-				if (this.pinch > this.pinchSensitivity) {
-					var delta = Math.pow(e.touches[1].pageX - x, 2) + Math.pow(e.touches[1].pageY - y, 2) - this.pinchDelta;
-					this.mousewheelHdl(delta);
-					this.pinchDelta = Math.pow(e.touches[1].pageX - x, 2) + Math.pow(e.touches[1].pageY - y, 2);
-					this.pinch = 0;
+			if (e.touches) {
+				if (e.touches.length == 2) {
+					this.pinch += 1;
+					if (this.pinch > this.pinchSensitivity) {
+						var delta = Math.pow(e.touches[1].pageX - x, 2) + Math.pow(e.touches[1].pageY - y, 2) - this.pinchDelta;
+						this.mousewheelHdl(delta);
+						this.pinchDelta = Math.pow(e.touches[1].pageX - x, 2) + Math.pow(e.touches[1].pageY - y, 2);
+						this.pinch = 0;
+					}
+				}
+				if (e.touches.length > 1) {
+					return;
 				}
 			}
-			this.mouseX = x;
-			this.mouseY = y;
+			this.mousemoveHdl(x, y);
 		});
 		this.canvas.on('mousewheel DOMMouseScroll', function (evt){
 			var e = evt.originalEvent;
 			var delta = e.wheelDelta > 0 || e.detail < 0 ? 1 : -1;
-			var x = Math.round(e.pageX + 0.1 || e.touches[0].pageX);
-			var y = Math.round(e.pageY + 0.1 || e.touches[0].pageY);
+			var x = e.touches ? e.touches[0].pageX : e.pageX;
+			var y = e.touches ? e.touches[0].pageY : e.pageY;
 			e.preventDefault();
 			this.creator.zcenterX = x / this.creator.width();
 			this.creator.zcenterY = y / this.creator.height();
