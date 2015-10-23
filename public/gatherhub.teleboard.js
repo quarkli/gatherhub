@@ -141,13 +141,13 @@ function precision(num, p) {
 })();
 
 (function(){
+	VisualPad.prototype = new gatherhub.SvgCanvas();  	// Inherit from SvgCanvas
+	VisualPad.prototype.constructor = VisualPad;	  	// Assign constructor
+
 	// Properties Prototype Declaration
 	VisualPad.prototype.sc = {};  // Source Canvas
 	
 	// Fucntions Prototype Declaration
-	VisualPad.prototype = new gatherhub.SvgCanvas();  	// Inherit from SvgCanvas
-	VisualPad.prototype.constructor = VisualPad;	  	// Assign constructor
-	
 	VisualPad.prototype.hide = function() {
 		this.canvas.css('display', 'none');
 	}
@@ -324,10 +324,11 @@ function precision(num, p) {
 				}
 			}
 		});
-		this.canvas.on('mousewheel', function (evt){
+		this.canvas.on('mousewheel DOMMouseScroll', function (evt){
 			var e = evt.originalEvent;
+			var delta = e.wheelDelta > 0 || e.detail < 0 ? 1 : -1;
 			e.preventDefault();
-			this.mousewheelHdl(e.wheelDelta);
+			this.mousewheelHdl(delta);
 		});
 	}
 	
@@ -336,26 +337,84 @@ function precision(num, p) {
 })();
 
 (function(){
-	// Properties Prototype Declaration
-	
-	// Fucntions Prototype Declaration
 	SketchPad.prototype = new gatherhub.SvgCanvas();  	// Inherit from SvgCanvas
 	SketchPad.prototype.constructor = SketchPad;	  	// Assign constructor
+
+	// Properties Prototype Declaration
 	SketchPad.prototype.penColor = 'black';
 	SketchPad.prototype.penWidth = 5;
 	SketchPad.prototype.penShape = 'round';
-	SketchPad.prototype.redocache;
-	
+		
+	// Fucntions Prototype Declaration
+	SketchPad.prototype.id = function(){return this.canvas[0].pathholder.attr('id')};
 	
 	// Constructor
-	function SketchPad(w, h){
+	function SketchPad(w, h, id){
 		gatherhub.SvgCanvas.call(this, w, h);
 		
 		// Mouse / Touch event handlers
-		this.canvas[0].defaultWidth = this.canvas.attr('width');
-		this.canvas[0].defaultHeight = this.canvas.attr('height');
-		this.canvas[0].size = 1;
+		var pathholder = this.canvas[0].pathholder = $(document.createElementNS('http://www.w3.org/2000/svg', 'g'));
+		pathholder.attr('id', id);
+		this.canvas.append(pathholder);
+		this.canvas[0].redocache = $(document.createElementNS('http://www.w3.org/2000/svg', 'g'));
+		this.canvas[0].activepath = -1;
 		this.pinchSensitivity(8);
+		
+		this.canvas[0].drawStart =  function(x, y){
+			x = precision(x * this.creator.w / this.creator.width() + this.creator.x, 3);
+			y = precision(y * this.creator.h / this.creator.height() + this.creator.y, 3);
+
+			var $node =  $(document.createElementNS('http://www.w3.org/2000/svg', 'path'));
+			$node.attr('stroke-width', this.creator.penWidth);
+			$node.attr('stroke-linecap', this.creator.penShape);
+			$node.attr('stroke', this.creator.penColor);
+			$node.attr('fill', 'none');
+			$node.attr('d', 'M' + x + ',' + y);
+
+			this.pathholder.append($node);
+			//clearPathsCache();
+			this.activepath = this.pathholder.children('path').length - 1;
+		}
+
+		this.canvas[0].drawPath = function(x, y){
+			if (this.activepath >= 0) {
+				x = precision(x * this.creator.w / this.creator.width() + this.creator.x, 3);
+				y = precision(y * this.creator.h / this.creator.height() + this.creator.y, 3);
+				this.pathholder.children('path').eq(this.activepath).attr('d', this.pathholder.children('path').eq(this.activepath).attr('d') + 'L' + x + ',' + y);
+			}
+		}
+
+		this.canvas[0].drawEnd = function(){
+			if (this.activepath >=0) {
+				var $node = this.pathholder.children('path').eq(this.activepath);
+				var move = $node.attr('d').split('L').length;
+				this.activepath = -1;
+				
+				if (move < 2 || (falseTouch && move < 3)) {
+					this.pathholder.children('path').eq(this.activepath).remove();
+					return;
+				}
+				
+				//updateVispad();
+				
+				if (bWsReady) {
+					ws.send(
+						JSON.stringify(
+							{
+								id: hubid,
+								name: peername,
+								action: 'path',
+								stroke: $node.attr('stroke'),
+								strokeWidth: $node.attr('stroke-width'),
+								strokeLinecap: $node.attr('stroke-linecap'),
+								fill: $node.attr('fill'),
+								d: $node.attr('d')
+							}
+						)
+					);
+				}
+			}
+		}	
 		
 		this.canvas[0].mousedownHdl = function(x, y) {
 			this.logtime = $.now();			
@@ -433,14 +492,15 @@ function precision(num, p) {
 			this.mouseX = x;
 			this.mouseY = y;
 		});
-		this.canvas.on('mousewheel', function (evt){
+		this.canvas.on('mousewheel DOMMouseScroll', function (evt){
 			var e = evt.originalEvent;
+			var delta = e.wheelDelta > 0 || e.detail < 0 ? 1 : -1;
 			var x = Math.round(e.pageX + 0.1 || e.touches[0].pageX);
 			var y = Math.round(e.pageY + 0.1 || e.touches[0].pageY);
 			e.preventDefault();
 			this.creator.zcenterX = x / this.creator.width();
 			this.creator.zcenterY = y / this.creator.height();
-			this.mousewheelHdl(e.wheelDelta);
+			this.mousewheelHdl(delta);
 		});
 	}
 	
