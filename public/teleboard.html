@@ -30,15 +30,14 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
     $(function(){
       var sp = new gatherhub.SketchPad();
       sp.appendTo('body');
-	  sp.margin(5);
-	  sp.fit();
-	  sp.calibration();
+	  sp.penColor('blue');
+	  sp.penWidth('xs');
+	  //sp.calibration();
 	  
-	  var vp = new gatherhub.VisualPad(sp.width()/4, sp.height()/4, '#grid');
-	  vp.appendTo('body');
-	  //vp.moveTo('left', 0);
-	  //vp.moveTo('top', 0);
-	  vp.show();
+	  var vp = new gatherhub.VisualPad(sp.width()/4, sp.height()/4);
+	  vp.appendTo('body');	  
+
+	  sp.addVisualPad(vp);
     });
     </script>
   </head>

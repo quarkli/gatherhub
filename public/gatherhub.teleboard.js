@@ -47,8 +47,17 @@ function precision(num, p) {
 		this.canvas[0].pinchSensitivity = s;
 	}
 	
-	SvgCanvas.prototype.bgcolor = function(color) {
-		this.canvas.css('background-color', color);
+	SvgCanvas.prototype.bgcolor = function(c) {
+		this.canvas.css('background-color', c);
+	}
+	
+	SvgCanvas.prototype.bordercolor = function(c) {
+		this.canvas.css('border-style', 'solid');
+		this.canvas.css('border-color', c);
+	}
+	
+	SvgCanvas.prototype.borderwidth = function(w) {
+		this.canvas.css('border-width', w + 'px');
 	}
 	
 	SvgCanvas.prototype.clear = function() {
@@ -142,7 +151,7 @@ function precision(num, p) {
 
 (function(){
 	VisualPad.prototype = new gatherhub.SvgCanvas();  	// Inherit from SvgCanvas
-	VisualPad.prototype.constructor = VisualPad;	  	// Assign constructor
+	VisualPad.prototype.constructor = VisualPad;  	// Assign constructor
 
 	// Properties Prototype Declaration
 	VisualPad.prototype.sc = {};  // Source Canvas
@@ -164,29 +173,28 @@ function precision(num, p) {
 	
 	VisualPad.prototype.refresh = function() {
 		if (this.sc.length) {
-			this.x = this.sc[0].getBBox().x;
-			this.y = this.sc[0].getBBox().y;
-			this.w = this.sc[0].getBBox().width;
-			this.h = this.sc[0].getBBox().height;
+			this.x = this.sc[0].getBBox().x - 5;
+			this.y = this.sc[0].getBBox().y - 5;
+			this.w = this.sc[0].getBBox().width + 10;
+			this.h = this.sc[0].getBBox().height + 10;
 			this.canvas[0].setAttribute('viewBox', this.x + ' ' + this.y + ' ' + this.w + ' ' + this.h);
-			this.offset('x', -this.x);
-			this.offset('y', -this.y);			
 		}
 	}
 	
 	VisualPad.prototype.src = function(src) {
 		if ($(src).length) {
 			this.canvas.html('<use xlink:href=' + src + '/>');
-			this.sc = $(src);			
+			this.sc = $(src);
 		}
 	}
 	
 	// Constructor
-	function VisualPad(w, h, src){
+	function VisualPad(w, h){
 		gatherhub.SvgCanvas.call(this, w, h);
 		this.canvas.css('position', 'absolute');
 		this.bgcolor('#FFE')
-;		this.src(src);
+		this.bordercolor('#888')
+		this.borderwidth(5)
 		this.moveTo('bottom', 0);
 		this.moveTo('right', 0);
 		this.refresh();
@@ -201,20 +209,22 @@ function precision(num, p) {
 		this.canvas[0].mousedownHdl = function(x, y) {
 			if ($.now() - this.logtime < 400) {
 				if ($(this).attr('width') == this.defaultWidth) {
+					this.size = precision(window.innerWidth / $(this).attr('width'), 1);
 					$(this).attr('width' , window.innerWidth);
-					$(this).attr('height', window.innerHeight);					
+					$(this).attr('height', window.innerHeight);
 				}
 				else {
+					this.size = 1;
 					$(this).attr('width' , this.defaultWidth);
-					$(this).attr('height', this.defaultHeight);					
+					$(this).attr('height', this.defaultHeight);
 				}
 			}
 			else {
 				this.dragging = true;
 				this.mouseX = x;
-				this.mouseY = y;				
+				this.mouseY = y;
 			}
-			this.logtime = $.now();			
+			if (this.bBtnLeft) this.logtime = $.now();
 		};
 		
 		this.canvas[0].mouseupHdl = function() {
@@ -222,7 +232,7 @@ function precision(num, p) {
 			var left = $(this).position().left;
 			if (top + $(this).height() - 5 > window.innerHeight) {
 				$(this).css('top', 'auto');
-				$(this).css('bottom', 	5);			
+				$(this).css('bottom', 	5);
 			}
 			else {
 				$(this).css('bottom', 'auto');
@@ -237,7 +247,7 @@ function precision(num, p) {
 				$(this).css('left', (left < 5) ? 0 : left);
 			}
 			this.dragging = false;
-			this.pinch = 0;			
+			this.pinch = 0;
 		};
 		
 		this.canvas[0].mousemoveHdl = function(x, y) {
@@ -256,40 +266,45 @@ function precision(num, p) {
 
 		this.canvas[0].mousewheelHdl = function(delta) {
 			var r = 0.1;
-			var w =	this.defaultWidth;
-			var h =	this.defaultHeight;
-			var dx = r * w / 2;
-			var dy = r * h / 2;
+			var s = this.size;
+			var x = $(this).position().top;
+			var y = $(this).position().left;
 
 			if (delta > 0) {
-				if ($(this).attr('width') >= window.innerWidth) return;
-				this.size += r;
-				dx *= -1;
-				dy *= -1
+				s += r;
 			}
-			else if (this.size > 1){
-				this.size -= r;
-			}
-			else {
-				return;
+			else if (s - r >= 1){
+				s -= r;
 			}
 			
-			w *= this.size;
-			h *= this.size;
-			$(this).css('bottom', 'auto');
-			$(this).css('right', 'auto');
-			$(this).css('top', $(this).position().top + dy);
-			$(this).css('left', $(this).position().left + dx);
-			$(this).attr('width' , w > window.innerWidth ? window.innerWidth : w);
-			$(this).attr('height', h > window.innerHeight ? window.innerHeight : h);						
+			w = this.defaultWidth * s;
+			h = this.defaultHeight * s;
+			if (w <= window.innerWidth && h <= window.innerHeight ) {
+				if ($(this).position().top + h > window.innerHeight) {
+					$(this).css('bottom', 'auto');
+					$(this).css('top',  window.innerHeight - h);	
+				}
+				if ($(this).position().left + w > window.innerWidth) {
+					$(this).css('right', 'auto');
+					$(this).css('left',  window.innerWidth - w);
+				}
+				$(this).attr('width' , w);
+				$(this).attr('height', h);
+				this.size = precision(s, 1);
+			}
 		};
 		
 		// Bind event handlers to Mouse events
+		this.canvas.on('contextmenu', function(){return false;});
 		this.canvas.on('mousedown touchstart', function(evt){
 			var e = evt.originalEvent;
 			var x = e.touches ? e.touches[0].pageX : e.pageX;
 			var y = e.touches ? e.touches[0].pageY : e.pageY;
 			e.preventDefault();
+			if (e.button==0) this.bBtnLeft = true;
+			if (e.button==1) this.bBtnMiddle = true;
+			if (e.button==2) this.bBtnRight = true;
+
 			if (e.touches) {
 				if (e.touches.length == 2) {
 					this.pinchDelta = Math.pow(e.touches[1].pageX - x, 2) + Math.pow(e.touches[1].pageY - y, 2);
@@ -300,11 +315,15 @@ function precision(num, p) {
 					return;
 				}
 			}
-			this.mousedownHdl(x, y);			
+			this.mousedownHdl(x, y);
+			this.bBtnLeft = true;
 		});
 		this.canvas.on('mouseup mouseleave touchend',function(evt){
 			var e = evt.originalEvent;
 			e.preventDefault();
+			if (e.button==0) this.bBtnLeft = false;
+			if (e.button==1) this.bBtnMiddle = false;
+			if (e.button==2) this.bBtnRight = false;
 			this.mouseupHdl();
 		});
 		this.canvas.on('mousemove touchmove', function(evt){
@@ -326,7 +345,7 @@ function precision(num, p) {
 			}
 			this.mousemoveHdl(x, y);
 		});
-		this.canvas.on('mousewheel DOMMouseScroll', function (evt){
+		this.canvas.on('mousewheel DOMMouseScroll', function(evt){
 			var e = evt.originalEvent;
 			var delta = e.wheelDelta > 0 || e.detail < 0 ? 1 : -1;
 			e.preventDefault();
@@ -340,23 +359,50 @@ function precision(num, p) {
 
 (function(){
 	SketchPad.prototype = new gatherhub.SvgCanvas();  	// Inherit from SvgCanvas
-	SketchPad.prototype.constructor = SketchPad;	  	// Assign constructor
+	SketchPad.prototype.constructor = SketchPad;  		// Assign constructor
 
 	// Properties Prototype Declaration
-	SketchPad.prototype.penColor = 'black';
-	SketchPad.prototype.penWidth = 5;
-	SketchPad.prototype.penShape = 'round';
+	SketchPad.prototype.vp;					// Attached VisualPad
+	SketchPad.prototype.pc = 'black';		// Pen Color: 'black', 'red', 'green', 'blue', '#HEX'
+	SketchPad.prototype.pw = 5;				// Pen Width: xs=1, s=5, m=9, l=21
+	SketchPad.prototype.ps = 'round';		// Pen Shape: rect / round
 		
 	// Fucntions Prototype Declaration
-	SketchPad.prototype.id = function(){return this.canvas[0].pathholder.attr('id')};
+	SketchPad.prototype.addVisualPad = function(vp){
+		if (Object.getPrototypeOf(vp) === gatherhub.VisualPad.prototype) {
+			vp.src('#' + this.canvas[0].pathholder.attr('id'));
+			this.vp = vp;
+		}
+	};
 	
+	SketchPad.prototype.penColor = function(c){this.pc = c};
+	
+	SketchPad.prototype.penWidth = function(w){
+		switch (w) {
+			case 'xs':
+				this.pw = 1;
+				break;
+			case 's':
+				this.pw = 5;
+				break;
+			case 'm':
+				this.pw = 9;
+				break;
+			case 'l':
+				this.pw = 21;
+				break;
+		}
+	};
+	
+	SketchPad.prototype.penShape = function(s){this.ps = s;};
+
 	// Constructor
-	function SketchPad(w, h, id){
+	function SketchPad(w, h){
 		gatherhub.SvgCanvas.call(this, w, h);
 		
 		// Mouse / Touch event handlers
 		var pathholder = this.canvas[0].pathholder = $(document.createElementNS('http://www.w3.org/2000/svg', 'g'));
-		pathholder.attr('id', id);
+		pathholder.attr('id', 'g' + (0 | Math.random() * 1000));
 		this.canvas.append(pathholder);
 		this.canvas[0].redocache = $(document.createElementNS('http://www.w3.org/2000/svg', 'g'));
 		this.canvas[0].activepath = -1;
@@ -367,9 +413,9 @@ function precision(num, p) {
 			y = precision(y * this.creator.h / this.creator.height() + this.creator.y, 3);
 
 			var $node =  $(document.createElementNS('http://www.w3.org/2000/svg', 'path'));
-			$node.attr('stroke-width', this.creator.penWidth);
-			$node.attr('stroke-linecap', this.creator.penShape);
-			$node.attr('stroke', this.creator.penColor);
+			$node.attr('stroke-width', this.creator.pw);
+			$node.attr('stroke-linecap', this.creator.ps);
+			$node.attr('stroke', this.creator.pc);
 			$node.attr('fill', 'none');
 			$node.attr('d', 'M' + x + ',' + y);
 
@@ -392,14 +438,14 @@ function precision(num, p) {
 				var move = $node.attr('d').split('L').length;
 				this.activepath = -1;
 				
-				if (move < 2 || (falseTouch && move < 3)) {
+				if (move < 2 || (this.falseTouch && move < 3)) {
 					this.pathholder.children('path').eq(this.activepath).remove();
 					return;
 				}
 				
-				//updateVispad();
+				if (this.creator.vp) this.creator.vp.refresh();
 				
-				if (bWsReady) {
+				if (this.bWsReady) {
 					ws.send(
 						JSON.stringify(
 							{
@@ -419,13 +465,16 @@ function precision(num, p) {
 		}	
 		
 		this.canvas[0].mousedownHdl = function(x, y) {
-			this.logtime = $.now();			
+			this.logtime = $.now();
+			this.drawStart(x, y);
 		};
 		
 		this.canvas[0].mouseupHdl = function() {
+			this.drawEnd();
 		};
 		
 		this.canvas[0].mousemoveHdl = function(x, y) {
+			this.drawPath(x, y);
 		};
 
 		this.canvas[0].mousewheelHdl = function(delta) {
@@ -438,6 +487,7 @@ function precision(num, p) {
 		};
 		
 		// Bind event handlers to Mouse events
+		this.canvas.on('contextmenu', function(){return false;});
 		this.canvas.on('mousedown touchstart', function(evt){
 			var e = evt.originalEvent;
 			var x = e.touches ? e.touches[0].pageX : e.pageX;
@@ -445,7 +495,7 @@ function precision(num, p) {
 			e.preventDefault();
 
 			this.mouseX = x;
-			this.mouseY = y;				
+			this.mouseY = y;
 
 			if (e.button==0) this.bBtnLeft = true;
 			if (e.button==1) this.bBtnMiddle = true;
@@ -461,7 +511,13 @@ function precision(num, p) {
 					return;
 				}
 			}
-			this.mousedownHdl(x, y);			
+			
+			if (this.bBtnMiddle || this.bBtnRight) {
+				this.mouseupHdl();
+			}
+			else {
+				this.mousedownHdl(x, y);
+			}			
 		});
 		this.canvas.on('mouseup mouseleave touchend',function(evt){
 			var e = evt.originalEvent;
@@ -476,8 +532,6 @@ function precision(num, p) {
 			var x = e.touches ? e.touches[0].pageX : e.pageX;
 			var y = e.touches ? e.touches[0].pageY : e.pageY;
 			e.preventDefault();
-			this.mouseX = x;
-			this.mouseY = y;
 			if (this.bBtnMiddle || (this.bBtnLeft && this.bBtnRight)) {
 				this.creator.offset('x', precision(e.pageX, 3) - this.mouseX);
 				this.creator.offset('y', precision(e.pageY, 3) - this.mouseY);
@@ -497,8 +551,10 @@ function precision(num, p) {
 				}
 			}
 			this.mousemoveHdl(x, y);
+			this.mouseX = x;
+			this.mouseY = y;
 		});
-		this.canvas.on('mousewheel DOMMouseScroll', function (evt){
+		this.canvas.on('mousewheel DOMMouseScroll', function(evt){
 			var e = evt.originalEvent;
 			var delta = e.wheelDelta > 0 || e.detail < 0 ? 1 : -1;
 			var x = e.touches ? e.touches[0].pageX : e.pageX;
