@@ -192,9 +192,9 @@ function precision(num, p) {
 	function VisualPad(w, h){
 		gatherhub.SvgCanvas.call(this, w, h);
 		this.canvas.css('position', 'absolute');
-		this.bgcolor('#FFE')
-		this.bordercolor('#888')
-		this.borderwidth(5)
+		this.bgcolor('#FFE');
+		this.bordercolor('#888');
+		this.borderwidth(5);
 		this.moveTo('bottom', 0);
 		this.moveTo('right', 0);
 		this.refresh();
