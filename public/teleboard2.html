@@ -1,0 +1,66 @@
+<!--
+teleboard.html is distributed under the permissive MIT License:
+
+Copyright (c) 2015, Quark Li, quarkli@gmail.com
+All rights reserved.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. 
+-->
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Gatherhub Teleboard</title>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1">
+	<link rel="icon" href="gatherhub-logo.png">    <link rel="stylesheet" href="bootstrap.min.css">
+    <script src="jquery.min.js"></script>
+    <script src="bootstrap.min.js"></script>
+    <script src="teleboard.js"></script>
+    <script>
+    $(function(){
+      var sp = new gatherhub.SvgPad();
+      $('body').append(sp.pad());
+	  sp.calibration();
+	  //sp.bgcolor('#EFF');
+	  //sp.bordercolor('#BAB');
+	  sp.borderwidth(5);
+	  sp.zoom(.5);
+	  //sp.offsetcanvas('y', -35);
+	  //sp.fixposition(true);
+	  //sp.moveTo('top', 0);
+	  //sp.moveTo('left', 0);
+	  //sp.show(true);
+	  //sp.fit();
+	  //sp.nocontext();
+	  
+	  
+	  window.onresize = function(){sp.fit();};
+	  
+	  var vp = new gatherhub.VisualPad('grid');
+	  vp.bgcolor('#FFE');
+	  vp.bordercolor('#FEE');
+	  vp.borderwidth(2);
+	  vp.width(sp.width()/4);
+	  vp.height(sp.height()/4);
+	  vp.fixposition(true);
+	  vp.moveTo('top', 0);
+	  vp.moveTo('left', 0);
+	  vp.show(true);
+	  $('body').append(vp.pad);
+	  vp.refresh();
+   });
+    </script>
+  </head>
+  <body>
+  </body>
+</html>
