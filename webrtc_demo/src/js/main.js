@@ -1,4 +1,5 @@
 'use strict';
+var HubCom = require('./hubcom');
 
 var sendButton = document.getElementById("sendButton");
 var sendTextarea = document.getElementById("dataChannelSend");
@@ -7,311 +8,25 @@ var msgHistory = document.getElementById("msgHistory");
 var mediaButton = document.getElementById("mediaButton");
 var mediaArea = document.getElementById("mediaAreas");
 
-/*add two kind of event to handle wether channel is intiated or not*/
-enableMessageInterface(false);
+var localAudio = document.querySelector('#localAudio');
+var remoteAudio = document.querySelector('#remoteAudio');
+var localStream = null;
+var remoteStream = null;
+
+
+var chatText = [];
+var hubCom = new HubCom();
+
+hubCom.onDCChange = hdlDCchange;
+hubCom.onDataRecv = hdlDataRecv;
+hubCom.muteLocMedia = stopMedia;
+hubCom.onRStreamAdd = handleRemoteStreamAdded;
 sendButton.onclick = sendData;
 mediaButton.onclick = invokeMedia;
 
 
-var chatText = new Array();
-
-var pc_config = webrtcDetectedBrowser === 'firefox' ?
-  {'iceServers':[{'url':'stun:23.21.150.121'}]} : // number IP
-  {'iceServers': [{'url': 'stun:chi2-tftp2.starnetusa.net'}]};
-
-var pc_constraints = {
-  'optional': [
-    {'DtlsSrtpKeyAgreement': false},
-    {'RtpDataChannels': true}
-  ]};
-//var pc_constraints = null;  
-
-var p2pHdls = new Array();
-
-
-var room = location.pathname.substring(1);
-
-
-if (room === '') {
-//  room = prompt('Enter room name:');
-  room = 'foo';
-} else {
-  //
-}
-
-var socket = io.connect();
-
-if (room !== '') {
-  console.log('Create or join room', room);
-  socket.emit('join', room);
-}
-
-function getSocketIndex(id){
-	var i = 0;
-	for(i=0;i<p2pHdls.length;i++){
-		if((p2pHdls[i])&&(p2pHdls[i].id == id)){
-			return i;
-		}
-	}
-	return -1;
-}
-
-socket.on('joined', function (data){
-  console.log('Another peer # '+data.id+ ' made a request to join room ' + room);
-	// id = data.id has joined into the room, create pc to connect it.
-	//create peerconnection
-	var id = data.id;
-	var index = getSocketIndex(id);
-  console.log('get index:', index);
-	var p2pNode = p2pHdls[index];
-	if(!p2pNode){
-		p2pNode = new PeerHdl(id,'calling');
-		p2pHdls[p2pHdls.length] = p2pNode;
-	}
-
-	if(localStream){
-		p2pNode.addStream(localStream);
-	}
-	
-	//create offer
-	p2pNode.makeOffer();
-	//add here temp
-});
-
-socket.on('bye',function(data){
-  console.log('Another peer # '+data.id+ ' leave room ' + room);
-	var id = data.id;
-	var index = getSocketIndex(id);
-
-	console.log('release index '+index+ ' resource' );
-
-	if(index>=0){
-		p2pHdls[index].close();
-		delete p2pHdls[index];
-	}
-	
-	
-});
-
-
-
-socket.on('msg', function (message){
-	var id = message.from;
-	var index = getSocketIndex(id);
-  console.log('get index:', index);
-	
-	var p2pNode = p2pHdls[index];
-  console.log('Received message:', message);
-  if (message.sdp.type === 'offer') {
-		//get invite from other side
-		if(!p2pNode){
-			p2pNode = new PeerHdl(id,'called');
-			p2pHdls[p2pHdls.length] = p2pNode;
-		}
-
-		/*if there is a local stream playing, we need remove this */
-		if(localStream){
-			stopMedia();
-		}
-		
-    p2pNode.setRemoteDescription(new RTCSessionDescription(message.sdp));
-		//make a offer
-    p2pNode.makeAnswer();
-		//add here temp
-		
-  } else if (message.sdp.type === 'answer' ) {
-		if(!p2pNode){
-			console.log("wrong answer id from "+id);
-			return;
-		}
-    p2pNode.setRemoteDescription(new RTCSessionDescription(message.sdp));
-		
-  } else if (message.sdp.type === 'candidate') {
-		if(!p2pNode){
-			console.log("wrong candidate id from "+id);
-			return;
-		}
-    var candidate = new RTCIceCandidate({sdpMLineIndex:message.sdp.label,
-      candidate:message.sdp.candidate});
-    p2pNode.addIceCandidate(candidate);
-  } else if (message === 'bye' ) {
-    //handleRemoteHangup();
-  }
-});
-
-
-
-socket.on('log', function (array){
-  console.log.apply(console, array);
-});
-
-///////////////object PeerHdl
-
-function PeerHdl(id, type){
-	var self = this;
-	this.id = id;
-	this.connection = new RTCPeerConnection(pc_config, pc_constraints);
-	this.connection.onicecandidate = function(event){
-	  console.log('onicecandidate: ', event);
-	  if (event.candidate) {
-	    sendMessage({
-				room: room,
-				to: self.id,
-				sdp: {
-		      type: 'candidate',
-		      label: event.candidate.sdpMLineIndex,
-		      id: event.candidate.sdpMid,
-		      candidate: event.candidate.candidate},
-				});
-	  } else {
-	    console.log('End of candidates.');
-	  }
-	};
-	if(type=='calling'){
-		//add try catch(e) when needed.
-
-    this.sendChannel = this.connection.createDataChannel("sendDataChannel",{reliable: false});
-	  console.log('sendChannel created!',this.sendChannel);
-    this.sendChannel.onmessage = handleMessage;
-		this.sendChannel.onopen = hdlDataChanSateChange;
-		this.sendChannel.onclose = hdlDataChanSateChange;
-	}else{
-		this.connection.ondatachannel = function(event){
-			console.log('Receive Channel:',event.channel);
-			self.sendChannel = event.channel;
-			self.sendChannel.onmessage = handleMessage;
-  		self.sendChannel.onopen = hdlDataChanSateChange;
-  		self.sendChannel.onclose = hdlDataChanSateChange;
-		};
-	}
-	// add stream on add/remove callback
-	this.connection.onaddstream = handleRemoteStreamAdded;
-	this.connection.onremovestream = handleRemoteStreamRemoved;
-
-}
-
-PeerHdl.prototype.makeOffer = function(){
-	var self =this;
-  this.connection.createOffer(function(desc){
-  	console.log('makeOffer',desc);
-	  self.connection.setLocalDescription(desc);
-	  sendMessage({room:room, to:self.id, sdp:desc});
-	}, null, constraints);
-};
-
-PeerHdl.prototype.makeAnswer = function(){
-	var self =this;
-  this.connection.createAnswer(function(desc){
-  	console.log('makeAnswer');
-		//desc.sdp = stripTcpSes(desc.sdp);
-	  self.connection.setLocalDescription(desc);
-	  sendMessage({room:room, to:self.id, sdp:desc});
-	},null);
-
-};
-
-PeerHdl.prototype.addStream =  function(stream){
-	this.connection.addStream(stream);
-};
-
-PeerHdl.prototype.removeStream = function(stream){
-	this.connection.removeStream(stream);
-};
-
-PeerHdl.prototype.setRemoteDescription = function(desc){
-	this.connection.setRemoteDescription(desc);
-	console.log('setRemoteDescription ',desc);
-};
-
-PeerHdl.prototype.addIceCandidate = function(candidate){
-	this.connection.addIceCandidate(candidate);
-	console.log('addIceCandidate ',candidate);
-};
-
-PeerHdl.prototype.close = function(){
-  console.log('peerconnection close ',this.id);
-	this.connection.close();
-};
-
-
-
-
-////////////////////////////////////////////////
-//var name = prompt("What is your name?");
-
-////////////////////////
-function addMsgHistory(data){
-	var message = '';
-	var size = chatText.length;
-	chatText[size] = '<li>'+data+'</li>';
-	
-	for(var i=0;i<chatText.length;i++){
-		message+=chatText[i];
-	}
-	msgHistory.innerHTML = message;
-	console.log('show message:',message);
-}
-
-//////////////////////////////
-
-function sendMessage(message){
-	console.log('Sending message: ', message);
-  socket.emit('msg', message);
-}
-
-
-
-function handleUserMediaError(error){
-  console.log('getUserMedia error: ', error);
-}
-
-
-
-window.onbeforeunload = function(e){
-	//sendMessage('bye');
-}
-
-
-
-function sendData() {
-  var data = sendTextarea.value;
-	var p2pNode;
-	
-	p2pHdls.forEach(function(p2pNode){
-		p2pNode.sendChannel.send(data);
-	});
-		
-	addMsgHistory(data);
-  trace('Sent data: ' + data);
-}
-
-
-function hdlDataChanSateChange(){
-	var p2pNode;
-	var state =false;
-	p2pHdls.forEach(function(p2pNode){
-		if(p2pNode.sendChannel.readyState=="open"){
-			state = true;
-			console.log("hdlDataChanSateChange event is ",state);
-			return;
-		}
-	});
-	enableMessageInterface(state);
-
-}
-
-
-function handleMessage(event) {
-  trace('Received message: ' + event.data);
-  //receiveTextarea.value = event.data;
-	//msgTextarea.append(event.data);
-	addMsgHistory(event.data);
-
-}
-
-
-function enableMessageInterface(shouldEnable) {
-    if (shouldEnable) {
+function enableMsgInf(enable) {
+  if (enable) {
     dataChannelSend.disabled = false;
     dataChannelSend.focus();
     dataChannelSend.placeholder = "";
@@ -325,51 +40,56 @@ function enableMessageInterface(shouldEnable) {
   }
 }
 
-////////////////////////////////////
-var localAudio = document.querySelector('#localAudio');
-var remoteAudio = document.querySelector('#remoteAudio');
-var localStream = null;
-var remoteStream = null;
+
+enableMsgInf(false);
 
 
-/*function doCall(control){
-	var idx = [];
-	var index = 0;
-	p2pHdls.forEach(function(p2pNode){
-		idx[index] = p2pNode.id;
-		index += 1;
-		p2pNode.close();
-	});
-	var p2pNode,id;
-	for(var i=0;i<index;i++){
-		id = idx[i];
-		console.log('new PeerHdl id is', id);
-		p2pNode = new PeerHdl(id,'calling');
-		p2pHdls[id] = p2pNode;
-		if(control){
-			p2pNode.addStream(localStream);
-		}
-		p2pNode.makeOffer();
+function addMsgHistory(data){
+	var message = '';
+	var size = chatText.length;
+	chatText[size] = '<li>'+data+'</li>';
+	
+	for(var i=0;i<chatText.length;i++){
+		message+=chatText[i];
 	}
-}*/
-
-function doCall(control){
-	p2pHdls.forEach(function(p2pNode){
-		if(control&&localStream){
-			p2pNode.addStream(localStream);
-		}
-		p2pNode.makeOffer();
-	});
+	msgHistory.innerHTML = message;
+	console.log('show message:',message);
 }
 
 
+
+
+
+function sendData() {
+  var data = sendTextarea.value;
+	hubCom.sendData(data);	
+	addMsgHistory(data);
+  console.log('Sent data: ' + data);
+}
+
+
+function hdlDCchange(state){
+	enableMsgInf(state);
+
+}
+
+
+function hdlDataRecv(from, data) {
+  console.log('Received message from ' + from + ' msg is: ' + data);
+	addMsgHistory(data);
+
+}
+
+
+
+////////////////////////////////////
 
 
 function handleUserMedia(stream) {
   console.log('Adding local stream.',stream);
   localAudio.src = window.URL.createObjectURL(stream);
   localStream = stream;
-	doCall(true);
+	hubCom.addLocMedia(stream);
 	
 }
 
@@ -402,6 +122,7 @@ function startMedia(){
 
 function stopMedia(){
 	muteMedia();
+	hubCom.rmLocMedia();
 	mediaStatus = false;
 	mediaButton.innerHTML = "Start Broadcast"
 }
@@ -413,182 +134,17 @@ function invokeMedia(){
 		startMedia();
 	}else{
 		stopMedia();
-		doCall(false);
 	}
 
 }
 
-function mergeConstraints(cons1, cons2) {
-  var merged = cons1;
-  for (var name in cons2.mandatory) {
-    merged.mandatory[name] = cons2.mandatory[name];
-  }
-  merged.optional.concat(cons2.optional);
-  return merged;
-}
-
-
-function requestTurn(turn_url) {
-  var turnExists = false;
-  for (var i in pc_config.iceServers) {
-    if (pc_config.iceServers[i].url.substr(0, 5) === 'turn:') {
-      turnExists = true;
-      turnReady = true;
-      break;
-    }
-  }
-  if (!turnExists) {
-    console.log('Getting TURN server from ', turn_url);
-    // No TURN server. Get one from computeengineondemand.appspot.com:
-    var xhr = new XMLHttpRequest();
-    xhr.onreadystatechange = function(){
-      if (xhr.readyState === 4 && xhr.status === 200) {
-        var turnServer = JSON.parse(xhr.responseText);
-      	console.log('Got TURN server: ', turnServer);
-        pc_config.iceServers.push({
-          'url': 'turn:' + turnServer.username + '@' + turnServer.turn,
-          'credential': turnServer.password
-        });
-        turnReady = true;
-      }
-    };
-    xhr.open('GET', turn_url, true);
-    xhr.send();
-  }
-}
-
-function handleRemoteStreamAdded(event) {
+function handleRemoteStreamAdded(stream) {
   console.log('Remote stream added.');
- // reattachMediaStream(miniVideo, localVideo);
-  attachMediaStream(remoteAudio, event.stream);
-  remoteStream = event.stream;
-//  waitForRemoteAudio();
-}
-function handleRemoteStreamRemoved(event) {
-  console.log('Remote stream removed. Event: ', event);
+  attachMediaStream(remoteAudio, stream);
+  remoteStream = stream;
 }
 
-function hangup() {
-  console.log('Hanging up.');
-  stop();
-  //sendMessage('bye');
-}
-
-function handleRemoteHangup() {
-  console.log('Session terminated.');
-  stop();
-  //isInitiator = false;
-}
-
-function stop() {
-  // isAudioMuted = false;
-  // isAudioMuted = false;
-  //pc.close();
-  //pc = null;
-}
-
-///////////////////////////////////////////
-
-// Set Opus as the default audio codec if it's present.
-
-function stripTcpSes(sdp){
-  var sdpLines = sdp.split('\r\n');
-	var tmpLines = [];
-  for (var i = 0; i < sdpLines.length; i++) {
-      if (sdpLines[i].search(' tcp ') == -1) {
-				tmpLines[tmpLines.length] = sdpLines[i];
-      }
-  }
-  sdp = tmpLines.join('\r\n');
-	return sdp;
-}
-
-
-function preferOpus(sdp) {
-  var sdpLines = sdp.split('\r\n');
-  var mLineIndex;
-  // Search for m line.
-  for (var i = 0; i < sdpLines.length; i++) {
-      if (sdpLines[i].search('m=audio') !== -1) {
-        mLineIndex = i;
-        break;
-      }
-  }
-  if (mLineIndex === null) {
-    return sdp;
-  }
-
-  // If Opus is available, set it as the default in m line.
-  for (i = 0; i < sdpLines.length; i++) {
-    if (sdpLines[i].search('opus/48000') !== -1) {
-      var opusPayload = extractSdp(sdpLines[i], /:(\d+) opus\/48000/i);
-      if (opusPayload) {
-        sdpLines[mLineIndex] = setDefaultCodec(sdpLines[mLineIndex], opusPayload);
-      }
-      break;
-    }
-  }
-
-  // Remove CN in m line and sdp.
-  sdpLines = removeCN(sdpLines, mLineIndex);
-
-  sdp = sdpLines.join('\r\n');
-  return sdp;
-}
-
-function extractSdp(sdpLine, pattern) {
-  var result = sdpLine.match(pattern);
-  return result && result.length === 2 ? result[1] : null;
-}
-
-// Set the selected codec to the first in m line.
-function setDefaultCodec(mLine, payload) {
-  var elements = mLine.split(' ');
-  var newLine = [];
-  var index = 0;
-  for (var i = 0; i < elements.length; i++) {
-    if (index === 3) { // Format of media starts from the fourth.
-      newLine[index++] = payload; // Put target payload to the first.
-    }
-    if (elements[i] !== payload) {
-      newLine[index++] = elements[i];
-    }
-  }
-  return newLine.join(' ');
-}
-
-// Strip CN from sdp before CN constraints is ready.
-function removeCN(sdpLines, mLineIndex) {
-  var mLineElements = sdpLines[mLineIndex].split(' ');
-  // Scan from end for the convenience of removing an item.
-  for (var i = sdpLines.length-1; i >= 0; i--) {
-    var payload = extractSdp(sdpLines[i], /a=rtpmap:(\d+) CN\/\d+/i);
-    if (payload) {
-      var cnPos = mLineElements.indexOf(payload);
-      if (cnPos !== -1) {
-        // Remove CN payload from m line.
-        mLineElements.splice(cnPos, 1);
-      }
-      // Remove CN line in sdp
-      sdpLines.splice(i, 1);
-    }
-  }
-
-  sdpLines[mLineIndex] = mLineElements.join(' ');
-  return sdpLines;
-}
-
-
-function trace(text) {
-  // This function is used for logging.
-  if (text[text.length - 1] === '\n') {
-    text = text.substring(0, text.length - 1);
-  }
-  if (window.performance) {
-    var now = (window.performance.now() / 1000).toFixed(3);
-    console.log(now + ': ' + text);
-  } else {
-    console.log(text);
-  }
+window.onbeforeunload = function(e){
+	console.log('onbeforeunload');
 }
 
