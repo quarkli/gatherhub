@@ -25,20 +25,40 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 	<link rel="icon" href="gatherhub-logo.png">    <link rel="stylesheet" href="bootstrap.min.css">
     <script src="jquery.min.js"></script>
     <script src="bootstrap.min.js"></script>
-    <script src="gatherhub.teleboard.js"></script>
+    <script src="teleboard.js"></script>
     <script>
     $(function(){
-      var sp = new gatherhub.SketchPad();
-      sp.appendTo('body');
-	  sp.penColor('blue');
-	  sp.penWidth('xs');
-	  //sp.calibration();
+      var sp = new gatherhub.SvgPad();
+      $('body').append(sp.pad());
+	  sp.calibration();
+	  //sp.bgcolor('#EFF');
+	  //sp.bordercolor('#BAB');
+	  sp.borderwidth(5);
+	  sp.zoom(.5);
+	  //sp.offsetcanvas('y', -35);
+	  //sp.fixposition(true);
+	  //sp.moveTo('top', 0);
+	  //sp.moveTo('left', 0);
+	  //sp.show(true);
+	  //sp.fit();
+	  //sp.nocontext();
 	  
-	  var vp = new gatherhub.VisualPad(sp.width()/4, sp.height()/4);
-	  vp.appendTo('body');	  
-
-	  sp.addVisualPad(vp);
-    });
+	  
+	  window.onresize = function(){sp.fit();};
+	  
+	  var vp = new gatherhub.VisualPad('grid');
+	  vp.bgcolor('#FFE');
+	  vp.bordercolor('#FEE');
+	  vp.borderwidth(2);
+	  vp.width(sp.width()/4);
+	  vp.height(sp.height()/4);
+	  vp.fixposition(true);
+	  vp.moveTo('top', 0);
+	  vp.moveTo('left', 0);
+	  vp.show(true);
+	  $('body').append(vp.pad);
+	  vp.refresh();
+   });
     </script>
   </head>
   <body>
