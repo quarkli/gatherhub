@@ -22,37 +22,36 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 	<title>Gatherhub Teleboard</title>
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1">
-	<link rel="icon" href="gatherhub-logo.png">    <link rel="stylesheet" href="bootstrap.min.css">
-    <script src="jquery.min.js"></script>
-    <script src="bootstrap.min.js"></script>
-    <script src="teleboard.js"></script>
+	<link rel="icon" href="images/gatherhub-logo.png">
+    <link rel="stylesheet" href="css/bootstrap.min.css">
+    <script src="scripts/jquery.min.js"></script>
+    <script src="scripts/bootstrap.min.js"></script>
+    <script src="scripts/gatherhub.js"></script>
     <script>
     $(function(){
-      var sp = new gatherhub.SvgPad();
-      $('body').append(sp.pad());
-	  sp.calibration();
-	  //sp.bgcolor('#EFF');
-	  //sp.bordercolor('#BAB');
+      var sp = new Gatherhub.SvgPad();
+	  sp.nocontext();
+	  //sp.fit();
 	  sp.borderwidth(5);
-	  sp.zoom(.5);
+	  //sp.bordercolor('#BAB');
+	  //sp.bgcolor('#EFF');
 	  //sp.offsetcanvas('y', -35);
 	  //sp.fixposition(true);
 	  //sp.moveTo('top', 0);
 	  //sp.moveTo('left', 0);
+	  sp.zoom(.5);
 	  //sp.show(true);
-	  //sp.fit();
-	  //sp.nocontext();
-	  
+	  sp.calibration();
+      $('body').append(sp.pad());
 	  
 	  window.onresize = function(){sp.fit();};
 	  
-	  var vp = new gatherhub.VisualPad('grid');
+	  var vp = new Gatherhub.VisualPad('grid');
 	  vp.bgcolor('#FFE');
 	  vp.bordercolor('#FEE');
 	  vp.borderwidth(2);
-	  vp.width(sp.width()/4);
-	  vp.height(sp.height()/4);
-	  vp.fixposition(true);
+	  vp.defsize(sp.width()/4, sp.height()/4);
+	  vp.minimize();
 	  vp.moveTo('top', 0);
 	  vp.moveTo('left', 0);
 	  vp.show(true);
