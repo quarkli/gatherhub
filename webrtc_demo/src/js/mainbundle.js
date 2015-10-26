@@ -1,27 +1,27 @@
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
 'use strict';
-//var Emitter = require('wildemitter');
 var PeerConn = require('./peerconn');
 
 //constructor
 function HubCom(options){
 	var self = this;
-	var opts = this.opts = options || {
-		config: {'iceServers': [{'url': 'stun:chi2-tftp2.starnetusa.net'}]},
-		constraints: {
-		  'optional': [
-		    {'DtlsSrtpKeyAgreement': false},
-		    {'RtpDataChannels': true}
-		  ]},	
-
-	};
+	var opts = this.opts = options || {};
 	var room = opts.hubName || 'foo';
 	var user = opts.usrName;
   var peers = this.peers = [];
 	var socket = this.socket = io.connect();
 
 	this.opts.room = room;
-
+	this.opts.config = opts.config || {'iceServers': 
+			[{'url': 'stun:chi2-tftp2.starnetusa.net'}]};
+	this.opts.constraints = opts.constraints || {
+		  'optional': [
+		    {'DtlsSrtpKeyAgreement': false},
+		    {'RtpDataChannels': true}
+		  ]};
+			
+	this.media = new HubMedia(this);
+	this.mediaActive = false;
 	function getSockIdx(id){
 		var i = 0;
 		for(i=0;i<self.peers.length;i++){
@@ -130,7 +130,7 @@ function HubCom(options){
 
 			/*if there is a local stream playing, we need remove this */
 			if(self.localStream){
-				self.muteLocMedia();
+				self.media.stop();
 			}
 			
 		  pconn.setRemoteDescription(new RTCSessionDescription(message.sdp));
@@ -170,7 +170,30 @@ HubCom.prototype.sendData = function(data){
 		pconn.dc.send(data);
 	});
 };
+
+HubCom.prototype.startAudioCast = function(){
+	if(this.media.status === 0){
+		this.media.start();
+	}
+};
+
+HubCom.prototype.stopAudioCast = function(){
+	this.media.stop();
+};
+
+
+/*some callback fuctions*/
+HubCom.prototype.onDataRecv = function(){};
+HubCom.prototype.onDCChange = function(){};
+HubCom.prototype.onMediaAct = function(){};
+
+////internal api called by media class
+
 HubCom.prototype.addLocMedia = function(stream){
+	if(this.opts.locAudio){
+  	console.log('local stream added.');
+		attachMediaStream(this.opts.locAudio,stream);
+	}
 	this.localStream = stream;
 	this.peers.forEach(function(pconn){
 		pconn.addStream(stream);
@@ -184,11 +207,63 @@ HubCom.prototype.rmLocMedia = function(){
 	});
 };
 
-/*some callback fuctions*/
-HubCom.prototype.onDataRecv = function(){};
-HubCom.prototype.onDCChange = function(){};
-HubCom.prototype.onRStreamAdd = function(){};
-HubCom.prototype.muteLocMedia =  function(){};
+HubCom.prototype.setMediaAct = function(state){
+	this.mediaActive = state;
+	this.onMediaAct(state);
+};
+
+HubCom.prototype.onRStreamAdd = function(stream){
+	if(this.opts.remAudio){
+  	console.log('Remote stream added.');
+  	attachMediaStream(this.opts.remAudio, stream);
+	}
+  //this.remoteStream = stream;
+};
+
+
+/////////////class HubMedia
+
+function HubMedia(parent){
+	this.parent = parent;
+	this.status = 0;
+}
+
+HubMedia.prototype.mute = function(){
+	if(this.localStream){
+ 		this.localStream.getTracks().forEach(function(track) {
+      track.stop();
+    });
+	}
+};
+
+
+HubMedia.prototype.start = function (){
+	var constraints = {audio: true};
+	var self = this;
+	function hdlMedia(stream){
+		self.parent.addLocMedia(stream);
+		self.parent.setMediaAct(true);
+		self.localStream = stream;
+	}
+	function hdlMediaError(){
+		self.parent.setMediaAct(false);
+		self.status = 0;
+
+	}
+		
+	/*stop previous local medias*/
+	this.status = 1;
+	this.mute();
+	getUserMedia(constraints, hdlMedia, hdlMediaError);
+};
+
+HubMedia.prototype.stop = function (){
+	this.mute();
+	this.parent.rmLocMedia();
+	this.parent.setMediaAct(false);
+	this.status = 0;
+};
+
 
 module.exports = HubCom;
 
@@ -206,20 +281,20 @@ var mediaArea = document.getElementById("mediaAreas");
 
 var localAudio = document.querySelector('#localAudio');
 var remoteAudio = document.querySelector('#remoteAudio');
-var localStream = null;
-var remoteStream = null;
 
 
 var chatText = [];
-var hubCom = new HubCom();
+var options = {};
+/*pass local and remote audio element to hubcom*/
+options.locAudio = localAudio;
+options.remAudio = remoteAudio;
+var hubCom = new HubCom(options);
 
 hubCom.onDCChange = hdlDCchange;
 hubCom.onDataRecv = hdlDataRecv;
-hubCom.muteLocMedia = stopMedia;
-hubCom.onRStreamAdd = handleRemoteStreamAdded;
+hubCom.onMediaAct =  hdlMedAct;
 sendButton.onclick = sendData;
 mediaButton.onclick = invokeMedia;
-
 
 function enableMsgInf(enable) {
   if (enable) {
@@ -236,9 +311,7 @@ function enableMsgInf(enable) {
   }
 }
 
-
 enableMsgInf(false);
-
 
 function addMsgHistory(data){
 	var message = '';
@@ -251,9 +324,6 @@ function addMsgHistory(data){
 	msgHistory.innerHTML = message;
 	console.log('show message:',message);
 }
-
-
-
 
 
 function sendData() {
@@ -276,68 +346,20 @@ function hdlDataRecv(from, data) {
 
 }
 
-
-
-////////////////////////////////////
-
-
-function handleUserMedia(stream) {
-  console.log('Adding local stream.',stream);
-  localAudio.src = window.URL.createObjectURL(stream);
-  localStream = stream;
-	hubCom.addLocMedia(stream);
-	
-}
-
-function handleUserMediaError(error){
-  console.log('getUserMedia error: ', error);
-	mediaStatus = false;
-
-}
-
-var constraints = {audio: true};
-
-function muteMedia(){
-	if(localStream){
- 		localStream.getTracks().forEach(function(track) {
-      track.stop();
-    });
+function hdlMedAct(state){
+	if(state){
+		mediaButton.innerHTML = "Stop Broadcast"
+	}else{
+		mediaButton.innerHTML = "Start Broadcast"
 	}
 }
-
-
-function startMedia(){
-	/*stop previous local medias*/
-	muteMedia();
-	//console.log("localStream is ",localStream);
-	getUserMedia(constraints, handleUserMedia, handleUserMediaError);
-	mediaStatus = true;
-	mediaButton.innerHTML = "Stop Broadcast"
-
-}
-
-function stopMedia(){
-	muteMedia();
-	hubCom.rmLocMedia();
-	mediaStatus = false;
-	mediaButton.innerHTML = "Start Broadcast"
-}
-
-var mediaStatus = false;
 
 function invokeMedia(){
-	if(mediaStatus == false){
-		startMedia();
+	if(hubCom.mediaActive == false){
+		hubCom.startAudioCast();
 	}else{
-		stopMedia();
+		hubCom.stopAudioCast();
 	}
-
-}
-
-function handleRemoteStreamAdded(stream) {
-  console.log('Remote stream added.');
-  attachMediaStream(remoteAudio, stream);
-  remoteStream = stream;
 }
 
 window.onbeforeunload = function(e){

@@ -10,20 +10,20 @@ var mediaArea = document.getElementById("mediaAreas");
 
 var localAudio = document.querySelector('#localAudio');
 var remoteAudio = document.querySelector('#remoteAudio');
-var localStream = null;
-var remoteStream = null;
 
 
 var chatText = [];
-var hubCom = new HubCom();
+var options = {};
+/*pass local and remote audio element to hubcom*/
+options.locAudio = localAudio;
+options.remAudio = remoteAudio;
+var hubCom = new HubCom(options);
 
 hubCom.onDCChange = hdlDCchange;
 hubCom.onDataRecv = hdlDataRecv;
-hubCom.muteLocMedia = stopMedia;
-hubCom.onRStreamAdd = handleRemoteStreamAdded;
+hubCom.onMediaAct =  hdlMedAct;
 sendButton.onclick = sendData;
 mediaButton.onclick = invokeMedia;
-
 
 function enableMsgInf(enable) {
   if (enable) {
@@ -40,9 +40,7 @@ function enableMsgInf(enable) {
   }
 }
 
-
 enableMsgInf(false);
-
 
 function addMsgHistory(data){
 	var message = '';
@@ -55,9 +53,6 @@ function addMsgHistory(data){
 	msgHistory.innerHTML = message;
 	console.log('show message:',message);
 }
-
-
-
 
 
 function sendData() {
@@ -80,68 +75,20 @@ function hdlDataRecv(from, data) {
 
 }
 
-
-
-////////////////////////////////////
-
-
-function handleUserMedia(stream) {
-  console.log('Adding local stream.',stream);
-  localAudio.src = window.URL.createObjectURL(stream);
-  localStream = stream;
-	hubCom.addLocMedia(stream);
-	
-}
-
-function handleUserMediaError(error){
-  console.log('getUserMedia error: ', error);
-	mediaStatus = false;
-
-}
-
-var constraints = {audio: true};
-
-function muteMedia(){
-	if(localStream){
- 		localStream.getTracks().forEach(function(track) {
-      track.stop();
-    });
+function hdlMedAct(state){
+	if(state){
+		mediaButton.innerHTML = "Stop Broadcast"
+	}else{
+		mediaButton.innerHTML = "Start Broadcast"
 	}
 }
-
-
-function startMedia(){
-	/*stop previous local medias*/
-	muteMedia();
-	//console.log("localStream is ",localStream);
-	getUserMedia(constraints, handleUserMedia, handleUserMediaError);
-	mediaStatus = true;
-	mediaButton.innerHTML = "Stop Broadcast"
-
-}
-
-function stopMedia(){
-	muteMedia();
-	hubCom.rmLocMedia();
-	mediaStatus = false;
-	mediaButton.innerHTML = "Start Broadcast"
-}
-
-var mediaStatus = false;
 
 function invokeMedia(){
-	if(mediaStatus == false){
-		startMedia();
+	if(hubCom.mediaActive == false){
+		hubCom.startAudioCast();
 	}else{
-		stopMedia();
+		hubCom.stopAudioCast();
 	}
-
-}
-
-function handleRemoteStreamAdded(stream) {
-  console.log('Remote stream added.');
-  attachMediaStream(remoteAudio, stream);
-  remoteStream = stream;
 }
 
 window.onbeforeunload = function(e){
