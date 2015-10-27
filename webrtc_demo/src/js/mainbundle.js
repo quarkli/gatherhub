@@ -7,7 +7,7 @@ function HubCom(options){
 	var self = this;
 	var opts = this.opts = options || {};
 	var room = opts.hubName || 'foo';
-	var user = opts.usrName;
+	var user = opts.usrName || 'demo';
   var peers = this.peers = [];
 	var socket = this.socket = io.connect();
 
@@ -22,6 +22,7 @@ function HubCom(options){
 			
 	this.media = new HubMedia(this);
 	this.mediaActive = false;
+	this.usrList = [];
 	function getSockIdx(id){
 		var i = 0;
 		for(i=0;i<self.peers.length;i++){
@@ -41,7 +42,8 @@ function HubCom(options){
 		});
 		pconn.on('rdata',function(from,data){
 			//self.emit('recv',from,data);
-			self.onDataRecv(from,data);
+			var usr = self.usrList[from];
+			self.onDataRecv(usr,data);
 		});
 		pconn.on('dcevt',function(){
 			var pconn;
@@ -66,7 +68,7 @@ function HubCom(options){
 	}
 
 	
-  socket.emit('join', room);
+  socket.emit('join', {room:room,user:user});
 
 	//register socket event callback
 	///// someone joined the hub room
@@ -106,14 +108,20 @@ function HubCom(options){
 		if(index>=0){
 			self.peers[index].close();
 			delete self.peers[index];
+			//delete self.usrList[index];
 		}
 	});
 
   //////////////handle the signal msg from otherside
 	socket.on('msg', function (message){
 		var id = message.from;
+		var usr = message.usr;
 		var index = getSockIdx(id);
 		console.log('get index:', index);
+
+		if(id>=0 && usr){
+			self.usrList[id] = usr;
+		}
 
 		var pconn = self.peers[index];
 		console.log('Received message:', message);
@@ -283,11 +291,20 @@ var localAudio = document.querySelector('#localAudio');
 var remoteAudio = document.querySelector('#remoteAudio');
 
 
-var chatText = [];
+var chatText = '';
 var options = {};
 /*pass local and remote audio element to hubcom*/
 options.locAudio = localAudio;
 options.remAudio = remoteAudio;
+
+/*get userName*/
+var user = prompt("Please enter your name","");
+if(!user){
+	user = 'demo'+Math.ceil(Math.random()*1000);
+}
+
+options.usrName = user;
+
 var hubCom = new HubCom(options);
 
 hubCom.onDCChange = hdlDCchange;
@@ -314,23 +331,21 @@ function enableMsgInf(enable) {
 enableMsgInf(false);
 
 function addMsgHistory(data){
-	var message = '';
-	var size = chatText.length;
-	chatText[size] = '<li>'+data+'</li>';
+	chatText = '<p>'+data+'</p>' + chatText;
 	
-	for(var i=0;i<chatText.length;i++){
-		message+=chatText[i];
-	}
-	msgHistory.innerHTML = message;
-	console.log('show message:',message);
+	msgHistory.innerHTML = chatText;
+	//console.log('show message:',chatText);
 }
 
 
 function sendData() {
   var data = sendTextarea.value;
-	hubCom.sendData(data);	
-	addMsgHistory(data);
-  console.log('Sent data: ' + data);
+	if(data&&data!=''){
+		hubCom.sendData(data);	
+		addMsgHistory(user+': '+data);
+	  console.log('Sent data: ' + data);
+	}
+	sendTextarea.value = '';
 }
 
 
@@ -342,7 +357,7 @@ function hdlDCchange(state){
 
 function hdlDataRecv(from, data) {
   console.log('Received message from ' + from + ' msg is: ' + data);
-	addMsgHistory(data);
+	addMsgHistory(from+': '+data);
 
 }
 

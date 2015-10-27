@@ -4,11 +4,19 @@ var file = new(static.Server)();
 var app = http.createServer(function (req, res) {
   file.serve(req, res);
 }).listen(2013);
-// test
+
 //two obj, not array
-var rooms = {},
-    userIds = {};
+var rooms = {};
+//decriptions or rooms
+//there might be serveral different rooms with different name.
+//ex. two rooms, one is 'work', the other is 'live'
+// rooms = {'work':[sokcet0,socket1,...],'live':[socketA, socketB, ...]}
+// if socket1 in 'work' leave the room, the rooms data would be
+//{'work':[sokcet0,undefined,socket2,...],'live':[socketA, socketB, ...]}
 var nameList = [];
+// keep the index for each room
+//ex.
+// nameList[0] = 'work',nameList[1] = 'live';
 
 function pushNameList(name){
 	var index = nameList.indexOf(name);
@@ -39,12 +47,14 @@ io.sockets.on('connection', function (socket){
 
 	socket.on('join', function (data) {
 
-    var currentRoom, id;
+    var currentRoom, id,user;
 		if(!data){
 			log('could not join a room with empty name!');
 			return;
 		}
-		currentRoom = data;
+		currentRoom = data.room;
+		user = data.user;
+		
 		var room = rooms[currentRoom];
 		
 
@@ -57,23 +67,24 @@ io.sockets.on('connection', function (socket){
 		} 
 
 		log('Room ' + currentRoom + ' has ' + numClients + ' client(s)');
-		log('Request to create or join room', currentRoom);
+		log('user',user+' enter into '+currentRoom);
 
 		if (numClients == 0){
-			//socket.join(data);
-			rooms[currentRoom] = [socket];
-			id = userIds[currentRoom] = 0;
-      console.log('Room created, with #', currentRoom);
+			//free previous room
+			if(room){
+				delete(room);
+			}
+			rooms[currentRoom] = [{s:socket,u:user}];
+      console.log('Room created, with name', currentRoom);
 			//do you want send back to client something...
 		} else {
 			//io.sockets.in(data).emit('joined', {id:socket.id});
 			//socket.join(data);
-      userIds[currentRoom] += 1;
-      id = userIds[currentRoom];
-      room.forEach(function (s) {
-        s.emit('joined', { id: id });
+      id = room.length;
+      room.forEach(function (obj) {
+        obj.s.emit('joined', { id: id });
       });
-      room[id] = socket;
+      room[id] = {s:socket,u:user};
       console.log('Peer connected to room', currentRoom, 'with #', id);			
 		} 
 
@@ -89,10 +100,26 @@ io.sockets.on('connection', function (socket){
 				return;
 			}
       var to = parseInt(data.to, 10);
-			var from = rooms[currentRoom].indexOf(socket);
-      if (rooms[currentRoom] && rooms[currentRoom][to]) {
-        log('from '+from+'Redirecting message to', to);
-        rooms[currentRoom][to].emit('msg', {from:from,sdp:data.sdp});
+			var room = rooms[currentRoom];
+			if(!room){
+				log("undefined rooms");
+				return;
+			}
+
+			var from;
+			for(var i=0;i<room.length;i++){
+				if(room[i] && room[i].s == socket){
+					from = i;
+					break;
+				}
+			}
+			
+			//console.log('recv msg in',room + 'from ' + from + 'to' + to);
+
+			
+      if (from!=undefined && room[to]) {
+        //log('from '+from+'Redirecting message to', to);
+        room[to].s.emit('msg', {from:from,usr:room[from].u,sdp:data.sdp});
       } else {
         log('Invalid user');
       }
@@ -104,14 +131,14 @@ io.sockets.on('connection', function (socket){
 				which socket in which room disconnect, and inform the other sockets
 				in that room 
 			*/
-			var currentRoom = null;
+			var currentRoom;
 			var id;
 			nameList.forEach(function(r){
 				id = 0;
 				room = rooms[r];
 				//find id index should not use forEach, it will skip undefined automatically
 				for(var i=0;i<room.length;i++){
-					if(room[i]==socket){
+					if(room[i] && room[i].s === socket){
 						currentRoom = room;
 						console.log("find socket in "+r+" leaved!");
 						flag =1;
@@ -123,8 +150,8 @@ io.sockets.on('connection', function (socket){
 				if(currentRoom){
 					console.log("socket in room "+r+" leaved!");
 					delete room[id];
-					room.forEach(function (s) {
-        		s.emit('bye', { id: id });
+					room.forEach(function (obj) {
+        		obj.s.emit('bye', { id: id });
       		});
 					return;
 				}

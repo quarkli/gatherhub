@@ -6,7 +6,7 @@ function HubCom(options){
 	var self = this;
 	var opts = this.opts = options || {};
 	var room = opts.hubName || 'foo';
-	var user = opts.usrName;
+	var user = opts.usrName || 'demo';
   var peers = this.peers = [];
 	var socket = this.socket = io.connect();
 
@@ -21,6 +21,7 @@ function HubCom(options){
 			
 	this.media = new HubMedia(this);
 	this.mediaActive = false;
+	this.usrList = [];
 	function getSockIdx(id){
 		var i = 0;
 		for(i=0;i<self.peers.length;i++){
@@ -40,7 +41,8 @@ function HubCom(options){
 		});
 		pconn.on('rdata',function(from,data){
 			//self.emit('recv',from,data);
-			self.onDataRecv(from,data);
+			var usr = self.usrList[from];
+			self.onDataRecv(usr,data);
 		});
 		pconn.on('dcevt',function(){
 			var pconn;
@@ -65,7 +67,7 @@ function HubCom(options){
 	}
 
 	
-  socket.emit('join', room);
+  socket.emit('join', {room:room,user:user});
 
 	//register socket event callback
 	///// someone joined the hub room
@@ -105,14 +107,20 @@ function HubCom(options){
 		if(index>=0){
 			self.peers[index].close();
 			delete self.peers[index];
+			//delete self.usrList[index];
 		}
 	});
 
   //////////////handle the signal msg from otherside
 	socket.on('msg', function (message){
 		var id = message.from;
+		var usr = message.usr;
 		var index = getSockIdx(id);
 		console.log('get index:', index);
+
+		if(id>=0 && usr){
+			self.usrList[id] = usr;
+		}
 
 		var pconn = self.peers[index];
 		console.log('Received message:', message);

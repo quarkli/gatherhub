@@ -12,11 +12,20 @@ var localAudio = document.querySelector('#localAudio');
 var remoteAudio = document.querySelector('#remoteAudio');
 
 
-var chatText = [];
+var chatText = '';
 var options = {};
 /*pass local and remote audio element to hubcom*/
 options.locAudio = localAudio;
 options.remAudio = remoteAudio;
+
+/*get userName*/
+var user = prompt("Please enter your name","");
+if(!user){
+	user = 'demo'+Math.ceil(Math.random()*1000);
+}
+
+options.usrName = user;
+
 var hubCom = new HubCom(options);
 
 hubCom.onDCChange = hdlDCchange;
@@ -43,23 +52,21 @@ function enableMsgInf(enable) {
 enableMsgInf(false);
 
 function addMsgHistory(data){
-	var message = '';
-	var size = chatText.length;
-	chatText[size] = '<li>'+data+'</li>';
+	chatText = '<p>'+data+'</p>' + chatText;
 	
-	for(var i=0;i<chatText.length;i++){
-		message+=chatText[i];
-	}
-	msgHistory.innerHTML = message;
-	console.log('show message:',message);
+	msgHistory.innerHTML = chatText;
+	//console.log('show message:',chatText);
 }
 
 
 function sendData() {
   var data = sendTextarea.value;
-	hubCom.sendData(data);	
-	addMsgHistory(data);
-  console.log('Sent data: ' + data);
+	if(data&&data!=''){
+		hubCom.sendData(data);	
+		addMsgHistory(user+': '+data);
+	  console.log('Sent data: ' + data);
+	}
+	sendTextarea.value = '';
 }
 
 
@@ -71,7 +78,7 @@ function hdlDCchange(state){
 
 function hdlDataRecv(from, data) {
   console.log('Received message from ' + from + ' msg is: ' + data);
-	addMsgHistory(data);
+	addMsgHistory(from+': '+data);
 
 }
 
