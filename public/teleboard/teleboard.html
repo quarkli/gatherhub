@@ -37,7 +37,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 	  sp.calibration();
 	  sp.pencolor('green');
 	  sp.penwidth(1);
-      sp.appendTo('body');
+      sp.appendto('body');
 
 	  var vp = new Gatherhub.VisualPad();
       vp.bgcolor('#FFE');
@@ -45,15 +45,15 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 	  vp.borderwidth(3);
 	  vp.defsize(sp.width()/4, sp.height()/4);
 	  vp.minimize();
-	  vp.moveTo('top', 9999);
-	  vp.moveTo('left', 9999);
-	  vp.appendTo('body');
+	  vp.moveto('top', 9999);
+	  vp.moveto('left', 9999);
+	  vp.appendto('body');
 	  
 	  sp.attachvp(vp);
 
 	  window.onresize = function(){
-		vp.width(vp.width());
-		vp.height(vp.width());
+	    vp.defsize(sp.width()/4, sp.height()/4);
+	    vp.minimize();
 		sp.width(sp.width());
 		sp.height(sp.width());
 		sp.fit();

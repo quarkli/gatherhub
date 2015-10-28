@@ -57,12 +57,10 @@ var Gatherhub = Gatherhub || {};
 		function SvgPad() {
 			this.pad = $('<div/>');
 			this.canvas = $(document.createElementNS('http://www.w3.org/2000/svg', 'svg')).appendTo(this.pad);
-			this.zcenter = {x: 0.5, y: 0.5};
 			this.canvasVbox = {x: 0, y: 0, w: 0, h: 0};
+			this.zcenter = {x: 0.5, y: 0.5};
 			
 			// DO NOT REMOVE, must set the width and height to set initial values 
-			this.width(160);
-			this.height(90);
 			this.fit();
 		}
 
@@ -84,32 +82,32 @@ var Gatherhub = Gatherhub || {};
 			this.pad.on('contextmenu', function(){return false;});
 		};
 		_proto.bgcolor = function(c) {
-			if (c) this.canvas.css('background-color', c);
-			return this.canvas.css('background-color');
+			if (c) this.canvas[0].style['background-color'] = c;
+			return this.canvas[0].style['background-color'];
 		};
 		_proto.bordercolor = function(c) {
 			if (c) {
-				this.canvas.css('border-style', 'solid');
-				this.canvas.css('border-color', c);
+				this.canvas[0].style['border-style'] = 'solid';
+				this.canvas[0].style['border-color'] = c;
 			}
-			return this.pad.css('border-color');
+			return this.canvas[0].style['border-color'];
 		};
 		_proto.borderwidth = function(w) {
-			if ($.isNumeric(w)) this.canvas.css('border-width', w);
-			return $.isNumeric(parseInt(this.canvas.css('border-width'))) ? parseInt(this.canvas.css('border-width')) : 0;
+			if ($.isNumeric(w)) this.canvas[0].style['border-width'] = w + 'px';
+			return $.isNumeric(parseInt(this.canvas[0].style['border-width'])) ? parseInt(this.canvas[0].style['border-width']) : 0;
 		};
 		_proto.borderpadding = function() {
-			return (this.canvas.css('border-style') == 'solid') ?	this.borderwidth() * 2 : 0;
+			return (this.canvas[0].style['border-style'] == 'solid') ?	this.borderwidth() * 2 : 0;
 		};
 		_proto.show = function(t) {
-			if (t !== undefined) this.pad.css('display', t ? 'block' : 'none');
-			return this.pad.css('display') != 'none';
+			if (t !== undefined) this.pad[0].style['display'] = t ? 'block' : 'none';
+			return this.pad[0].style['display'] != 'none';
 		};
 		_proto.fixposition = function(t) {
-			if (t !== undefined) this.pad.css('position', t ? 'absolute' : 'relative');
-			return this.pad.css('position') == 'absolute';
+			if (t !== undefined) this.pad[0].style['position'] = t ? 'absolute' : 'relative';
+			return this.pad[0].style['position'] == 'absolute';
 		};
-		_proto.moveTo = function(axis, p) {
+		_proto.moveto = function(axis, p) {
 			var b;
 			if (axis == 'left') {
 				b = $(window).width() - this.width() - this.borderpadding() / 2 - 6;
@@ -122,7 +120,7 @@ var Gatherhub = Gatherhub || {};
 			}
 			if (p > b) p = b;
 			if (p < 0) p = 0;
-			this.pad.css(axis, p);
+			this.pad[0].style[axis] = p + 'px';
 		};
 		_proto.refreshvbox = function() {
 			// $()[0] returns selector's native object
@@ -134,8 +132,8 @@ var Gatherhub = Gatherhub || {};
 			if ($.isNumeric(w)) {
 				if (w > $(window).width() - 6) w = $(window).width() - 6;
 				this.canvas.attr('width', w);
-				this.canvasVbox.w = (this.canvas.attr('width') - this.borderpadding()) / this.zrate;
-				if (this.pad.position().left + this.canvas.attr('width') * 1 + this.borderpadding() / 2 + 6 > $(window).width()) this.moveTo('left', 9999);
+				this.canvasVbox.w = precision((this.canvas.attr('width') - this.borderpadding()) / this.zrate, 3);
+				if (this.pad.position().left + this.canvas.attr('width') * 1 + this.borderpadding() / 2 + 6 > $(window).width()) this.moveto('left', 9999);
 			}
 			return this.canvas.attr('width');
 		};
@@ -143,14 +141,15 @@ var Gatherhub = Gatherhub || {};
 			if ($.isNumeric(h)) {
 				if (h > $(window).height() - 7) h = $(window).height() - 7;
 				this.canvas.attr('height', h);
-				this.canvasVbox.h = (this.canvas.attr('height') - this.borderpadding()) / this.zrate;
-				if (this.pad.position().top + this.canvas.attr('height') * 1 + this.borderpadding() / 2 + 7 > $(window).height()) this.moveTo('top', 9999);
+				this.canvasVbox.h = precision((this.canvas.attr('height') - this.borderpadding()) / this.zrate, 3);
+				if (this.pad.position().top + this.canvas.attr('height') * 1 + this.borderpadding() / 2 + 7 > $(window).height()) this.moveto('top', 9999);
 			}
 			return this.canvas.attr('height');
 		};
 		_proto.fit = function() {
 			this.width($(window).width());
 			this.height($(window).height());
+			this.refreshvbox();
 		};
 		_proto.calibration = function() {
 			var w = this.width() - this.borderpadding();
@@ -184,15 +183,15 @@ var Gatherhub = Gatherhub || {};
 				this.zrate = precision(z, 1);
 				var x = this.zcenter.x * this.canvasVbox.w + this.canvasVbox.x;
 				var y = this.zcenter.y * this.canvasVbox.h + this.canvasVbox.y;
-				this.canvasVbox.w = (this.width() - this.borderpadding()) / this.zrate;
-				this.canvasVbox.h = (this.height() - this.borderpadding()) / this.zrate;
+				this.canvasVbox.w = precision((this.width() - this.borderpadding()) / this.zrate, 3);
+				this.canvasVbox.h = precision((this.height() - this.borderpadding()) / this.zrate, 3);
 				this.canvasVbox.x = precision(x - this.zcenter.x * this.canvasVbox.w, 3);
 				this.canvasVbox.y = precision(y - this.zcenter.y * this.canvasVbox.h, 3);
 				this.refreshvbox();
 			}
 			return this.zrate;
 		};
-		_proto.appendTo = function(obj) {
+		_proto.appendto = function(obj) {
 			if ($(obj).length) this.pad.appendTo($(obj));
 		};
 	})();
@@ -233,8 +232,8 @@ var Gatherhub = Gatherhub || {};
 				var top = pad.position().top + y - mouseY;
 				var left = pad.position().left + x - mouseX;
 								
-				self.moveTo('top', top);
-				self.moveTo('left', left);
+				self.moveto('top', top);
+				self.moveto('left', left);
 				mouseX = x;
 				mouseY = y;
 			}			
@@ -254,8 +253,8 @@ var Gatherhub = Gatherhub || {};
 			var w = defaultWidth * s;
 			var h = defaultHeight * s;
 			if (w <= $(window).width() && h <= $(window).height() ) {
-				if (pad.position().top + h > $(window).height()) self.moveTo('top',  $(window).height() - h);	
-				if (pad.position().left + w > $(window).width()) self.moveTo('left',  $(window).width() - w);
+				if (pad.position().top + h > $(window).height()) self.moveto('top',  $(window).height() - h);	
+				if (pad.position().left + w > $(window).width()) self.moveto('left',  $(window).width() - w);
 				self.width(w);
 				self.height(h);
 				size = precision(s, 1);
@@ -376,8 +375,8 @@ var Gatherhub = Gatherhub || {};
 		var bWsReady = false;
 		
 		function drawStart(x, y){
-			trace(L4, self.constructor.name + '.drawStart' +
-				'(' + Array.prototype.slice.call(arguments) + ')');
+			//trace(L4, self.constructor.name + '.drawStart' +
+			//	'(' + Array.prototype.slice.call(arguments) + ')');
 			var vboxxy = self.vboxxy(self.canvasxy(self.screenxy(x, y)));
 			x = vboxxy.x;
 			y = vboxxy.y;
@@ -396,8 +395,8 @@ var Gatherhub = Gatherhub || {};
 			setTimeout(function(){falseTouch=false;}, 5);
 		}
 		function drawPath(x, y){
-			trace(L4, self.constructor.name + '.drawPath' +
-				'(' + Array.prototype.slice.call(arguments) + ')');
+			//trace(L4, self.constructor.name + '.drawPath' +
+			//	'(' + Array.prototype.slice.call(arguments) + ')');
 			if (activepath >= 0) {
 				var vboxxy = self.vboxxy(self.canvasxy(self.screenxy(x, y)));
 				x = vboxxy.x;
@@ -406,8 +405,8 @@ var Gatherhub = Gatherhub || {};
 			}
 		}
 		function drawEnd(){
-			trace(L4, self.constructor.name + '.drawEnd' +
-				'(' + Array.prototype.slice.call(arguments) + ')');
+			//trace(L4, self.constructor.name + '.drawEnd' +
+			//	'(' + Array.prototype.slice.call(arguments) + ')');
 			if (activepath >= 0) {
 				var $node = pathholder.children('path').eq(activepath);
 				var move = $node.attr('d').split('L').length;
@@ -443,15 +442,15 @@ var Gatherhub = Gatherhub || {};
 		}	
 		
 		function mousedownHdl(x, y) {
-			trace(L4, self.constructor.name + '.mousedownHdl' +
-				'(' + Array.prototype.slice.call(arguments) + ')');
+			//trace(L4, self.constructor.name + '.mousedownHdl' +
+			//	'(' + Array.prototype.slice.call(arguments) + ')');
 			drawStart(x, y);
-			trace(L4, 'window=' + $(window).width() + 'x' + $(window).height());
-			trace(L4, 'cavasVbox=' + self.canvasVbox);
-			trace(L4, 'viewBox=' + self.canvas[0].getAttribute('viewBox'));
-			trace(L4, 'screenXY=' + self.screenxy(x,y));
-			trace(L4, 'canvasxy=' + self.canvasxy(self.screenxy(x,y)));
-			trace(L4, 'vboxxy=' + self.vboxxy(self.canvasxy(self.screenxy(x,y))));
+			//trace(L4, 'window=' + $(window).width() + 'x' + $(window).height());
+			//trace(L4, 'cavasvbox=' + self.canvasVbox.x + ' ' + self.canvasVbox.y + ' ' + self.canvasVbox.w + ' ' + self.canvasVbox.h);
+			//trace(L4, 'viewBox=' + self.canvas[0].getAttribute('viewBox'));
+			trace(L4, 'screenXY=' + x + ', ' + y);
+			trace(L4, 'canvasxy=' + self.canvasxy(self.screenxy(x,y)).x + ', ' + self.canvasxy(self.screenxy(x,y)).y);
+			trace(L4, 'vboxxy=' + self.vboxxy(self.canvasxy(self.screenxy(x,y))).x + ', ' + self.vboxxy(self.canvasxy(self.screenxy(x,y))).y);
 		};
 		function mouseupHdl() {
 			drawEnd();
