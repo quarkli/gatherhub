@@ -11,6 +11,9 @@ var mediaArea = document.getElementById("mediaAreas");
 var localAudio = document.querySelector('#localAudio');
 var remoteAudio = document.querySelector('#remoteAudio');
 
+var castingList = document.getElementById("castingList");
+
+
 
 var chatText = '';
 var options = {};
@@ -31,6 +34,7 @@ var hubCom = new HubCom(options);
 hubCom.onDCChange = hdlDCchange;
 hubCom.onDataRecv = hdlDataRecv;
 hubCom.onMediaAct =  hdlMedAct;
+hubCom.onCastListChange = updateCastingList;
 sendButton.onclick = sendData;
 mediaButton.onclick = invokeMedia;
 
@@ -83,19 +87,34 @@ function hdlDataRecv(from, data) {
 }
 
 function hdlMedAct(state){
-	if(state){
+	switch(state){
+	case 'active':
 		mediaButton.innerHTML = "Stop Broadcast"
-	}else{
+		break;
+	case 'pending':
+		mediaButton.innerHTML = "Trying...Cancel?"
+		break;
+	case 'idle':
 		mediaButton.innerHTML = "Start Broadcast"
+		break;
 	}
 }
 
 function invokeMedia(){
-	if(hubCom.mediaActive == false){
+	if(hubCom.mediaActive == 'idle'){
 		hubCom.startAudioCast();
 	}else{
 		hubCom.stopAudioCast();
 	}
+}
+
+function updateCastingList(list){
+	castingList.innerHTML = '';
+	list.forEach(function(item){
+		castingList.innerHTML += '<p>' + item + '</p>';
+	});
+	//console.log('casting list',castingList.innerHTML);
+	
 }
 
 window.onbeforeunload = function(e){

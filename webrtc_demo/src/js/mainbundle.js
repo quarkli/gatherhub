@@ -19,10 +19,13 @@ function HubCom(options){
 		    {'DtlsSrtpKeyAgreement': false},
 		    {'RtpDataChannels': true}
 		  ]};
+	this.opts.usrId = -1;
+
+	this.usrList = [];
 			
 	this.media = new HubMedia(this);
-	this.mediaActive = false;
-	this.usrList = [];
+	this.mediaActive = 'idle';
+	this.castList = [];
 	function getSockIdx(id){
 		var i = 0;
 		for(i=0;i<self.peers.length;i++){
@@ -69,6 +72,13 @@ function HubCom(options){
 
 	
   socket.emit('join', {room:room,user:user});
+
+
+	socket.on('connected', function (data){
+		//console.log('userid is ', data.id);
+		self.opts.usrId = data.id;
+	});
+	
 
 	//register socket event callback
 	///// someone joined the hub room
@@ -163,6 +173,44 @@ function HubCom(options){
 		} else if (message === 'bye' ) {
 		}
 		});
+		//////////////command for audio casting
+		function getMediaCastList(audCon){
+			//reset it everytime
+			self.castList = [];
+
+			if(audCon.state==1){
+				if(audCon.talk == self.opts.usrId){
+					self.castList[0] = self.opts.usrName + ' talking';
+				}else{
+					self.castList[0] = self.usrList[audCon.talk] + ' talking';
+				}
+				
+				audCon.que.forEach(function(id){
+					if(id == self.opts.usrId){
+						self.castList[self.castList.length] = self.opts.usrName + ' pending';
+					}else{
+						self.castList[self.castList.length] = self.usrList[id] + ' pending';
+					}
+				});
+			} 
+
+		}
+		socket.on('media', function (message){
+			var cmd = message.cmd;
+			if(cmd == 'ans'){
+				if(self.media.status === 0){
+					self.media.start();
+				}
+			}else if(cmd == 'update'){
+				console.log('msg update',message.control);
+				if(message.control){
+					getMediaCastList(message.control);
+					self.onCastListChange(self.castList);
+				}
+			}
+		});
+
+	
 
 		/////////////// log from server
 		socket.on('log', function (array){
@@ -180,13 +228,22 @@ HubCom.prototype.sendData = function(data){
 };
 
 HubCom.prototype.startAudioCast = function(){
-	if(this.media.status === 0){
-		this.media.start();
-	}
+	//if(this.media.status === 0){
+		//this.media.start();
+	//}
+	this.socket.emit('media',{room:this.opts.room,cmd:'req'});
+	this.setMediaAct('pending');
 };
 
 HubCom.prototype.stopAudioCast = function(){
-	this.media.stop();
+	if(this.media.status === 1){
+		this.media.stop();
+	}
+	this.socket.emit('media',{room:this.opts.room,cmd:'rls'});
+	if(this.mediaActive == 'pending'){
+		this.setMediaAct('idle');
+	}
+	
 };
 
 
@@ -194,6 +251,7 @@ HubCom.prototype.stopAudioCast = function(){
 HubCom.prototype.onDataRecv = function(){};
 HubCom.prototype.onDCChange = function(){};
 HubCom.prototype.onMediaAct = function(){};
+HubCom.prototype.onCastListChange = function(list){};
 
 ////internal api called by media class
 
@@ -250,11 +308,11 @@ HubMedia.prototype.start = function (){
 	var self = this;
 	function hdlMedia(stream){
 		self.parent.addLocMedia(stream);
-		self.parent.setMediaAct(true);
+		self.parent.setMediaAct('active');
 		self.localStream = stream;
 	}
 	function hdlMediaError(){
-		self.parent.setMediaAct(false);
+		self.parent.setMediaAct('idle');
 		self.status = 0;
 
 	}
@@ -268,7 +326,7 @@ HubMedia.prototype.start = function (){
 HubMedia.prototype.stop = function (){
 	this.mute();
 	this.parent.rmLocMedia();
-	this.parent.setMediaAct(false);
+	this.parent.setMediaAct('idle');
 	this.status = 0;
 };
 
@@ -290,6 +348,9 @@ var mediaArea = document.getElementById("mediaAreas");
 var localAudio = document.querySelector('#localAudio');
 var remoteAudio = document.querySelector('#remoteAudio');
 
+var castingList = document.getElementById("castingList");
+
+
 
 var chatText = '';
 var options = {};
@@ -310,6 +371,7 @@ var hubCom = new HubCom(options);
 hubCom.onDCChange = hdlDCchange;
 hubCom.onDataRecv = hdlDataRecv;
 hubCom.onMediaAct =  hdlMedAct;
+hubCom.onCastListChange = updateCastingList;
 sendButton.onclick = sendData;
 mediaButton.onclick = invokeMedia;
 
@@ -362,19 +424,34 @@ function hdlDataRecv(from, data) {
 }
 
 function hdlMedAct(state){
-	if(state){
+	switch(state){
+	case 'active':
 		mediaButton.innerHTML = "Stop Broadcast"
-	}else{
+		break;
+	case 'pending':
+		mediaButton.innerHTML = "Trying...Cancel?"
+		break;
+	case 'idle':
 		mediaButton.innerHTML = "Start Broadcast"
+		break;
 	}
 }
 
 function invokeMedia(){
-	if(hubCom.mediaActive == false){
+	if(hubCom.mediaActive == 'idle'){
 		hubCom.startAudioCast();
 	}else{
 		hubCom.stopAudioCast();
 	}
+}
+
+function updateCastingList(list){
+	castingList.innerHTML = '';
+	list.forEach(function(item){
+		castingList.innerHTML += '<p>' + item + '</p>';
+	});
+	//console.log('casting list',castingList.innerHTML);
+	
 }
 
 window.onbeforeunload = function(e){
