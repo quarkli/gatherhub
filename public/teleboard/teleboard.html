@@ -52,9 +52,12 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 	  sp.attachvp(vp);
 
 	  window.onresize = function(){
-		sp.width(200);
-		sp.height(200);
+		vp.width(vp.width());
+		vp.height(vp.width());
+		sp.width(sp.width());
+		sp.height(sp.width());
 		sp.fit();
+		sp.zoom(sp.zoom());
 	  };
    });
     </script>

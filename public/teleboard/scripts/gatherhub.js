@@ -112,10 +112,10 @@ var Gatherhub = Gatherhub || {};
 		_proto.moveTo = function(axis, p) {
 			var b;
 			if (axis == 'left') {
-				b = window.innerWidth - this.width() - this.borderpadding() / 2 - 6;
+				b = $(window).width() - this.width() - this.borderpadding() / 2 - 6;
 			} 
 			else if (axis == 'top') {
-				b = window.innerHeight - this.height() - this.borderpadding() / 2 - 7;
+				b = $(window).height() - this.height() - this.borderpadding() / 2 - 7;
 			}
 			else {
 				return;
@@ -132,25 +132,25 @@ var Gatherhub = Gatherhub || {};
 		};
 		_proto.width = function(w) {
 			if ($.isNumeric(w)) {
-				if (w > window.innerWidth - 6) w = window.innerWidth - 6;
+				if (w > $(window).width() - 6) w = $(window).width() - 6;
 				this.canvas.attr('width', w);
 				this.canvasVbox.w = (this.canvas.attr('width') - this.borderpadding()) / this.zrate;
-				if (this.pad.position().left + this.canvas.attr('width') * 1 + this.borderpadding() / 2 + 6 > window.innerWidth) this.moveTo('left', 9999);
+				if (this.pad.position().left + this.canvas.attr('width') * 1 + this.borderpadding() / 2 + 6 > $(window).width()) this.moveTo('left', 9999);
 			}
 			return this.canvas.attr('width');
 		};
 		_proto.height = function(h) {
 			if ($.isNumeric(h)) {
-				if (h > window.innerHeight - 7) h = window.innerHeight - 7;
+				if (h > $(window).height() - 7) h = $(window).height() - 7;
 				this.canvas.attr('height', h);
 				this.canvasVbox.h = (this.canvas.attr('height') - this.borderpadding()) / this.zrate;
-				if (this.pad.position().top + this.canvas.attr('height') * 1 + this.borderpadding() / 2 + 7 > window.innerHeight) this.moveTo('top', 9999);
+				if (this.pad.position().top + this.canvas.attr('height') * 1 + this.borderpadding() / 2 + 7 > $(window).height()) this.moveTo('top', 9999);
 			}
 			return this.canvas.attr('height');
 		};
 		_proto.fit = function() {
-			this.width(window.innerWidth);
-			this.height(window.innerHeight);
+			this.width($(window).width());
+			this.height($(window).height());
 		};
 		_proto.calibration = function() {
 			var w = this.width() - this.borderpadding();
@@ -210,7 +210,7 @@ var Gatherhub = Gatherhub || {};
 		function mousedownHdl(x, y) {
 			if ($.now() - logtime < 400) {
 				if (self.width() == defaultWidth) {
-					size = precision(window.innerWidth / self.width(), 1);
+					size = precision($(window).width() / self.width(), 1);
 					self.fit();
 				}
 				else {
@@ -253,9 +253,9 @@ var Gatherhub = Gatherhub || {};
 			}
 			var w = defaultWidth * s;
 			var h = defaultHeight * s;
-			if (w <= window.innerWidth && h <= window.innerHeight ) {
-				if (pad.position().top + h > window.innerHeight) self.moveTo('top',  window.innerHeight - h);	
-				if (pad.position().left + w > window.innerWidth) self.moveTo('left',  window.innerWidth - w);
+			if (w <= $(window).width() && h <= $(window).height() ) {
+				if (pad.position().top + h > $(window).height()) self.moveTo('top',  $(window).height() - h);	
+				if (pad.position().left + w > $(window).width()) self.moveTo('left',  $(window).width() - w);
 				self.width(w);
 				self.height(h);
 				size = precision(s, 1);
@@ -446,7 +446,7 @@ var Gatherhub = Gatherhub || {};
 			trace(L4, self.constructor.name + '.mousedownHdl' +
 				'(' + Array.prototype.slice.call(arguments) + ')');
 			drawStart(x, y);
-			trace(L4, 'window=' + window.innerWidth + 'x' + window.innerHeight);
+			trace(L4, 'window=' + $(window).width() + 'x' + $(window).height());
 			trace(L4, 'cavasVbox=' + self.canvasVbox);
 			trace(L4, 'viewBox=' + self.canvas[0].getAttribute('viewBox'));
 			trace(L4, 'screenXY=' + self.screenxy(x,y));
