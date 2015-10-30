@@ -15,6 +15,8 @@ The above copyright notice and this permission notice shall be included in
 all copies or substantial portions of the Software.
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. 
+
+Author: quarkli@gmail.com
 */
 
 'use strict'
@@ -80,31 +82,45 @@ var Gatherhub = Gatherhub || {};
 		};
 		_proto.nocontext = function() {
 			this.pad.on('contextmenu', function(){return false;});
+			return this;
 		};
 		_proto.bgcolor = function(c) {
-			if (c) this.canvas[0].style['background-color'] = c;
+			if (c) {
+				this.canvas[0].style['background-color'] = c;
+				return this;
+			}
 			return this.canvas[0].style['background-color'];
 		};
 		_proto.bordercolor = function(c) {
 			if (c) {
 				this.canvas[0].style['border-style'] = 'solid';
 				this.canvas[0].style['border-color'] = c;
+				return this;
 			}
 			return this.canvas[0].style['border-color'];
 		};
 		_proto.borderwidth = function(w) {
-			if ($.isNumeric(w)) this.canvas[0].style['border-width'] = w + 'px';
+			if ($.isNumeric(w)) {
+				this.canvas[0].style['border-width'] = w + 'px';
+				return this;				
+			}
 			return $.isNumeric(parseInt(this.canvas[0].style['border-width'])) ? parseInt(this.canvas[0].style['border-width']) : 0;
 		};
 		_proto.borderpadding = function() {
 			return (this.canvas[0].style['border-style'] == 'solid') ?	this.borderwidth() * 2 : 0;
 		};
 		_proto.show = function(t) {
-			if (t !== undefined) this.pad[0].style['display'] = t ? 'block' : 'none';
+			if (t !== undefined) {
+				this.pad[0].style['display'] = t ? 'block' : 'none';
+				return this;
+			}
 			return this.pad[0].style['display'] != 'none';
 		};
 		_proto.fixposition = function(t) {
-			if (t !== undefined) this.pad[0].style['position'] = t ? 'absolute' : 'relative';
+			if (t !== undefined) {
+				this.pad[0].style['position'] = t ? 'absolute' : 'relative';
+				return this;
+			} 
 			return this.pad[0].style['position'] == 'absolute';
 		};
 		_proto.moveto = function(axis, p) {
@@ -116,17 +132,20 @@ var Gatherhub = Gatherhub || {};
 				b = $(window).height() - this.height() - this.borderpadding() / 2 - 7;
 			}
 			else {
-				return;
+				return this;
 			}
 			if (p > b) p = b;
 			if (p < 0) p = 0;
 			this.pad[0].style[axis] = p + 'px';
+			
+			return this;
 		};
 		_proto.refreshvbox = function() {
 			// $()[0] returns selector's native object
 			// $.attr() converts attribute name to lower case, use native setAttribute() instead
 			this.canvas[0].setAttribute('viewBox', this.canvasVbox.x + ' ' + 
 				this.canvasVbox.y + ' ' + this.canvasVbox.w + ' ' + this.canvasVbox.h );
+			return this;
 		};
 		_proto.width = function(w) {
 			if ($.isNumeric(w)) {
@@ -134,6 +153,7 @@ var Gatherhub = Gatherhub || {};
 				this.canvas.attr('width', w);
 				this.canvasVbox.w = precision((this.canvas.attr('width') - this.borderpadding()) / this.zrate, 3);
 				if (this.pad.position().left + this.canvas.attr('width') * 1 + this.borderpadding() / 2 + 6 > $(window).width()) this.moveto('left', 9999);
+				return this;
 			}
 			return this.canvas.attr('width');
 		};
@@ -143,13 +163,13 @@ var Gatherhub = Gatherhub || {};
 				this.canvas.attr('height', h);
 				this.canvasVbox.h = precision((this.canvas.attr('height') - this.borderpadding()) / this.zrate, 3);
 				if (this.pad.position().top + this.canvas.attr('height') * 1 + this.borderpadding() / 2 + 7 > $(window).height()) this.moveto('top', 9999);
+				return this;
 			}
 			return this.canvas.attr('height');
 		};
 		_proto.fit = function() {
-			this.width($(window).width());
-			this.height($(window).height());
-			this.refreshvbox();
+			this.width($(window).width()).height($(window).height()).refreshvbox();
+			return this;
 		};
 		_proto.calibration = function() {
 			var w = this.width() - this.borderpadding();
@@ -165,9 +185,7 @@ var Gatherhub = Gatherhub || {};
 				+ 'M' + w*7/16 + ' ' + h*7/16 + 'h' + w/8 + 'v' + h/8 + 'h-' + w/8 + 'v-' + h/8
 			); 
 			this.canvas.append(path);
-		};
-		_proto.clearcanvas = function() {
-			while (this.canvas.children().length > 0) this.canvas.children().last().remove();
+			return this;
 		};
 		_proto.offsetcanvas = function(axis, offset) {
 			if ($.isNumeric(offset)) {
@@ -175,6 +193,7 @@ var Gatherhub = Gatherhub || {};
 				if (axis == 'y') this.canvasVbox.y = precision(this.canvasVbox.y - offset / this.zrate, 3);
 				this.refreshvbox();
 			}
+			return this;
 		};
 		_proto.zoom = function(z) {
 			if (this.canvasVbox.w == 0) this.canvasVbox.w = this.width();
@@ -188,11 +207,13 @@ var Gatherhub = Gatherhub || {};
 				this.canvasVbox.x = precision(x - this.zcenter.x * this.canvasVbox.w, 3);
 				this.canvasVbox.y = precision(y - this.zcenter.y * this.canvasVbox.h, 3);
 				this.refreshvbox();
+				return this;
 			}
 			return this.zrate;
 		};
 		_proto.appendto = function(obj) {
 			if ($(obj).length) this.pad.appendTo($(obj));
+			return this;
 		};
 	})();
 
@@ -204,17 +225,17 @@ var Gatherhub = Gatherhub || {};
 		var bBtnLeft = false, bBtnMiddle = false, bBtnRight = false;
 		var mouseX = 0, mouseY = 0;
 		var pinch = 0, pinchDelta = 0, pinchSensitivity = 3;
-		var defaultWidth, defaultHeight;
+		var defaultWidth, defaultHeight, resolution = false;
 		
 		function mousedownHdl(x, y) {
 			if ($.now() - logtime < 400) {
 				if (self.width() == defaultWidth) {
 					size = precision($(window).width() / self.width(), 1);
-					self.fit();
+					self.fit().fetchsrc();
 				}
 				else {
 					size = 1;
-					self.minimize();
+					self.minimize().fetchsrc();
 				}
 			}
 			else {
@@ -232,8 +253,7 @@ var Gatherhub = Gatherhub || {};
 				var top = pad.position().top + y - mouseY;
 				var left = pad.position().left + x - mouseX;
 								
-				self.moveto('top', top);
-				self.moveto('left', left);
+				self.moveto('top', top).moveto('left', left);
 				mouseX = x;
 				mouseY = y;
 			}			
@@ -255,8 +275,7 @@ var Gatherhub = Gatherhub || {};
 			if (w <= $(window).width() && h <= $(window).height() ) {
 				if (pad.position().top + h > $(window).height()) self.moveto('top',  $(window).height() - h);	
 				if (pad.position().left + w > $(window).width()) self.moveto('left',  $(window).width() - w);
-				self.width(w);
-				self.height(h);
+				self.width(w).height(h);
 				size = precision(s, 1);
 			}
 		}
@@ -273,9 +292,7 @@ var Gatherhub = Gatherhub || {};
 			canvas = this.canvas;
 			defaultWidth = this.width();
 			defaultHeight = this.height();
-			this.fixposition(true);
-			this.nocontext();
-			this.src(srcid);
+			this.fixposition(true).nocontext().src(srcid);
 			
 			pad.on('mousedown touchstart', function(evt){
 				var e = evt.originalEvent;
@@ -343,15 +360,16 @@ var Gatherhub = Gatherhub || {};
 			src = (srcid && srcid[0] == '#' ? $(srcid) : $('#' + srcid));
 			if (src.length)	canvas.html('<use xlink:href="#' + src.attr('id') +'"/>');
 			else src = null;
+			return this;
 		};
 		_proto.defsize = function(w, h) {
 			defaultWidth = w;
 			defaultHeight = h;
+			return this;
 		};
 		_proto.minimize = function() {
-			this.width(defaultWidth);
-			this.height(defaultHeight);
-			this.fetchsrc();
+			this.width(defaultWidth).height(defaultHeight).fetchsrc();
+			return this;
 		}
 		_proto.fetchsrc = function() {
 			if (src) {
@@ -359,8 +377,42 @@ var Gatherhub = Gatherhub || {};
 				this.canvasVbox.y = src[0].getBBox().y - 5;
 				this.canvasVbox.w = src[0].getBBox().width + 10;
 				this.canvasVbox.h = src[0].getBBox().height + 10;
-				this.refreshvbox();
+				this.refreshvbox().updateresol();
 			}
+			return this;
+		};
+		_proto.showresol = function() {
+			resolution = true;
+			return this;
+		};
+		_proto.updateresol = function() {
+			if (resolution) {
+				if (this.pad.children('span').length) {
+					this.pad.children('span').eq(0).html(precision(this.canvasVbox.w, 0));
+					this.pad.children('span').eq(1).html(precision(this.canvasVbox.h, 0));
+				}
+				else {
+					var hcss = {
+						'position': 'absolute', 
+						'font-size': '8px', 
+						'color': '#888', 
+						'bottom': '0px', 
+						'left': '0px'
+						};
+					var vcss = {
+						'display': 'block',
+						'position': 'absolute', 
+						'color': '#888', 
+						'font-size': '8px', 
+						'top': '5px', 
+						'right': '0px',
+						'transform': 'rotate(270deg)'
+						};
+					$('<span/>').html(precision(this.canvasVbox.w, 0)).css(hcss).appendTo(this.pad);
+					$('<span/>').html(precision(this.canvasVbox.h, 0)).css(vcss).appendTo(this.pad);				
+				}
+			}
+			return this;
 		};
 	})();
 
@@ -578,11 +630,204 @@ var Gatherhub = Gatherhub || {};
 				vp.src(pathholder.attr('id'));
 				vp.fetchsrc();
 				vpad = vp;
-			}			
+			}
+			return this;			
 		}
-		_proto.pencolor = function(c) {pc = c;};
-		_proto.penwidth = function(w) {pw = w;};
-		_proto.penshape = function(s) {ps = s;};
+		_proto.pencolor = function(c) {
+			if (c) {
+				pc = c;
+				return this;
+			}
+			return pc;
+		};
+		_proto.penwidth = function(w) {
+			if (w) {
+				pw = w;
+				return this;
+			}
+			return pw;
+		};
+		_proto.penshape = function(s) {
+			if (s) {
+				ps = s;	
+				return this;
+			}
+			return ps;
+		};
+		_proto.clearcanvas = function() {
+			while (pathholder.children('path').length > 0) pathholder.children('path').last().remove();
+			return this;
+		};
 		
 	})();
+
+	// Object Prototype: SvgButton
+	(function(){
+		// Private
+		var src, pad, canvas, self;
+		var size = 1, dragging = false, logtime = $.now();
+		var bBtnLeft = false, bBtnMiddle = false, bBtnRight = false;
+		var mouseX = 0, mouseY = 0;
+		var pinch = 0, pinchDelta = 0, pinchSensitivity = 3;
+		var defaultWidth, defaultHeight;
+		var resizable = false, dblclicksizing = false,  movable = false, moved = false;
+		
+		function mousedownHdl(x, y) {
+			if (resizable && dblclicksizing && $.now() - logtime < 400) {
+				if (self.width() == defaultWidth) {
+					size = precision($(window).width() / self.width(), 1);
+					self.fit();
+				}
+				else {
+					size = 1;
+					self.minimize();
+				}
+			}
+			else {
+				if (movable) dragging = true;
+				mouseX = x;
+				mouseY = y;
+			}
+			if (bBtnLeft) logtime = $.now();
+		}
+		function mouseupHdl() {
+			if (!moved) self.onclick();
+			if (movable) {
+				dragging = moved = false;	
+			}
+		}
+		function mousemoveHdl(x, y) {
+			if (dragging == true) {
+				var top = pad.position().top + y - mouseY;
+				var left = pad.position().left + x - mouseX;
+								
+				self.moveto('top', top);
+				self.moveto('left', left);
+				mouseX = x;
+				mouseY = y;
+				moved = true;
+			}			
+		}
+		function mousewheelHdl(delta) {
+			if (resizable) {
+				var r = 0.1;
+				var s = size;
+				var x = pad.position().top;
+				var y = pad.position().left;
+
+				if (delta > 0) {
+					s += r;
+				}
+				else if (s - r >= 1){
+					s -= r;
+				}
+				var w = defaultWidth * s;
+				var h = defaultHeight * s;
+				if (w <= $(window).width() && h <= $(window).height() ) {
+					if (pad.position().top + h > $(window).height()) self.moveto('top',  $(window).height() - h);	
+					if (pad.position().left + w > $(window).width()) self.moveto('left',  $(window).width() - w);
+					self.width(w).height(h);
+					size = precision(s, 1);
+				}
+			}
+		}
+
+		// Gatherhub.SvgButton
+		g.SvgButton = SvgButton;
+		// Constructor
+		function SvgButton(w, h) {
+			trace(L1, this.constructor.name + '.SvgButton' +
+				'(' + Array.prototype.slice.call(arguments) + ')');
+			g.SvgPad.call(this);
+			self = this;
+			pad = this.pad;
+			canvas = this.canvas;
+			this.width(w).height(h);
+			defaultWidth = this.width();
+			defaultHeight = this.height();
+			this.fixposition(true).moveto('top', 0).moveto('left',0).nocontext();
+			
+			pad.on('mousedown touchstart', function(evt){
+				var e = evt.originalEvent;
+				var t = e.touches ? e.touches : null;
+				var x = t ? t[0].pageX : e.pageX;
+				var y = t ? t[0].pageY : e.pageY;
+				e.preventDefault();
+				if (e.button==0) bBtnLeft = true;
+				if (e.button==1) bBtnMiddle = true;
+				if (e.button==2) bBtnRight = true;
+
+				if (t) {
+					if (t.length == 2) {
+						pinchDelta = Math.pow(t[1].pageX - x, 2) + Math.pow(t[1].pageY - y, 2);
+						pinch = 1;
+					}
+					if (t.length > 1) {
+						mouseupHdl();
+						return;
+					}
+				}
+				mousedownHdl(x, y);
+				bBtnLeft = true;
+			});
+			pad.on('mouseleave', function(evt){});
+			pad.on('mouseup touchend',function(evt){
+				var e = evt.originalEvent;
+				e.preventDefault();
+				if (e.button==0) bBtnLeft = false;
+				if (e.button==1) bBtnMiddle = false;
+				if (e.button==2) bBtnRight = false;
+				mouseupHdl();
+			});
+			pad.on('mousemove touchmove', function(evt){
+				var e = evt.originalEvent;
+				var t = e.touches ? e.touches : null;
+				var x = t ? t[0].pageX : e.pageX;
+				var y = t ? t[0].pageY : e.pageY;
+				e.preventDefault();
+				if (t) {
+					if (t.length == 2) {
+						pinch += 1;
+						if (pinch > pinchSensitivity) {
+							var delta = Math.pow(t[1].pageX - x, 2) + Math.pow(t[1].pageY - y, 2) - pinchDelta;
+							mousewheelHdl(delta);
+							pinchDelta = Math.pow(t[1].pageX - x, 2) + Math.pow(t[1].pageY - y, 2);
+							pinch = 0;
+						}
+					}
+					if (t.length > 1) return;
+				}
+				mousemoveHdl(x, y);
+			});
+			pad.on('mousewheel DOMMouseScroll', function(evt){
+				var e = evt.originalEvent;
+				var delta = e.wheelDelta > 0 || e.detail < 0 ? 1 : -1;
+				e.preventDefault();
+				mousewheelHdl(delta);
+			});
+		}
+		
+		// Prototypes
+		var _proto = SvgButton.prototype = extend(g.VisualPad);	// Inheritance
+		_proto.constructor = SvgButton;							// Overload constructor
+		_proto.tips = '';
+		_proto.text = '';
+		_proto.padding = 0;
+		_proto.rcorner = 0.2; 	// rcorner = 0 (rectangle) ~ 1.0 (circle/ellipse)
+		_proto.onclick = function(){};
+		_proto.draggable = function() {
+			movable = true;
+			return this;
+		};
+		_proto.borderradius = function(r) {
+			if (r > 0 && r <= 1) {
+				var s = this.width() < this.height ? this.width() : this.height();
+				this.canvas[0].style['border-radius'] = (s * r / 2) + 'px';
+			}
+			return this;
+		};
+		
+		delete _proto.src;
+	})();
+
 })();

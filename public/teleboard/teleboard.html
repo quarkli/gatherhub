@@ -15,6 +15,8 @@ The above copyright notice and this permission notice shall be included in
 all copies or substantial portions of the Software.
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. 
+
+Author: quarkli@gmail.com
 -->
 <!DOCTYPE html>
 <html>
@@ -25,40 +27,32 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 	<link rel="icon" href="images/gatherhub-logo.png">
     <link rel="stylesheet" href="css/bootstrap.min.css">
     <script src="scripts/jquery.min.js"></script>
-    <script src="scripts/bootstrap.min.js"></script>
+    <script src="js/bootstrap.min.js"></script>
     <script src="scripts/gatherhub.js"></script>
     <script>
     $(function(){
       var sp = new Gatherhub.SketchPad();
-	  sp.borderwidth(10);
-	  sp.bordercolor('#BAB');
-	  sp.bgcolor('#EFF');
-	  sp.fit();		// Important, must call after created
-	  sp.calibration();
-	  sp.pencolor('green');
-	  sp.penwidth(1);
-      sp.appendto('body');
+	  sp.borderwidth(10).bordercolor('#BAB').bgcolor('#EFF');
+	  sp.pencolor('green').penwidth(1).calibration();
+	  sp.fit().appendto('body');		
 
 	  var vp = new Gatherhub.VisualPad();
-      vp.bgcolor('#FFE');
-	  vp.bordercolor('#EEA');
-	  vp.borderwidth(3);
-	  vp.defsize(sp.width()/4, sp.height()/4);
-	  vp.minimize();
-	  vp.moveto('top', 9999);
-	  vp.moveto('left', 9999);
-	  vp.appendto('body');
+      vp.bgcolor('#FFE').bordercolor('#EEA').borderwidth(3);
+	  vp.defsize(sp.width()/4, sp.height()/4).minimize();
+	  vp.moveto('top', 0).moveto('left', 9999).appendto('body');
+	  //vp.showresol();
 	  
 	  sp.attachvp(vp);
 
 	  window.onresize = function(){
-	    vp.defsize(sp.width()/4, sp.height()/4);
-	    vp.minimize();
-		sp.width(sp.width());
-		sp.height(sp.width());
-		sp.fit();
-		sp.zoom(sp.zoom());
+	    vp.defsize(sp.width()/4, sp.height()/4).minimize();
+		sp.width(sp.width()).height(sp.width()).fit().zoom(sp.zoom());
 	  };
+	  
+	  var btnRoot = new Gatherhub.SvgButton(50, 50);
+	  btnRoot.draggable().bordercolor('#CCC').borderwidth(1).borderradius(.25).bgcolor('#FFF');
+	  btnRoot.moveto('top', 9999).moveto('left', $(window).width() / 2 - 28).appendto('body');
+	  btnRoot.onclick = function(){sp.clearcanvas();};
    });
     </script>
   </head>
