@@ -15,6 +15,8 @@ The above copyright notice and this permission notice shall be included in
 all copies or substantial portions of the Software.
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. 
+
+Author: quarkli@gmail.com
 -->
 <!DOCTYPE html>
 <html>
@@ -25,37 +27,95 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 	<link rel="icon" href="images/gatherhub-logo.png">
     <link rel="stylesheet" href="css/bootstrap.min.css">
     <script src="scripts/jquery.min.js"></script>
-    <script src="scripts/bootstrap.min.js"></script>
+    <script src="js/bootstrap.min.js"></script>
     <script src="scripts/gatherhub.js"></script>
+    <script src="scripts/svgicons.js"></script>
     <script>
     $(function(){
       var sp = new Gatherhub.SketchPad();
-	  sp.borderwidth(10);
-	  sp.bordercolor('#BAB');
-	  sp.bgcolor('#EFF');
-	  sp.fit();		// Important, must call after created
-	  sp.calibration();
-	  sp.pencolor('green');
-	  sp.penwidth(1);
-      sp.appendTo('body');
+	  sp.floating('absolute').borderwidth(10).bordercolor('#BAB').bgcolor('#FFFFFE').appendto('body');
+	  //sp.calibration();
 
 	  var vp = new Gatherhub.VisualPad();
-      vp.bgcolor('#FFE');
-	  vp.bordercolor('#EEA');
-	  vp.borderwidth(3);
-	  vp.defsize(sp.width()/4, sp.height()/4);
-	  vp.minimize();
-	  vp.moveTo('top', 9999);
-	  vp.moveTo('left', 9999);
-	  vp.appendTo('body');
-	  
+	  vp.draggable = true;
+      vp.floating('absolute').bgcolor('#FFF').bordercolor('#333').borderwidth(3);
+	  vp.defsize(sp.width()/4, sp.height()/4).minimize().appendto('body');
+	  //vp.showresol();
+
 	  sp.attachvp(vp);
 
 	  window.onresize = function(){
-		sp.width(200);
-		sp.height(200);
-		sp.fit();
+	    vp.defsize(sp.width()/4, sp.height()/4).minimize();
+		sp.width(sp.width()).height(sp.width()).maximize().zoom(sp.zoom());
 	  };
+	  
+	  var btn = {pen:{}, black:{}, red:{}, green:{}, blue:{}, xs:{}, sm:{}, md:{}, lg:{}, 
+		  eraser:{}, eraserxs:{}, erasersm:{}, erasermd:{}, eraserlg:{},
+		  edit:{}, undo:{}, redo:{}, clear:{},
+		  zoom:{}, zoomin:{}, zoomfit:{}, zoomout:{},
+		  move:{}, drag:{}, center:{},
+		  peerlist:{}, textmsg:{},
+		  connect:{}
+		};
+		
+	  var btnMenu = new Gatherhub.SvgButton(50, 50).moveto('top', 9999).moveto('left', 0).appendto('body');
+	  btnMenu.draggable = true;
+	  btnMenu.floating('absolute').canvas.css('fill', '#99D').html(svgicon.menu);
+	  btnMenu.bordercolor('#99D').borderwidth(2).borderradius(.25).bgcolor('#FFF').fitcontent();
+	  btnMenu.onclick = function(){console.log('btnMenu');};
+
+	  var pengroup = $('<div/>').appendTo('body').css({'position': 'absolute', 'top': '0px', 'right': '0px'});
+	  var btnEraser = new Gatherhub.SvgButton(50, 50).appendto(pengroup);
+	  btnEraser.floating('relative').canvas.css('fill', '#black').html(svgicon.eraser);
+	  btnEraser.bordercolor('#99D').borderwidth(2).borderradius(.25).bgcolor('#FFF').fitcontent();
+	  btnEraser.onclick = function(){sp.pencolor('white');};
+
+	  var btnPenBlack = new Gatherhub.SvgButton(50, 50).appendto(pengroup);
+	  btnPenBlack.floating('relative').canvas.css('fill', 'black').html(svgicon.pen);
+	  btnPenBlack.bordercolor('#99D').borderwidth(2).borderradius(.25).bgcolor('#FFF').fitcontent();
+	  btnPenBlack.onclick = function(){sp.pencolor('black');};
+
+	  var btnPenRed = new Gatherhub.SvgButton(50, 50).appendto(pengroup);
+	  btnPenRed.floating('relative').canvas.css('fill', 'red').html(svgicon.pen);
+	  btnPenRed.bordercolor('#99D').borderwidth(2).borderradius(.25).bgcolor('#FFF').fitcontent();
+	  btnPenRed.onclick = function(){sp.pencolor('red');};
+
+	  var btnPenGreen = new Gatherhub.SvgButton(50, 50).appendto(pengroup);
+	  btnPenGreen.floating('relative').canvas.css('fill', 'green').html(svgicon.pen);
+	  btnPenGreen.bordercolor('#99D').borderwidth(2).borderradius(.25).bgcolor('#FFF').fitcontent();
+	  btnPenGreen.onclick = function(){sp.pencolor('green');};
+
+	  var btnPenBlue = new Gatherhub.SvgButton(50, 50).appendto(pengroup);
+	  btnPenBlue.floating('relative').canvas.css('fill', 'blue').html(svgicon.pen);
+	  btnPenBlue.bordercolor('#99D').borderwidth(2).borderradius(.25).bgcolor('#FFF').fitcontent();
+	  btnPenBlue.onclick = function(){sp.pencolor('blue');};
+
+	  var sizegroup = $('<div/>').appendTo('body').css({'position': 'absolute', 'top': '0px', 'right': '50px'});
+	  var btnXs = new Gatherhub.SvgButton(50, 50).appendto(sizegroup);
+	  btnXs.floating('relative').canvas.html(svgicon.circle);
+	  btnXs.bordercolor('#99D').borderwidth(2).borderradius(.25).bgcolor('#FFF').fitcontent().zoom(.1);
+	  btnXs.onclick = function(){sp.penwidth(1);};
+
+	  var btnSm = new Gatherhub.SvgButton(50, 50).appendto(sizegroup);
+	  btnSm.floating('relative').canvas.html(svgicon.circle);
+	  btnSm.bordercolor('#99D').borderwidth(2).borderradius(.25).bgcolor('#FFF').fitcontent().zoom(.25);
+	  btnSm.onclick = function(){sp.penwidth(5);};
+
+	  var btnMd = new Gatherhub.SvgButton(50, 50).appendto(sizegroup);
+	  btnMd.floating('relative').canvas.html(svgicon.circle);
+	  btnMd.bordercolor('#99D').borderwidth(2).borderradius(.25).bgcolor('#FFF').fitcontent().zoom(.6);
+	  btnMd.onclick = function(){sp.penwidth(11);};
+
+	  var btnLg = new Gatherhub.SvgButton(50, 50).appendto(sizegroup);
+	  btnLg.floating('relative').canvas.html(svgicon.circle);
+	  btnLg.bordercolor('#99D').borderwidth(2).borderradius(.25).bgcolor('#FFF').fitcontent().zoom(1.1);
+	  btnLg.onclick = function(){sp.penwidth(21);};
+
+	  var btnClear = new Gatherhub.SvgButton(50, 50).floating('absolute').moveto('top', 9999).moveto('left', 9999).appendto('body');
+	  btnClear.canvas.css('fill', '#99D').html(svgicon.clear);
+	  btnClear.bordercolor('#99D').borderwidth(2).borderradius(.25).bgcolor('#FFF').fitcontent();
+	  btnClear.onclick = function(){sp.clearcanvas();};
+
    });
     </script>
   </head>
