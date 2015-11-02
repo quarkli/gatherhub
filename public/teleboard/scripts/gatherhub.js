@@ -47,7 +47,7 @@ var Gatherhub = Gatherhub || {};
 			base.prototype = func.prototype;
 			return new base();
 	}
-
+	
 	// Object Prototype: SvgPad
 	(function(){
 		// Private
@@ -56,30 +56,23 @@ var Gatherhub = Gatherhub || {};
 		g.SvgPad = SvgPad;
 		
 		// Constructor
-		function SvgPad() {
+		function SvgPad(w, h) {
 			this.pad = $('<div/>');
 			this.canvas = $(document.createElementNS('http://www.w3.org/2000/svg', 'svg')).appendTo(this.pad);
-			this.canvasVbox = {x: 0, y: 0, w: 0, h: 0};
+			this.zrate = 1;
 			this.zcenter = {x: 0.5, y: 0.5};
+			this.canvasvbox = {x: 0, y: 0, w: 0, h: 0};
+			this.movable = false;
+			this.resizable = true;
+			this.defaultWidth = w || $(window).width();
+			this.defaultHeight = h || $(window).height();
 			
 			// DO NOT REMOVE, must set the width and height to set initial values 
-			this.fit();
+			this.maximize();
 		}
 
 		// Prototypes
 		var _proto = SvgPad.prototype;
-		_proto.zrate = 1;
-		_proto.zcenter = {};
-		_proto.canvasVbox = {};
-		_proto.screenxy = function(x, y) {return {x: x, y: y};};
-		_proto.canvasxy = function(screnXY) {
-			return {x: screnXY.x - this.pad.position().left - this.borderpadding() / 2, 
-					y: screnXY.y - this.pad.position().top - this.borderpadding() / 2};
-		};
-		_proto.vboxxy = function(canvasxy) {
-			return {x: precision(canvasxy.x / this.zrate + this.canvasVbox.x, 3),
-					y: precision(canvasxy.y / this.zrate + this.canvasVbox.y, 3)};
-		};
 		_proto.nocontext = function() {
 			this.pad.on('contextmenu', function(){return false;});
 			return this;
@@ -106,6 +99,13 @@ var Gatherhub = Gatherhub || {};
 			}
 			return $.isNumeric(parseInt(this.canvas[0].style['border-width'])) ? parseInt(this.canvas[0].style['border-width']) : 0;
 		};
+		_proto.borderradius = function(r) {
+			if (r > 0 && r <= 1) {
+				var s = this.width() < this.height ? this.width() : this.height();
+				this.canvas[0].style['border-radius'] = (s * r / 2) + 'px';
+			}
+			return this;
+		};
 		_proto.borderpadding = function() {
 			return (this.canvas[0].style['border-style'] == 'solid') ?	this.borderwidth() * 2 : 0;
 		};
@@ -116,59 +116,105 @@ var Gatherhub = Gatherhub || {};
 			}
 			return this.pad[0].style['display'] != 'none';
 		};
-		_proto.fixposition = function(t) {
-			if (t !== undefined) {
-				this.pad[0].style['position'] = t ? 'absolute' : 'relative';
-				return this;
-			} 
-			return this.pad[0].style['position'] == 'absolute';
-		};
-		_proto.moveto = function(axis, p) {
-			var b;
-			if (axis == 'left') {
-				b = $(window).width() - this.width() - this.borderpadding() / 2 - 6;
-			} 
-			else if (axis == 'top') {
-				b = $(window).height() - this.height() - this.borderpadding() / 2 - 7;
+		_proto.floating = function(pos) {
+			if (pos) {
+				this.pad[0].style['position'] = pos;
+				this.movable = true;
 			}
 			else {
+				this.pad[0].style['position'] = 'auto';
+				this.movable = false;
+			} 
+			return this;
+		};
+		_proto.moveto = function(axis, p) {
+			if (this.movable) {
+				var b;
+				if (axis == 'left') {
+					b = $(window).width() - this.width() - this.borderpadding() / 2 - 6;
+				} 
+				else if (axis == 'top') {
+					b = $(window).height() - this.height() - this.borderpadding() / 2 - 7;
+				}
+				else {
+					return this;
+				}
+				if (p > b) p = b;
+				if (p < 0) p = 0;
+				this.pad[0].style[axis] = p + 'px';
+			}
+			return this;
+		};
+		_proto.width = function(w) {
+			if (w === undefined) return this.canvas.attr('width');
+			if (this.resizable && $.isNumeric(w)) {
+				if (w > $(window).width() - 6) w = $(window).width() - 6;
+				this.canvas.attr('width', w);
+				this.canvasvbox.w = precision((this.canvas.attr('width') - this.borderpadding()) / this.zrate, 3);
+				if (this.pad.position().left + this.canvas.attr('width') * 1 + this.borderpadding() / 2 + 6 > $(window).width()) this.moveto('left', 9999);
+			}
+			return this;
+		};
+		_proto.height = function(h) {
+			if (h === undefined) return this.canvas.attr('height');
+			if (this.resizable && $.isNumeric(h)) {
+				if (h > $(window).height() - 7) h = $(window).height() - 7;
+				this.canvas.attr('height', h);
+				this.canvasvbox.h = precision((this.canvas.attr('height') - this.borderpadding()) / this.zrate, 3);
+				if (this.pad.position().top + this.canvas.attr('height') * 1 + this.borderpadding() / 2 + 7 > $(window).height()) this.moveto('top', 9999);
+			}
+			return this;
+		};
+		_proto.maximize = function() {
+			this.width($(window).width()).height($(window).height()).refreshvbox();
+			return this;
+		};
+		_proto.minimize = function() {
+			this.width(this.defaultWidth).height(this.defaultHeight).fitcontent();
+			return this;
+		};
+		_proto.fitcontent = function() {
+			this.canvasvbox.x = this.canvas[0].getBBox().x - 20;
+			this.canvasvbox.y = this.canvas[0].getBBox().y - 20;
+			this.canvasvbox.w = this.canvas[0].getBBox().width + 40;
+			this.canvasvbox.h = this.canvas[0].getBBox().height + 40;
+			this.refreshvbox();
+
+			return this;
+		};		
+		_proto.zoom = function(z) {
+			if (this.canvasvbox.w == 0) this.canvasvbox.w = this.width();
+			if (this.canvasvbox.h == 0) this.canvasvbox.h = this.height();
+			if (z >= 0.1 && z <= 10) {
+				this.zrate = precision(z, 1);
+				var x = this.zcenter.x * this.canvasvbox.w + this.canvasvbox.x;
+				var y = this.zcenter.y * this.canvasvbox.h + this.canvasvbox.y;
+				this.canvasvbox.w = precision((this.width() - this.borderpadding()) / this.zrate, 3);
+				this.canvasvbox.h = precision((this.height() - this.borderpadding()) / this.zrate, 3);
+				this.canvasvbox.x = precision(x - this.zcenter.x * this.canvasvbox.w, 3);
+				this.canvasvbox.y = precision(y - this.zcenter.y * this.canvasvbox.h, 3);
+				this.refreshvbox();
 				return this;
 			}
-			if (p > b) p = b;
-			if (p < 0) p = 0;
-			this.pad[0].style[axis] = p + 'px';
-			
+			return this.zrate;
+		};
+		_proto.offsetcanvas = function(axis, offset) {
+			if ($.isNumeric(offset)) {
+				if (axis == 'x') this.canvasvbox.x = precision(this.canvasvbox.x - offset / this.zrate, 3);
+				if (axis == 'y') this.canvasvbox.y = precision(this.canvasvbox.y - offset / this.zrate, 3);
+				this.refreshvbox();
+			}
 			return this;
 		};
 		_proto.refreshvbox = function() {
 			// $()[0] returns selector's native object
 			// $.attr() converts attribute name to lower case, use native setAttribute() instead
-			this.canvas[0].setAttribute('viewBox', this.canvasVbox.x + ' ' + 
-				this.canvasVbox.y + ' ' + this.canvasVbox.w + ' ' + this.canvasVbox.h );
+			this.canvas[0].setAttribute('viewBox', this.canvasvbox.x + ' ' + 
+				this.canvasvbox.y + ' ' + this.canvasvbox.w + ' ' + this.canvasvbox.h );
 			return this;
 		};
-		_proto.width = function(w) {
-			if ($.isNumeric(w)) {
-				if (w > $(window).width() - 6) w = $(window).width() - 6;
-				this.canvas.attr('width', w);
-				this.canvasVbox.w = precision((this.canvas.attr('width') - this.borderpadding()) / this.zrate, 3);
-				if (this.pad.position().left + this.canvas.attr('width') * 1 + this.borderpadding() / 2 + 6 > $(window).width()) this.moveto('left', 9999);
-				return this;
-			}
-			return this.canvas.attr('width');
-		};
-		_proto.height = function(h) {
-			if ($.isNumeric(h)) {
-				if (h > $(window).height() - 7) h = $(window).height() - 7;
-				this.canvas.attr('height', h);
-				this.canvasVbox.h = precision((this.canvas.attr('height') - this.borderpadding()) / this.zrate, 3);
-				if (this.pad.position().top + this.canvas.attr('height') * 1 + this.borderpadding() / 2 + 7 > $(window).height()) this.moveto('top', 9999);
-				return this;
-			}
-			return this.canvas.attr('height');
-		};
-		_proto.fit = function() {
-			this.width($(window).width()).height($(window).height()).refreshvbox();
+		_proto.appendto = function(obj) {
+			if ($(obj).length) this.pad.appendTo($(obj));
 			return this;
 		};
 		_proto.calibration = function() {
@@ -187,114 +233,32 @@ var Gatherhub = Gatherhub || {};
 			this.canvas.append(path);
 			return this;
 		};
-		_proto.offsetcanvas = function(axis, offset) {
-			if ($.isNumeric(offset)) {
-				if (axis == 'x') this.canvasVbox.x = precision(this.canvasVbox.x - offset / this.zrate, 3);
-				if (axis == 'y') this.canvasVbox.y = precision(this.canvasVbox.y - offset / this.zrate, 3);
-				this.refreshvbox();
-			}
-			return this;
-		};
-		_proto.zoom = function(z) {
-			if (this.canvasVbox.w == 0) this.canvasVbox.w = this.width();
-			if (this.canvasVbox.h == 0) this.canvasVbox.h = this.height();
-			if (z >= 0.1 && z <= 10) {
-				this.zrate = precision(z, 1);
-				var x = this.zcenter.x * this.canvasVbox.w + this.canvasVbox.x;
-				var y = this.zcenter.y * this.canvasVbox.h + this.canvasVbox.y;
-				this.canvasVbox.w = precision((this.width() - this.borderpadding()) / this.zrate, 3);
-				this.canvasVbox.h = precision((this.height() - this.borderpadding()) / this.zrate, 3);
-				this.canvasVbox.x = precision(x - this.zcenter.x * this.canvasVbox.w, 3);
-				this.canvasVbox.y = precision(y - this.zcenter.y * this.canvasVbox.h, 3);
-				this.refreshvbox();
-				return this;
-			}
-			return this.zrate;
-		};
-		_proto.appendto = function(obj) {
-			if ($(obj).length) this.pad.appendTo($(obj));
-			return this;
-		};
 	})();
 
 	// Object Prototype: VisualPad
 	(function(){
 		// Private
-		var src, pad, canvas, self;
-		var size = 1, dragging = false, logtime = $.now();
 		var bBtnLeft = false, bBtnMiddle = false, bBtnRight = false;
-		var mouseX = 0, mouseY = 0;
-		var pinch = 0, pinchDelta = 0, pinchSensitivity = 3;
-		var defaultWidth, defaultHeight, resolution = false;
+		var mouseX = 0, mouseY = 0, logtime = 0;
+		var pinch = 0, pinchDelta = 0;
 		
-		function mousedownHdl(x, y) {
-			if ($.now() - logtime < 400) {
-				if (self.width() == defaultWidth) {
-					size = precision($(window).width() / self.width(), 1);
-					self.fit().fetchsrc();
-				}
-				else {
-					size = 1;
-					self.minimize().fetchsrc();
-				}
-			}
-			else {
-				dragging = true;
-				mouseX = x;
-				mouseY = y;
-			}
-			if (bBtnLeft) logtime = $.now();
-		}
-		function mouseupHdl() {
-			dragging = false;
-		}
-		function mousemoveHdl(x, y) {
-			if (dragging == true) {
-				var top = pad.position().top + y - mouseY;
-				var left = pad.position().left + x - mouseX;
-								
-				self.moveto('top', top).moveto('left', left);
-				mouseX = x;
-				mouseY = y;
-			}			
-		}
-		function mousewheelHdl(delta) {
-			var r = 0.1;
-			var s = size;
-			var x = pad.position().top;
-			var y = pad.position().left;
-
-			if (delta > 0) {
-				s += r;
-			}
-			else if (s - r >= 1){
-				s -= r;
-			}
-			var w = defaultWidth * s;
-			var h = defaultHeight * s;
-			if (w <= $(window).width() && h <= $(window).height() ) {
-				if (pad.position().top + h > $(window).height()) self.moveto('top',  $(window).height() - h);	
-				if (pad.position().left + w > $(window).width()) self.moveto('left',  $(window).width() - w);
-				self.width(w).height(h);
-				size = precision(s, 1);
-			}
-		}
-
 		// Gatherhub.VisualPad
 		g.VisualPad = VisualPad;
 		// Constructor
-		function VisualPad(srcid) {
+		function VisualPad(w, h) {
 			trace(L1, this.constructor.name + '.VisualPad' +
 				'(' + Array.prototype.slice.call(arguments) + ')');
+			var self = this;
 			g.SvgPad.call(this);
-			self = this;
-			pad = this.pad;
-			canvas = this.canvas;
-			defaultWidth = this.width();
-			defaultHeight = this.height();
-			this.fixposition(true).nocontext().src(srcid);
+			this.source = null;
+			this.size = 1;
+			this.dragging = false;
+			this.resolution = false;
+			this.defaultWidth = w || $(window).width() / 4;
+			this.defaultHeight = h || $(window).height() / 4;
+			this.floating(true).moveto('top', 0).moveto('left', 0).minimize().nocontext();
 			
-			pad.on('mousedown touchstart', function(evt){
+			this.pad.on('mousedown touchstart', function(evt){
 				var e = evt.originalEvent;
 				var t = e.touches ? e.touches : null;
 				var x = t ? t[0].pageX : e.pageX;
@@ -310,22 +274,22 @@ var Gatherhub = Gatherhub || {};
 						pinch = 1;
 					}
 					if (t.length > 1) {
-						mouseupHdl();
+						self.mouseupHdl();
 						return;
 					}
 				}
-				mousedownHdl(x, y);
+				self.mousedownHdl(x, y);
 				bBtnLeft = true;
 			});
-			pad.on('mouseup mouseleave touchend',function(evt){
+			this.pad.on('mouseup mouseleave touchend',function(evt){
 				var e = evt.originalEvent;
 				e.preventDefault();
 				if (e.button==0) bBtnLeft = false;
 				if (e.button==1) bBtnMiddle = false;
 				if (e.button==2) bBtnRight = false;
-				mouseupHdl();
+				self.mouseupHdl();
 			});
-			pad.on('mousemove touchmove', function(evt){
+			this.pad.on('mousemove touchmove', function(evt){
 				var e = evt.originalEvent;
 				var t = e.touches ? e.touches : null;
 				var x = t ? t[0].pageX : e.pageX;
@@ -334,147 +298,192 @@ var Gatherhub = Gatherhub || {};
 				if (t) {
 					if (t.length == 2) {
 						pinch += 1;
-						if (pinch > pinchSensitivity) {
+						if (pinch > self.pinchSensitivity) {
 							var delta = Math.pow(t[1].pageX - x, 2) + Math.pow(t[1].pageY - y, 2) - pinchDelta;
-							mousewheelHdl(delta);
+							self.mousewheelHdl(delta);
 							pinchDelta = Math.pow(t[1].pageX - x, 2) + Math.pow(t[1].pageY - y, 2);
 							pinch = 0;
 						}
 					}
 					if (t.length > 1) return;
 				}
-				mousemoveHdl(x, y);
+				self.mousemoveHdl(x, y);
 			});
-			pad.on('mousewheel DOMMouseScroll', function(evt){
+			this.pad.on('mousewheel DOMMouseScroll', function(evt){
 				var e = evt.originalEvent;
 				var delta = e.wheelDelta > 0 || e.detail < 0 ? 1 : -1;
 				e.preventDefault();
-				mousewheelHdl(delta);
+				self.mousewheelHdl(delta);
 			});
 		}
 		
 		// Prototypes
 		var _proto = VisualPad.prototype = extend(g.SvgPad);	// Inheritance
 		_proto.constructor = VisualPad;							// Overload constructor
+		_proto.source;
+		_proto.draggable = false;
+		_proto.pinchSensitivity = 3;
 		_proto.src = function(srcid) {
-			src = (srcid && srcid[0] == '#' ? $(srcid) : $('#' + srcid));
-			if (src.length)	canvas.html('<use xlink:href="#' + src.attr('id') +'"/>');
-			else src = null;
+			this.source = (srcid && srcid[0] == '#' ? $(srcid) : $('#' + srcid));
+			if (this.source.length)	this.canvas.html('<use xlink:href="#' + this.source.attr('id') +'"/>');
 			return this;
 		};
 		_proto.defsize = function(w, h) {
-			defaultWidth = w;
-			defaultHeight = h;
-			return this;
-		};
-		_proto.minimize = function() {
-			this.width(defaultWidth).height(defaultHeight).fetchsrc();
-			return this;
-		}
-		_proto.fetchsrc = function() {
-			if (src) {
-				this.canvasVbox.x = src[0].getBBox().x - 5;
-				this.canvasVbox.y = src[0].getBBox().y - 5;
-				this.canvasVbox.w = src[0].getBBox().width + 10;
-				this.canvasVbox.h = src[0].getBBox().height + 10;
-				this.refreshvbox().updateresol();
-			}
+			this.defaultWidth = w;
+			this.defaultHeight = h;
 			return this;
 		};
 		_proto.showresol = function() {
-			resolution = true;
+			this.resolution = true;
 			return this;
 		};
 		_proto.updateresol = function() {
-			if (resolution) {
+			if (this.resolution) {
 				if (this.pad.children('span').length) {
-					this.pad.children('span').eq(0).html(precision(this.canvasVbox.w, 0));
-					this.pad.children('span').eq(1).html(precision(this.canvasVbox.h, 0));
+					this.pad.children('span').eq(0).html(precision(this.canvasvbox.w, 0));
+					this.pad.children('span').eq(1).html(precision(this.canvasvbox.h, 0));
 				}
 				else {
 					var hcss = {
 						'position': 'absolute', 
-						'font-size': '8px', 
 						'color': '#888', 
-						'bottom': '0px', 
-						'left': '0px'
+						'font-size': '8px', 
+						'bottom': '5px', 
+						'left': '5px'
 						};
 					var vcss = {
-						'display': 'block',
 						'position': 'absolute', 
 						'color': '#888', 
 						'font-size': '8px', 
 						'top': '5px', 
 						'right': '0px',
+						'display': 'block',
 						'transform': 'rotate(270deg)'
 						};
-					$('<span/>').html(precision(this.canvasVbox.w, 0)).css(hcss).appendTo(this.pad);
-					$('<span/>').html(precision(this.canvasVbox.h, 0)).css(vcss).appendTo(this.pad);				
+					$('<span/>').html(precision(this.canvasvbox.w, 0)).css(hcss).appendTo(this.pad);
+					$('<span/>').html(precision(this.canvasvbox.h, 0)).css(vcss).appendTo(this.pad);				
 				}
 			}
 			return this;
+		};
+		_proto.mousedownHdl = function(x, y) {
+			if ($.now() - logtime < 400) {
+				if (this.width() == this.defaultWidth) {
+					this.size = precision($(window).width() / this.width(), 1);
+					this.maximize().fitcontent();
+				}
+				else {
+					this.size = 1;
+					this.minimize().fitcontent();
+				}
+			}
+			else {
+				this.dragging = true;
+				mouseX = x;
+				mouseY = y;
+			}
+			if (bBtnLeft) logtime = $.now();
+		};
+		_proto.mouseupHdl = function() {
+			this.dragging = false;
+		};
+		_proto.mousemoveHdl = function(x, y) {
+			if (this.draggable && this.dragging == true) {
+				var top = this.pad.position().top + y - mouseY;
+				var left = this.pad.position().left + x - mouseX;
+								
+				this.moveto('top', top).moveto('left', left);
+				mouseX = x;
+				mouseY = y;
+			}			
+		};
+		_proto.mousewheelHdl = function(delta) {
+			var r = 0.1;
+			var s = this.size;
+			var x = this.pad.position().top;
+			var y = this.pad.position().left;
+
+			if (delta > 0) {
+				s += r;
+			}
+			else if (s - r >= 1){
+				s -= r;
+			}
+			var w = this.defaultWidth * s;
+			var h = this.defaultHeight * s;
+			if (w <= $(window).width() && h <= $(window).height() ) {
+				if (this.pad.position().top + h > $(window).height()) this.moveto('top',  $(window).height() - h);	
+				if (this.pad.position().left + w > $(window).width()) this.moveto('left',  $(window).width() - w);
+				this.width(w).height(h);
+				this.size = precision(s, 1);
+			}
 		};
 	})();
 
 	// Object Prototype: SketchPad
 	(function(){
 		// Private
-		var self, pad, canvas, vpad, pathholder, redocache;
-		var pc = 'black', pw = 5, ps = 'round';
-		var pinch = 0, pinchDelta = 0, pinchSensitivity = 7, dragging = false;
-		var activepath = -1, falseTouch = false;
-		var mouseX = 0, mouseY = 0, bBtnLeft = false, bBtnMiddle = false, bBtnRight = false;
-		var bWsReady = false;
-		
+		var falseTouch = false, mouseX = 0, mouseY = 0, pinch = 0, pinchDelta = 0;
+		var bBtnLeft = false, bBtnMiddle = false, bBtnRight = false;
+
+		function screenxy(x, y) {return {x: x, y: y};}
+		function canvasxy(screnXY) {
+			return {x: screnXY.x - this.pad.position().left - this.borderpadding() / 2, 
+					y: screnXY.y - this.pad.position().top - this.borderpadding() / 2};
+		}
+		function vboxxy(canvasxy) {
+			return {x: precision(canvasxy.x / this.zrate + this.canvasvbox.x, 3),
+					y: precision(canvasxy.y / this.zrate + this.canvasvbox.y, 3)};
+		}
 		function drawStart(x, y){
-			//trace(L4, self.constructor.name + '.drawStart' +
+			//trace(L4, this.constructor.name + '.drawStart' +
 			//	'(' + Array.prototype.slice.call(arguments) + ')');
-			var vboxxy = self.vboxxy(self.canvasxy(self.screenxy(x, y)));
-			x = vboxxy.x;
-			y = vboxxy.y;
+			var point = vboxxy.call(this, canvasxy.call(this, screenxy(x, y)));
+			x = point.x;
+			y = point.y;
 
 			var $node =  $(document.createElementNS('http://www.w3.org/2000/svg', 'path'));
-			$node.attr('stroke-width', pw);
-			$node.attr('stroke-linecap', ps);
-			$node.attr('stroke', pc);
+			$node.attr('stroke-width', this.pw);
+			$node.attr('stroke-linecap', this.ps);
+			$node.attr('stroke', this.pc);
 			$node.attr('fill', 'none');
 			$node.attr('d', 'M' + x + ',' + y);
 
-			pathholder.append($node);
+			this.pathholder.append($node);
 			//clearPathsCache();
-			activepath = pathholder.children('path').length - 1;
+			this.activepath = this.pathholder.children('path').length - 1;
 			falseTouch = true;
 			setTimeout(function(){falseTouch=false;}, 5);
 		}
 		function drawPath(x, y){
-			//trace(L4, self.constructor.name + '.drawPath' +
+			//trace(L4, this.constructor.name + '.drawPath' +
 			//	'(' + Array.prototype.slice.call(arguments) + ')');
-			if (activepath >= 0) {
-				var vboxxy = self.vboxxy(self.canvasxy(self.screenxy(x, y)));
-				x = vboxxy.x;
-				y = vboxxy.y;
-				pathholder.children('path').eq(activepath).attr('d', pathholder.children('path').eq(activepath).attr('d') + 'L' + x + ',' + y);
+			if (this.activepath >= 0) {
+				var point = vboxxy.call(this, canvasxy.call(this, screenxy(x, y)));
+				x = point.x;
+				y = point.y;
+				this.pathholder.children('path').eq(this.activepath).attr('d', this.pathholder.children('path').eq(this.activepath).attr('d') + 'L' + x + ',' + y);
 			}
 		}
 		function drawEnd(){
-			//trace(L4, self.constructor.name + '.drawEnd' +
+			//trace(L4, this.constructor.name + '.drawEnd' +
 			//	'(' + Array.prototype.slice.call(arguments) + ')');
-			if (activepath >= 0) {
-				var $node = pathholder.children('path').eq(activepath);
+			if (this.activepath >= 0) {
+				var $node = this.pathholder.children('path').eq(this.activepath);
 				var move = $node.attr('d').split('L').length;
-				activepath = -1;
+				this.activepath = -1;
 				
 				if (move < 2 || (falseTouch && move < 3)) {
-					pathholder.children('path').eq(activepath).remove();
+					this.pathholder.children('path').eq(this.activepath).remove();
 					return;
 				}
 				
-				if (vpad) {
-					vpad.fetchsrc.call(vpad);
-					self.zoom(self.zrate);
+				if (this.vpad) {
+					this.vpad.fitcontent();
+					this.zoom(this.zrate);
 				}
 				
-				if (bWsReady) {
+				if (this.bWsReady) {
 					ws.send(
 						JSON.stringify(
 							{
@@ -493,52 +502,17 @@ var Gatherhub = Gatherhub || {};
 			}
 		}	
 		
-		function mousedownHdl(x, y) {
-			//trace(L4, self.constructor.name + '.mousedownHdl' +
-			//	'(' + Array.prototype.slice.call(arguments) + ')');
-			drawStart(x, y);
-			//trace(L4, 'window=' + $(window).width() + 'x' + $(window).height());
-			//trace(L4, 'cavasvbox=' + self.canvasVbox.x + ' ' + self.canvasVbox.y + ' ' + self.canvasVbox.w + ' ' + self.canvasVbox.h);
-			//trace(L4, 'viewBox=' + self.canvas[0].getAttribute('viewBox'));
-			trace(L4, 'screenXY=' + x + ', ' + y);
-			trace(L4, 'canvasxy=' + self.canvasxy(self.screenxy(x,y)).x + ', ' + self.canvasxy(self.screenxy(x,y)).y);
-			trace(L4, 'vboxxy=' + self.vboxxy(self.canvasxy(self.screenxy(x,y))).x + ', ' + self.vboxxy(self.canvasxy(self.screenxy(x,y))).y);
-		};
-		function mouseupHdl() {
-			drawEnd();
-			dragging = false;
-		};
-		function mousemoveHdl(x, y) {
-			if (dragging) {
-				self.offsetcanvas('x', x - mouseX);
-				self.offsetcanvas('y', y - mouseY);
-			}
-			else {
-				drawPath(x, y);
-			}
-		};
-		function mousewheelHdl(delta) {
-			if (delta > 0) {
-				self.zoom(self.zoom() + (self.zoom() < 1 ? 0.1 : 1));
-			}
-			else {
-				self.zoom(self.zoom() - (self.zoom() <= 1 ? 0.1 : 1));
-			}
-		};
-		
 		// Gatherhub.SketchPad
 		g.SketchPad = SketchPad;
 		// Constructor
 		function SketchPad() {
+			var self = this;
 			g.SvgPad.call(this);
-			self = this;
-			pad = this.pad;
-			canvas = this.canvas;
-			pathholder = $(document.createElementNS('http://www.w3.org/2000/svg', 'g')).attr('id', 'g' + (0 | Math.random() * 1000)).appendTo(canvas);
-			redocache = $(document.createElementNS('http://www.w3.org/2000/svg', 'g'));
+			this.pathholder = $(document.createElementNS('http://www.w3.org/2000/svg', 'g')).attr('id', 'g' + (0 | Math.random() * 1000)).appendTo(this.canvas);
+			this.redocache = $(document.createElementNS('http://www.w3.org/2000/svg', 'g'));
 			this.nocontext();
 
-			pad.on('mousedown touchstart', function(evt){
+			this.pad.on('mousedown touchstart', function(evt){
 				var e = evt.originalEvent;
 				var t = e.touches ? e.touches : null;
 				var x = t ? t[0].pageX : e.pageX;
@@ -560,28 +534,28 @@ var Gatherhub = Gatherhub || {};
 						pinch = 1;
 					}
 					if (t.length > 1) {
-						mouseupHdl();
-						if (t.length == 3) dragging = true;
+						self.mouseupHdl();
+						if (t.length == 3) self.dragging = true;
 						return;
 					}
 				}
 				
 				if (bBtnMiddle || bBtnRight) {
-					mouseupHdl();
+					self.mouseupHdl();
 				}
 				else {
-					mousedownHdl(x, y);
+					self.mousedownHdl(x, y);
 				}			
 			});
-			pad.on('mouseup mouseleave touchend',function(evt){
+			this.pad.on('mouseup mouseleave touchend',function(evt){
 				var e = evt.originalEvent;
 				e.preventDefault();
 				if (e.button==0) bBtnLeft = false;
 				if (e.button==1) bBtnMiddle = false;
 				if (e.button==2) bBtnRight = false;
-				mouseupHdl();
+				self.mouseupHdl();
 			});
-			pad.on('mousemove touchmove', function(evt){
+			this.pad.on('mousemove touchmove', function(evt){
 				var e = evt.originalEvent;
 				var t = e.touches ? e.touches : null;
 				var x = t ? t[0].pageX : e.pageX;
@@ -594,9 +568,9 @@ var Gatherhub = Gatherhub || {};
 				if (t) {
 					if (t.length == 2) {
 						pinch += 1;
-						if (pinch > pinchSensitivity) {
+						if (pinch > self.pinchSensitivity) {
 							var delta = Math.pow(t[1].pageX - x, 2) + Math.pow(t[1].pageY - y, 2) - pinchDelta;
-							mousewheelHdl(delta);
+							self.mousewheelHdl(delta);
 							pinchDelta = Math.pow(t[1].pageX - x, 2) + Math.pow(t[1].pageY - y, 2);
 							pinch = 0;
 						}
@@ -605,11 +579,11 @@ var Gatherhub = Gatherhub || {};
 						if (t.length != 3) return;
 					}
 				}
-				mousemoveHdl(x, y);
+				self.mousemoveHdl(x, y);
 				mouseX = x;
 				mouseY = y;
 			});
-			pad.on('mousewheel DOMMouseScroll', function(evt){
+			this.pad.on('mousewheel DOMMouseScroll', function(evt){
 				var e = evt.originalEvent;
 				var delta = e.wheelDelta > 0 || e.detail < 0 ? 1 : -1;
 				var t = e.touches ? e.touches : null;
@@ -618,119 +592,93 @@ var Gatherhub = Gatherhub || {};
 				e.preventDefault();
 				self.zcenter.x = x / self.width();
 				self.zcenter.y = y / self.height();
-				mousewheelHdl(delta);
+				self.mousewheelHdl(delta);
 			});
 		}
 		
 		// Prototypes
 		var _proto = SketchPad.prototype = extend(g.SvgPad);	// Inheritance
 		_proto.constructor = SketchPad;							// Overload constructor
+		_proto.vpad = null;
+		_proto.pathholder = null;
+		_proto.redocache = null;
+		_proto.pc = 'black';
+		_proto.pw = 5;
+		_proto.ps = 'round';
+		_proto.activepath = -1;
+		_proto.pinchSensitivity = 7;
+		_proto.dragging = false;
+		_proto.bWsReady = false;
 		_proto.attachvp = function(vp) {
 			if (Object.getPrototypeOf(vp) === g.VisualPad.prototype) {
-				vp.src(pathholder.attr('id'));
-				vp.fetchsrc();
-				vpad = vp;
+				vp.src(this.pathholder.attr('id'));
+				vp.fitcontent();
+				this.vpad = vp;
 			}
 			return this;			
 		}
 		_proto.pencolor = function(c) {
 			if (c) {
-				pc = c;
+				this.pc = c;
 				return this;
 			}
-			return pc;
+			return this.pc;
 		};
 		_proto.penwidth = function(w) {
 			if (w) {
-				pw = w;
+				this.pw = w;
 				return this;
 			}
-			return pw;
+			return this.pw;
 		};
 		_proto.penshape = function(s) {
 			if (s) {
-				ps = s;	
+				this.ps = s;	
 				return this;
 			}
-			return ps;
+			return this.ps;
 		};
 		_proto.clearcanvas = function() {
-			while (pathholder.children('path').length > 0) pathholder.children('path').last().remove();
+			this.pathholder.empty();
 			return this;
 		};
-		
+		_proto.mousedownHdl = function(x, y) {
+			//trace(L4, this.constructor.name + '.mousedownHdl' +
+			//	'(' + Array.prototype.slice.call(arguments) + ')');
+			drawStart.call(this, x, y);
+			//trace(L4, 'window=' + $(window).width() + 'x' + $(window).height());
+			//trace(L4, 'cavasvbox=' + this.canvasvbox.x + ' ' + this.canvasvbox.y + ' ' + this.canvasvbox.w + ' ' + this.canvasvbox.h);
+			//trace(L4, 'viewBox=' + this.canvas[0].getAttribute('viewBox'));
+			trace(L4, 'screenXY=' + x + ', ' + y);
+			trace(L4, 'canvasxy=' + canvasxy.call(this, screenxy(x,y)).x + ', ' + canvasxy.call(this, screenxy(x,y)).y);
+			trace(L4, 'vboxxy=' + vboxxy.call(this, canvasxy.call(this, screenxy(x, y))).x + ', ' + vboxxy.call(this, canvasxy.call(this, screenxy(x, y))).y);
+		};
+		_proto.mouseupHdl = function() {
+			drawEnd.call(this);
+			this.dragging = false;
+		};
+		_proto.mousemoveHdl = function(x, y) {
+			if (this.dragging) {
+				this.offsetcanvas('x', x - mouseX);
+				this.offsetcanvas('y', y - mouseY);
+			}
+			else {
+				drawPath.call(this, x, y);
+			}
+		};
+		_proto.mousewheelHdl = function(delta) {
+			if (delta > 0) {
+				this.zoom(this.zoom() + (this.zoom() < 1 ? 0.1 : 1));
+			}
+			else {
+				this.zoom(this.zoom() - (this.zoom() <= 1 ? 0.1 : 1));
+			}
+		};
 	})();
 
 	// Object Prototype: SvgButton
 	(function(){
 		// Private
-		var src, pad, canvas, self;
-		var size = 1, dragging = false, logtime = $.now();
-		var bBtnLeft = false, bBtnMiddle = false, bBtnRight = false;
-		var mouseX = 0, mouseY = 0;
-		var pinch = 0, pinchDelta = 0, pinchSensitivity = 3;
-		var defaultWidth, defaultHeight;
-		var resizable = false, dblclicksizing = false,  movable = false, moved = false;
-		
-		function mousedownHdl(x, y) {
-			if (resizable && dblclicksizing && $.now() - logtime < 400) {
-				if (self.width() == defaultWidth) {
-					size = precision($(window).width() / self.width(), 1);
-					self.fit();
-				}
-				else {
-					size = 1;
-					self.minimize();
-				}
-			}
-			else {
-				if (movable) dragging = true;
-				mouseX = x;
-				mouseY = y;
-			}
-			if (bBtnLeft) logtime = $.now();
-		}
-		function mouseupHdl() {
-			if (!moved) self.onclick();
-			if (movable) {
-				dragging = moved = false;	
-			}
-		}
-		function mousemoveHdl(x, y) {
-			if (dragging == true) {
-				var top = pad.position().top + y - mouseY;
-				var left = pad.position().left + x - mouseX;
-								
-				self.moveto('top', top);
-				self.moveto('left', left);
-				mouseX = x;
-				mouseY = y;
-				moved = true;
-			}			
-		}
-		function mousewheelHdl(delta) {
-			if (resizable) {
-				var r = 0.1;
-				var s = size;
-				var x = pad.position().top;
-				var y = pad.position().left;
-
-				if (delta > 0) {
-					s += r;
-				}
-				else if (s - r >= 1){
-					s -= r;
-				}
-				var w = defaultWidth * s;
-				var h = defaultHeight * s;
-				if (w <= $(window).width() && h <= $(window).height() ) {
-					if (pad.position().top + h > $(window).height()) self.moveto('top',  $(window).height() - h);	
-					if (pad.position().left + w > $(window).width()) self.moveto('left',  $(window).width() - w);
-					self.width(w).height(h);
-					size = precision(s, 1);
-				}
-			}
-		}
 
 		// Gatherhub.SvgButton
 		g.SvgButton = SvgButton;
@@ -738,73 +686,11 @@ var Gatherhub = Gatherhub || {};
 		function SvgButton(w, h) {
 			trace(L1, this.constructor.name + '.SvgButton' +
 				'(' + Array.prototype.slice.call(arguments) + ')');
-			g.SvgPad.call(this);
-			self = this;
-			pad = this.pad;
-			canvas = this.canvas;
-			this.width(w).height(h);
-			defaultWidth = this.width();
-			defaultHeight = this.height();
-			this.fixposition(true).moveto('top', 0).moveto('left',0).nocontext();
-			
-			pad.on('mousedown touchstart', function(evt){
-				var e = evt.originalEvent;
-				var t = e.touches ? e.touches : null;
-				var x = t ? t[0].pageX : e.pageX;
-				var y = t ? t[0].pageY : e.pageY;
-				e.preventDefault();
-				if (e.button==0) bBtnLeft = true;
-				if (e.button==1) bBtnMiddle = true;
-				if (e.button==2) bBtnRight = true;
-
-				if (t) {
-					if (t.length == 2) {
-						pinchDelta = Math.pow(t[1].pageX - x, 2) + Math.pow(t[1].pageY - y, 2);
-						pinch = 1;
-					}
-					if (t.length > 1) {
-						mouseupHdl();
-						return;
-					}
-				}
-				mousedownHdl(x, y);
-				bBtnLeft = true;
-			});
-			pad.on('mouseleave', function(evt){});
-			pad.on('mouseup touchend',function(evt){
-				var e = evt.originalEvent;
-				e.preventDefault();
-				if (e.button==0) bBtnLeft = false;
-				if (e.button==1) bBtnMiddle = false;
-				if (e.button==2) bBtnRight = false;
-				mouseupHdl();
-			});
-			pad.on('mousemove touchmove', function(evt){
-				var e = evt.originalEvent;
-				var t = e.touches ? e.touches : null;
-				var x = t ? t[0].pageX : e.pageX;
-				var y = t ? t[0].pageY : e.pageY;
-				e.preventDefault();
-				if (t) {
-					if (t.length == 2) {
-						pinch += 1;
-						if (pinch > pinchSensitivity) {
-							var delta = Math.pow(t[1].pageX - x, 2) + Math.pow(t[1].pageY - y, 2) - pinchDelta;
-							mousewheelHdl(delta);
-							pinchDelta = Math.pow(t[1].pageX - x, 2) + Math.pow(t[1].pageY - y, 2);
-							pinch = 0;
-						}
-					}
-					if (t.length > 1) return;
-				}
-				mousemoveHdl(x, y);
-			});
-			pad.on('mousewheel DOMMouseScroll', function(evt){
-				var e = evt.originalEvent;
-				var delta = e.wheelDelta > 0 || e.detail < 0 ? 1 : -1;
-				e.preventDefault();
-				mousewheelHdl(delta);
-			});
+			g.VisualPad.call(this);
+			this.defaultWidth = w || 50;
+			this.defaultHeight = h || 50;
+			this.minimize();
+			this.resizable = false;
 		}
 		
 		// Prototypes
@@ -815,19 +701,9 @@ var Gatherhub = Gatherhub || {};
 		_proto.padding = 0;
 		_proto.rcorner = 0.2; 	// rcorner = 0 (rectangle) ~ 1.0 (circle/ellipse)
 		_proto.onclick = function(){};
-		_proto.draggable = function() {
-			movable = true;
-			return this;
+		_proto.mousedownHdl = function(x, y) {
+			g.VisualPad.prototype.mousedownHdl.call(this, x, y);
+			this.onclick();
 		};
-		_proto.borderradius = function(r) {
-			if (r > 0 && r <= 1) {
-				var s = this.width() < this.height ? this.width() : this.height();
-				this.canvas[0].style['border-radius'] = (s * r / 2) + 'px';
-			}
-			return this;
-		};
-		
-		delete _proto.src;
 	})();
-
 })();
