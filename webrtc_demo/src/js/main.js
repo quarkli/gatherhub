@@ -1,9 +1,6 @@
 'use strict';
 var HubCom = require('./hubcom');
 
-var sendButton = document.getElementById("sendButton");
-var sendTextarea = document.getElementById("dataChannelSend");
-var msgHistory = document.getElementById("msgHistory");
 
 var mediaButton = document.getElementById("mediaButton");
 var mediaArea = document.getElementById("mediaAreas");
@@ -15,7 +12,6 @@ var castingList = document.getElementById("castingList");
 
 
 
-var chatText = '';
 var options = {};
 /*pass local and remote audio element to hubcom*/
 options.locAudio = localAudio;
@@ -23,6 +19,7 @@ options.remAudio = remoteAudio;
 
 /*get userName*/
 var user = prompt("Please enter your name","");
+var user ;
 if(!user){
 	user = 'demo'+Math.ceil(Math.random()*1000);
 }
@@ -34,55 +31,53 @@ var hubCom = new HubCom(options);
 hubCom.onDCChange = hdlDCchange;
 hubCom.onDataRecv = hdlDataRecv;
 hubCom.onMediaAct =  hdlMedAct;
-hubCom.onCastListChange = updateCastingList;
-sendButton.onclick = sendData;
+hubCom.onCastList = updateCastList;
 mediaButton.onclick = invokeMedia;
 
-function enableMsgInf(enable) {
-  if (enable) {
-    dataChannelSend.disabled = false;
-    dataChannelSend.focus();
-    dataChannelSend.placeholder = "";
-    sendButton.disabled = false;
-		mediaButton.disabled = false;
-		
-  } else {
-    dataChannelSend.disabled = true;
-    sendButton.disabled = true;
-		mediaButton.disabled = true;
-  }
-}
 
-enableMsgInf(false);
 
-function addMsgHistory(data){
-	chatText = '<p>'+data+'</p>' + chatText;
-	
-	msgHistory.innerHTML = chatText;
-	//console.log('show message:',chatText);
+$('.message-input').keydown(function(e) {
+    /* Act on the event */
+    if(e.ctrlKey && e.keyCode == 13){
+        sendData();
+    }
+});
+$('#msgsend').click(function(event) {
+  sendData();
+  $('.message-input').focus();
+});
+
+function addMsgHistory(data,type){
+	var chatText;
+    if(type == 1){
+      chatText = '<li class="list-group-item list-group-item-info text-right">'+data+'</li>' ;   
+    }else{
+      chatText = '<li class="list-group-item">'+data+'</li>' ;   
+    }
+	$('.messages').append(chatText);
+	console.log('show message:',chatText);
 }
 
 
 function sendData() {
-  var data = sendTextarea.value;
+  var data = $('.message-input').val();
 	if(data&&data!=''){
 		hubCom.sendData(data);	
-		addMsgHistory(user+': '+data);
-	  console.log('Sent data: ' + data);
+		addMsgHistory(user+': '+data,1);
+	  // console.log('Sent data: ' + data);
+    $('.message-input').val(''); 
 	}
-	sendTextarea.value = '';
 }
 
 
 function hdlDCchange(state){
-	enableMsgInf(state);
-
+	// enableMsgInf(state);
 }
 
 
 function hdlDataRecv(from, data) {
   console.log('Received message from ' + from + ' msg is: ' + data);
-	addMsgHistory(from+': '+data);
+	addMsgHistory(from+': '+data,0);
 
 }
 
@@ -108,7 +103,7 @@ function invokeMedia(){
 	}
 }
 
-function updateCastingList(list){
+function updateCastList(list){
 	castingList.innerHTML = '';
 	list.forEach(function(item){
 		castingList.innerHTML += '<p>' + item + '</p>';
@@ -117,7 +112,4 @@ function updateCastingList(list){
 	
 }
 
-window.onbeforeunload = function(e){
-	console.log('onbeforeunload');
-}
 

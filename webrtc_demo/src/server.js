@@ -1,7 +1,12 @@
 var static = require('node-static');
-var http = require('http');
+var http = require('https');
+var fs = require('fs');
+var options = {
+  key: fs.readFileSync('./privatekey.pem'),
+  cert: fs.readFileSync('./certificate.pem')
+};
 var file = new(static.Server)();
-var app = http.createServer(function (req, res) {
+var app = http.createServer(options,function (req, res) {
   file.serve(req, res);
 }).listen(2013);
 

@@ -2,345 +2,375 @@
 'use strict';
 var PeerConn = require('./peerconn');
 
-//constructor
-function HubCom(options){
-	var self = this;
-	var opts = this.opts = options || {};
-	var room = opts.hubName || 'foo';
-	var user = opts.usrName || 'demo';
-  var peers = this.peers = [];
-	var socket = this.socket = io.connect();
-
-	this.opts.room = room;
-	this.opts.config = opts.config || {'iceServers': 
-			[{'url': 'stun:chi2-tftp2.starnetusa.net'}]};
-	this.opts.constraints = opts.constraints || {
-		  'optional': [
-		    {'DtlsSrtpKeyAgreement': false},
-		    {'RtpDataChannels': true}
-		  ]};
-	this.opts.usrId = -1;
-
-	this.usrList = [];
-			
-	this.media = new HubMedia(this);
-	this.mediaActive = 'idle';
-	this.castList = [];
-	function getSockIdx(id){
-		var i = 0;
-		for(i=0;i<self.peers.length;i++){
-			if((self.peers[i])&&(self.peers[i].id == id)){
-				return i;
-			}
-		}
-		return -1;
+/////////////class HubMedia
+var hubMedia;
+(function(){
+	var _proto;
+	//constructor
+	function HubMedia(){
+		//status =  0:idle, 1,working
+		this.status = 0;
 	}
 
-
-	function regPconnEvtCb(pconn){
-		pconn.on('msg',function(){
-			self.socket.emit('msg',arguments[0]);
-			//console.log("from pconn ",arguments[0]);
+	//prototype apis
+	_proto = HubMedia.prototype;
+	_proto.mute = function(){
+		if(this.localStream){
+	 		this.localStream.getTracks().forEach(function(track) {
+	      track.stop();
+	    });
+		}
+	};
+	_proto.start = function (){
+		var constraints = {audio: true};
+		var self = this;
+		function hdlMedia(stream){
+			self.onAddLStrm(stream);
+			self.localStream = stream;
+		}
+		function hdlMediaError(){
+			self.onLsError();
+			self.status = 0;
+		}
 			
-		});
-		pconn.on('rdata',function(from,data){
-			//self.emit('recv',from,data);
-			var usr = self.usrList[from];
-			self.onDataRecv(usr,data);
-		});
-		pconn.on('dcevt',function(){
-			var pconn;
-			var state = false;
-			self.peers.forEach(function(pconn){
-				if(pconn.dc.readyState=="open"){
-					state = true;
-					console.log("data channel event is ",state);
-					return;
+		/*stop previous local medias*/
+		this.status = 1;
+		this.mute();
+		getUserMedia(constraints, hdlMedia, hdlMediaError);
+	};
+
+	_proto.stop = function (){
+		this.mute();
+		this.onRmLStrm();
+		this.status = 0;
+	};
+	_proto.getStatus = function(){
+		return this.status;
+	};
+	//cb function to inform event to external
+	_proto.onAddLStrm = function(){};
+	_proto.onRmLStrm = function(){};
+	_proto.onLsError = function(){};
+	//export 
+	hubMedia = HubMedia;
+})();
+
+
+
+var hubCom;
+
+(function(){
+	var _proto;
+	//constructor
+	function HubCom(options){
+		var self = this;
+		//room and user configurations
+		var opts = this.opts = options || {};
+		var room = this.opts.room = opts.room || 'foo';
+		var user = this.opts.usrName = opts.usrName || 'demo';
+		//array to store webrtc peers
+	  	var peers = this.peers = [];
+		var socket = this.socket = io.connect();
+		//ice configuration
+		this.opts.config = opts.config || {'iceServers': 
+				[{'url': 'stun:chi2-tftp2.starnetusa.net'}]};
+		// peer constrains
+		this.opts.constraints = opts.constraints || {
+			  'optional': [
+			    {'DtlsSrtpKeyAgreement': false},
+			    {'RtpDataChannels': true}
+			  ]};
+		//local socket id 
+		this.opts.usrId = -1;
+		// user list keep the socket id list of all peers
+		this.usrList = [];
+		//media and media handlers		
+		this.media = new hubMedia();
+		regMediaEvtCb(this.media);
+		this.mediaActive = 'idle';
+		//media casting list
+		this.castList = [];
+
+		//internal methods for constructor
+		function getSockIdx(id){
+			var i = 0;
+			for(i=0;i<self.peers.length;i++){
+				if((self.peers[i])&&(self.peers[i].getId() == id)){
+					return i;
 				}
-			})
-			self.onDCChange(state);
+			}
+			return -1;
+		}
+		//callback functions for media class
+		function regMediaEvtCb(media){
+			media.onAddLStrm = function(stream){
+				self.addLocMedia(stream);
+				self.setMediaAct('active');
+			};
+			media.onRmLStrm = function(){
+				self.rmLocMedia();
+				self.setMediaAct('idle');
+			};
+			media.onLsError = function(){
+				self.setMediaAct('idle');
+			};
+		}
+		//callback functions for peerconnections
+		function regPconnEvtCb(pconn){
+			pconn.onSend = function(h,c){
+				self.socket.emit(h,c);
+			};
+			pconn.onDcRecv = function (from,data){
+				var usr = self.usrList[from];
+				self.onDataRecv(usr,data);
+			};
+			pconn.onDcState = function (){
+				var pconn;
+				var state = false;
+				self.peers.forEach(function(pconn){
+					if(pconn.getDcState()=="open"){
+						state = true;
+						console.log("data channel event is ",state);
+						return;
+					}
+				});
+				self.onDCChange(state);
+			};
+			pconn.onAddRStrm = 	function (stream){
+				self.onRStreamAdd(stream);
+			};
+			pconn.onRmRStrm = function(event){
+				console.log('rStreamDel',event);
+			};
+		}
+
+		//send a initial msg to server to setup socket tunnel
+	  	socket.emit('join', {room:room,user:user});
+
+		//register socket event callback
+
+		socket.on('connected', function (data){
+			//console.log('userid is ', data.id);
+			self.opts.usrId = data.id;
 		});
-		pconn.on('rsadd',function(stream){
-			//self.emit('rStreamAdd',stream);
-			self.onRStreamAdd(stream);
-		});
-		pconn.on('rsrm',function(event){
-			//self.emit('rStreamDel',stream);
-			console.log('rStreamDel',event);
-		});
-	}
 
-	
-  socket.emit('join', {room:room,user:user});
-
-
-	socket.on('connected', function (data){
-		//console.log('userid is ', data.id);
-		self.opts.usrId = data.id;
-	});
-	
-
-	//register socket event callback
-	///// someone joined the hub room
-	socket.on('joined', function (data){
-	  console.log('Another peer # '+data.id+ ' made a request to join room ' + room);
-		// id = data.id has joined into the room, create pc to connect it.
-		//create peerconnection
-		var id = data.id;
-		var index = getSockIdx(id);
-	  console.log('get index:', index);
-		var pconn = self.peers[index];
-		if(!pconn){
-			var opts = self.opts;
-			opts.id = id;
-			opts.type = 'calling';
-			pconn = new PeerConn(opts);
-			self.peers[self.peers.length] = pconn;
-			regPconnEvtCb(pconn);
-		}
-
-		if(self.localStream){
-			pconn.addStream(self.localStream);
-		}
-		
-		//create offer
-		pconn.makeOffer();
-	});
-
-	//////someone leave the hub room
-	socket.on('bye',function(data){
-	  console.log('Another peer # '+data.id+ ' leave room ' + room);
-		var id = data.id;
-		var index = getSockIdx(id);
-
-		console.log('release index '+index+ ' resource' );
-
-		if(index>=0){
-			self.peers[index].close();
-			delete self.peers[index];
-			//delete self.usrList[index];
-		}
-	});
-
-  //////////////handle the signal msg from otherside
-	socket.on('msg', function (message){
-		var id = message.from;
-		var usr = message.usr;
-		var index = getSockIdx(id);
-		console.log('get index:', index);
-
-		if(id>=0 && usr){
-			self.usrList[id] = usr;
-		}
-
-		var pconn = self.peers[index];
-		console.log('Received message:', message);
-		if (message.sdp.type === 'offer') {
-			//get invite from other side
+		///// someone joined the hub room
+		socket.on('joined', function (data){
+		  console.log('Another peer # '+data.id+ ' made a request to join room ' + room);
+			// id = data.id has joined into the room, create pc to connect it.
+			//create peerconnection
+			var id = data.id;
+			var index = getSockIdx(id);
+		  	console.log('get index:', index);
+			var pconn = self.peers[index];
 			if(!pconn){
 				var opts = self.opts;
 				opts.id = id;
-				opts.type = 'called';
+				opts.type = 'calling';
 				pconn = new PeerConn(opts);
 				self.peers[self.peers.length] = pconn;
 				regPconnEvtCb(pconn);
 			}
 
-			/*if there is a local stream playing, we need remove this */
 			if(self.localStream){
-				self.media.stop();
+				pconn.addStream(self.localStream);
 			}
 			
-		  pconn.setRemoteDescription(new RTCSessionDescription(message.sdp));
-			//make a answer
-		  pconn.makeAnswer();
-			
-		} else if (message.sdp.type === 'answer' ) {
-			if(!pconn){
-				console.log("wrong answer id from "+id);
-				return;
-			}
-		  pconn.setRemoteDescription(new RTCSessionDescription(message.sdp));
-			
-		} else if (message.sdp.type === 'candidate') {
-			if(!pconn){
-				console.log("wrong candidate id from "+id);
-				return;
-			}
-		  var candidate = new RTCIceCandidate({sdpMLineIndex:message.sdp.label,
-		    candidate:message.sdp.candidate});
-		  pconn.addIceCandidate(candidate);
-		} else if (message === 'bye' ) {
-		}
+			//create offer
+			pconn.makeOffer();
 		});
-		//////////////command for audio casting
-		function getMediaCastList(audCon){
-			//reset it everytime
-			self.castList = [];
 
-			if(audCon.state==1){
-				if(audCon.talk == self.opts.usrId){
-					self.castList[0] = self.opts.usrName + ' talking';
-				}else{
-					self.castList[0] = self.usrList[audCon.talk] + ' talking';
+	  	//////////////handle the signal msg from otherside
+		socket.on('msg', function (message){
+			var id = message.from;
+			var usr = message.usr;
+			var index = getSockIdx(id);
+			console.log('get index:', index);
+
+			if(id>=0 && usr){
+				self.usrList[id] = usr;
+				self.onUsrList(self.usrList);
+			}
+
+			var pconn = self.peers[index];
+			console.log('Received message:', message);
+			if (message.sdp.type === 'offer') {
+				//get invite from other side
+				if(!pconn){
+					var opts = self.opts;
+					opts.id = id;
+					opts.type = 'called';
+					pconn = new PeerConn(opts);
+					self.peers[self.peers.length] = pconn;
+					regPconnEvtCb(pconn);
+				}
+
+				/*if there is a local stream playing, we need remove this */
+				if(self.localStream){
+					self.media.stop();
 				}
 				
-				audCon.que.forEach(function(id){
-					if(id == self.opts.usrId){
-						self.castList[self.castList.length] = self.opts.usrName + ' pending';
-					}else{
-						self.castList[self.castList.length] = self.usrList[id] + ' pending';
-					}
-				});
+			  pconn.setRemoteDescription(new RTCSessionDescription(message.sdp));
+				//make a answer
+			  pconn.makeAnswer();
+				
+			} else if (message.sdp.type === 'answer' ) {
+				if(!pconn){
+					console.log("wrong answer id from "+id);
+					return;
+				}
+			  pconn.setRemoteDescription(new RTCSessionDescription(message.sdp));
+				
+			} else if (message.sdp.type === 'candidate') {
+				if(!pconn){
+					console.log("wrong candidate id from "+id);
+					return;
+				}
+			  var candidate = new RTCIceCandidate({sdpMLineIndex:message.sdp.label,
+			    candidate:message.sdp.candidate});
+			  pconn.addIceCandidate(candidate);
 			} 
+			});
+			
+			//////someone leave the hub room
+			socket.on('bye',function(data){
+			  console.log('Another peer # '+data.id+ ' leave room ' + room);
+				var id = data.id;
+				var index = getSockIdx(id);
+				delete self.usrList[id];
+				self.onUsrList(self.usrList);
 
-		}
-		socket.on('media', function (message){
-			var cmd = message.cmd;
-			if(cmd == 'ans'){
-				if(self.media.status === 0){
-					self.media.start();
+				console.log('release index '+index+ ' resource' );
+
+				if(index>=0){
+					self.peers[index].close();
+					delete self.peers[index];
 				}
-			}else if(cmd == 'update'){
-				console.log('msg update',message.control);
-				if(message.control){
-					getMediaCastList(message.control);
-					self.onCastListChange(self.castList);
-				}
+			});
+
+
+			//////////////command for audio casting
+			function getMediaCastList(audCon){
+				//reset it everytime
+				self.castList = [];
+
+				if(audCon.state==1){
+					if(audCon.talk == self.opts.usrId){
+						self.castList[0] = self.opts.usrName + ' talking';
+					}else{
+						self.castList[0] = self.usrList[audCon.talk] + ' talking';
+					}
+					
+					audCon.que.forEach(function(id){
+						if(id == self.opts.usrId){
+							self.castList[self.castList.length] = self.opts.usrName + ' pending';
+						}else{
+							self.castList[self.castList.length] = self.usrList[id] + ' pending';
+						}
+					});
+				} 
+
 			}
+			socket.on('media', function (message){
+				var cmd = message.cmd;
+				if(cmd == 'ans'){
+					if(self.media.status === 0){
+						self.media.start();
+					}
+				}else if(cmd == 'update'){
+					console.log('msg update',message.control);
+					if(message.control){
+						getMediaCastList(message.control);
+						self.onCastList(self.castList);
+					}
+				}
+			});
+
+			/////////////// log from server
+			socket.on('log', function (array){
+			  console.log.apply(console, array);
+			});
+		  /////end of socket msg handler
+		  
+
+	} // end of HubCom contructor
+
+	_proto = HubCom.prototype;
+
+	_proto.sendData = function(data){
+		this.peers.forEach(function(pconn){
+			pconn.sendData(data);
 		});
+	};
 
-	
+	_proto.startAudioCast = function(){
+		this.socket.emit('media',{room:this.opts.room,cmd:'req'});
+		this.setMediaAct('pending');
+	};
 
-		/////////////// log from server
-		socket.on('log', function (array){
-		  console.log.apply(console, array);
-		});
-	  /////end of socket msg handler
-	  
-}
-
-
-HubCom.prototype.sendData = function(data){
-	this.peers.forEach(function(pconn){
-		pconn.dc.send(data);
-	});
-};
-
-HubCom.prototype.startAudioCast = function(){
-	//if(this.media.status === 0){
-		//this.media.start();
-	//}
-	this.socket.emit('media',{room:this.opts.room,cmd:'req'});
-	this.setMediaAct('pending');
-};
-
-HubCom.prototype.stopAudioCast = function(){
-	if(this.media.status === 1){
-		this.media.stop();
-	}
-	this.socket.emit('media',{room:this.opts.room,cmd:'rls'});
-	if(this.mediaActive == 'pending'){
-		this.setMediaAct('idle');
-	}
-	
-};
-
-
-/*some callback fuctions*/
-HubCom.prototype.onDataRecv = function(){};
-HubCom.prototype.onDCChange = function(){};
-HubCom.prototype.onMediaAct = function(){};
-HubCom.prototype.onCastListChange = function(list){};
-
-////internal api called by media class
-
-HubCom.prototype.addLocMedia = function(stream){
-	if(this.opts.locAudio){
-  	console.log('local stream added.');
-		attachMediaStream(this.opts.locAudio,stream);
-	}
-	this.localStream = stream;
-	this.peers.forEach(function(pconn){
-		pconn.addStream(stream);
-		pconn.makeOffer();
-	});
-};
-HubCom.prototype.rmLocMedia = function(){
-	this.localStream = undefined;
-	this.peers.forEach(function(pconn){
-		pconn.makeOffer();
-	});
-};
-
-HubCom.prototype.setMediaAct = function(state){
-	this.mediaActive = state;
-	this.onMediaAct(state);
-};
-
-HubCom.prototype.onRStreamAdd = function(stream){
-	if(this.opts.remAudio){
-  	console.log('Remote stream added.');
-  	attachMediaStream(this.opts.remAudio, stream);
-	}
-  //this.remoteStream = stream;
-};
-
-
-/////////////class HubMedia
-
-function HubMedia(parent){
-	this.parent = parent;
-	this.status = 0;
-}
-
-HubMedia.prototype.mute = function(){
-	if(this.localStream){
- 		this.localStream.getTracks().forEach(function(track) {
-      track.stop();
-    });
-	}
-};
-
-
-HubMedia.prototype.start = function (){
-	var constraints = {audio: true};
-	var self = this;
-	function hdlMedia(stream){
-		self.parent.addLocMedia(stream);
-		self.parent.setMediaAct('active');
-		self.localStream = stream;
-	}
-	function hdlMediaError(){
-		self.parent.setMediaAct('idle');
-		self.status = 0;
-
-	}
+	_proto.stopAudioCast = function(){
+		if(this.media.getStatus() === 1){
+			this.media.stop();
+		}
+		this.socket.emit('media',{room:this.opts.room,cmd:'rls'});
+		if(this.mediaActive == 'pending'){
+			this.setMediaAct('idle');
+		}
 		
-	/*stop previous local medias*/
-	this.status = 1;
-	this.mute();
-	getUserMedia(constraints, hdlMedia, hdlMediaError);
-};
-
-HubMedia.prototype.stop = function (){
-	this.mute();
-	this.parent.rmLocMedia();
-	this.parent.setMediaAct('idle');
-	this.status = 0;
-};
+	};
 
 
-module.exports = HubCom;
+	/*some callback fuctions*/
+	_proto.onDataRecv = function(){};
+	_proto.onDCChange = function(){};
+	_proto.onMediaAct = function(){};
+	_proto.onCastList = function(){};
+	_proto.onUsrList = function(){};
+
+	////internal api called by media class
+
+	_proto.addLocMedia = function(stream){
+		if(this.opts.locAudio){
+	  	console.log('local stream added.');
+			attachMediaStream(this.opts.locAudio,stream);
+		}
+		this.localStream = stream;
+		this.peers.forEach(function(pconn){
+			pconn.addStream(stream);
+			pconn.makeOffer();
+		});
+	};
+	_proto.rmLocMedia = function(){
+		this.localStream = undefined;
+		this.peers.forEach(function(pconn){
+			pconn.makeOffer();
+		});
+	};
+
+	_proto.setMediaAct = function(state){
+		this.mediaActive = state;
+		this.onMediaAct(state);
+	};
+
+	_proto.onRStreamAdd = function(stream){
+		if(this.opts.remAudio){
+	  	console.log('Remote stream added.');
+	  	attachMediaStream(this.opts.remAudio, stream);
+		}
+	  //this.remoteStream = stream;
+	};
+
+	hubCom =HubCom;
+
+})();
+
+module.exports = hubCom;
 
 
 },{"./peerconn":3}],2:[function(require,module,exports){
 'use strict';
 var HubCom = require('./hubcom');
 
-var sendButton = document.getElementById("sendButton");
-var sendTextarea = document.getElementById("dataChannelSend");
-var msgHistory = document.getElementById("msgHistory");
 
 var mediaButton = document.getElementById("mediaButton");
 var mediaArea = document.getElementById("mediaAreas");
@@ -352,7 +382,6 @@ var castingList = document.getElementById("castingList");
 
 
 
-var chatText = '';
 var options = {};
 /*pass local and remote audio element to hubcom*/
 options.locAudio = localAudio;
@@ -360,6 +389,7 @@ options.remAudio = remoteAudio;
 
 /*get userName*/
 var user = prompt("Please enter your name","");
+var user ;
 if(!user){
 	user = 'demo'+Math.ceil(Math.random()*1000);
 }
@@ -371,55 +401,53 @@ var hubCom = new HubCom(options);
 hubCom.onDCChange = hdlDCchange;
 hubCom.onDataRecv = hdlDataRecv;
 hubCom.onMediaAct =  hdlMedAct;
-hubCom.onCastListChange = updateCastingList;
-sendButton.onclick = sendData;
+hubCom.onCastList = updateCastList;
 mediaButton.onclick = invokeMedia;
 
-function enableMsgInf(enable) {
-  if (enable) {
-    dataChannelSend.disabled = false;
-    dataChannelSend.focus();
-    dataChannelSend.placeholder = "";
-    sendButton.disabled = false;
-		mediaButton.disabled = false;
-		
-  } else {
-    dataChannelSend.disabled = true;
-    sendButton.disabled = true;
-		mediaButton.disabled = true;
-  }
-}
 
-enableMsgInf(false);
 
-function addMsgHistory(data){
-	chatText = '<p>'+data+'</p>' + chatText;
-	
-	msgHistory.innerHTML = chatText;
-	//console.log('show message:',chatText);
+$('.message-input').keydown(function(e) {
+    /* Act on the event */
+    if(e.ctrlKey && e.keyCode == 13){
+        sendData();
+    }
+});
+$('#msgsend').click(function(event) {
+  sendData();
+  $('.message-input').focus();
+});
+
+function addMsgHistory(data,type){
+	var chatText;
+    if(type == 1){
+      chatText = '<li class="list-group-item list-group-item-info text-right">'+data+'</li>' ;   
+    }else{
+      chatText = '<li class="list-group-item">'+data+'</li>' ;   
+    }
+	$('.messages').append(chatText);
+	console.log('show message:',chatText);
 }
 
 
 function sendData() {
-  var data = sendTextarea.value;
+  var data = $('.message-input').val();
 	if(data&&data!=''){
 		hubCom.sendData(data);	
-		addMsgHistory(user+': '+data);
-	  console.log('Sent data: ' + data);
+		addMsgHistory(user+': '+data,1);
+	  // console.log('Sent data: ' + data);
+    $('.message-input').val(''); 
 	}
-	sendTextarea.value = '';
 }
 
 
 function hdlDCchange(state){
-	enableMsgInf(state);
-
+	// enableMsgInf(state);
 }
 
 
 function hdlDataRecv(from, data) {
   console.log('Received message from ' + from + ' msg is: ' + data);
-	addMsgHistory(from+': '+data);
+	addMsgHistory(from+': '+data,0);
 
 }
 
@@ -445,7 +473,7 @@ function invokeMedia(){
 	}
 }
 
-function updateCastingList(list){
+function updateCastList(list){
 	castingList.innerHTML = '';
 	list.forEach(function(item){
 		castingList.innerHTML += '<p>' + item + '</p>';
@@ -454,282 +482,149 @@ function updateCastingList(list){
 	
 }
 
-window.onbeforeunload = function(e){
-	console.log('onbeforeunload');
-}
 
 
 },{"./hubcom":1}],3:[function(require,module,exports){
 'use strict';
-var Emitter = require('./wildemitter');
-//constructor
-function PeerConn(options){
-	var self = this;
-	this.room = options.room;
-	this.id = options.id;
-	this.peer = new RTCPeerConnection(options.config, options.constraints);
 
-	function onIce(event){
-	  console.log('onIce: ', event);
-	  if (event.candidate) {
-	    self.emit('msg',{
-				room: self.room,
-				to: self.id,
-				sdp: {
-		      type: 'candidate',
-		      label: event.candidate.sdpMLineIndex,
-		      id: event.candidate.sdpMid,
-		      candidate: event.candidate.candidate},
-				});
-	  } else {
-	    console.log('End of candidates.');
-	  }
-	}
+var peerConn;
 
-	function onRecv(event){
-	  console.log('onRecv: ', event.data);
-		self.emit('rdata',self.id,event.data);
-	}
+(function(){
+    var _proto;
 
-	function onDcChange(){
-		self.emit('dcevt');
-	}
+    //constructors
+    function PeerConn(options){
+        var self;
+        self = this;
+        this.room = options.room;
+        this.id = options.id;
+        this.peer =  RTCPeerConnection(options.config, options.constraints);
+       
+        if(options.type=='calling'){
+            this.dc = this.peer.createDataChannel("sendDataChannel",{reliable: false});
+            console.log('sendDataChannel created!',this.dc);
+            this.dc.onmessage = onRecv;
+            this.dc.onopen = this.onDcState;
+            this.dc.onclose = this.onDcState;
+        }else{
+            this.peer.ondatachannel = onDcSetup;
+        }
 
-	function onRStreamAdd(event){
-		self.emit('rsadd',event.stream);
-	}
+        this.peer.onicecandidate = onIce;
+        this.peer.onaddstream = onRStrmAdd;
+        this.peer.onremovestream = onRStrmRm;
 
-	function onRStreamRm(event){
-		self.emit('rsrm',event);
-	}
+        //internal methods
+        function onIce(event){
+          console.log('onIce: ', event);
+          if (event.candidate) {
+            self.onSend('msg',{
+                    room: self.room,
+                    to: self.id,
+                    sdp: {
+                  type: 'candidate',
+                  label: event.candidate.sdpMLineIndex,
+                  id: event.candidate.sdpMid,
+                  candidate: event.candidate.candidate},
+                    });
+          } else {
+            console.log('End of candidates.');
+          }
+        }
 
-	function onDcSetup(event){
-		console.log('Receive Channel:',event.channel);
-		self.dc = event.channel;
-		self.dc.onmessage = onRecv;
-		self.dc.onopen = onDcChange;
-		self.dc.onclose = onDcChange;
-	}
+        function onDcSetup(event){
+            console.log('Receive Channel:',event.channel);
+            self.dc = event.channel;
+            self.dc.onmessage = onRecv;
+            self.dc.onopen = self.onDcState;
+            self.dc.onclose = self.onDcState;
+        }
 
+        function onRecv(event){
+          console.log('onRecv: ', event.data);
+            self.onDcRecv(self.id,event.data);
+        }
+        function onRStrmAdd(event){
+            self.onAddRStrm(event.stream);
+        }
 
-	this.peer.onicecandidate = onIce;
-	if(options.type=='calling'){
-		//add try catch(e) when needed.
+        function onRStrmRm(event){
+            self.onRmRStrm(event.stream);
+        }
 
-    this.dc = this.peer.createDataChannel("sendDataChannel",{reliable: false});
-	  console.log('sendDataChannel created!',this.dc);
-    this.dc.onmessage = onRecv;
-		this.dc.onopen = onDcChange;
-		this.dc.onclose = onDcChange;
-	}else{
-		this.peer.ondatachannel = onDcSetup;
-	}
-	// add stream on add/remove callback
-	this.peer.onaddstream = onRStreamAdd;
-	this.peer.onremovestream = onRStreamRm;
+    }
 
-}
+    //export obj
+    peerConn = PeerConn;
 
-Emitter.mixin(PeerConn);
+ 
+    //prototype
+    _proto = PeerConn.prototype ;
+    //cb functions
+    _proto.onSend = function(){};
+    _proto.onDcRecv = function(){};
+    _proto.onDcState = function(){};
+    _proto.onAddRStrm = function(){};
+    _proto.onRmRStrm = function(){};
 
-
-PeerConn.prototype.makeOffer = function(){
-	var self =this;
-  this.peer.createOffer(function(desc){
-  	console.log('makeOffer',desc);
-	  self.peer.setLocalDescription(desc);
-	  self.emit('msg',{room:self.room, to:self.id, sdp:desc});
-	}, null, null);
-};
-
-PeerConn.prototype.makeAnswer = function(){
-	var self =this;
-  this.peer.createAnswer(function(desc){
-  	console.log('makeAnswer');
-	  self.peer.setLocalDescription(desc);
-	  self.emit('msg',{room:self.room, to:self.id, sdp:desc});
-	},null);
-
-};
-
-PeerConn.prototype.addStream =  function(stream){
-	this.peer.addStream(stream);
-};
-
-PeerConn.prototype.removeStream = function(stream){
-	this.peer.removeStream(stream);
-};
-
-PeerConn.prototype.setRemoteDescription = function(desc){
-	this.peer.setRemoteDescription(desc);
-	console.log('setRemoteDescription ',desc);
-};
-
-PeerConn.prototype.addIceCandidate = function(candidate){
-	this.peer.addIceCandidate(candidate);
-	console.log('addIceCandidate ',candidate);
-};
-
-PeerConn.prototype.close = function(){
-  console.log('peerConnection close ',this.id);
-	this.peer.close();
-};
-
-module.exports = PeerConn;
-
-},{"./wildemitter":4}],4:[function(require,module,exports){
-/*
-WildEmitter.js is a slim little event emitter by @henrikjoreteg largely based
-on @visionmedia's Emitter from UI Kit.
-
-Why? I wanted it standalone.
-
-I also wanted support for wildcard emitters like this:
-
-emitter.on('*', function (eventName, other, event, payloads) {
-
-});
-
-emitter.on('somenamespace*', function (eventName, payloads) {
-
-});
-
-Please note that callbacks triggered by wildcard registered events also get
-the event name as the first argument.
-*/
-
-module.exports = WildEmitter;
-
-function WildEmitter() { }
-
-WildEmitter.mixin = function (constructor) {
-    var prototype = constructor.prototype || constructor;
-
-    prototype.isWildEmitter= true;
-
-    // Listen on the given `event` with `fn`. Store a group name if present.
-    prototype.on = function (event, groupName, fn) {
-        this.callbacks = this.callbacks || {};
-        var hasGroup = (arguments.length === 3),
-            group = hasGroup ? arguments[1] : undefined,
-            func = hasGroup ? arguments[2] : arguments[1];
-        func._groupName = group;
-        (this.callbacks[event] = this.callbacks[event] || []).push(func);
-        return this;
+    //api method
+    _proto.makeOffer = function(){
+        var self = this;
+        this.peer.createOffer(function(desc){
+            console.log('makeOffer',desc);
+            self.peer.setLocalDescription(desc);
+            self.onSend('msg',{room:self.room, to:self.id, sdp:desc});
+        }, null, null);
     };
 
-    // Adds an `event` listener that will be invoked a single
-    // time then automatically removed.
-    prototype.once = function (event, groupName, fn) {
-        var self = this,
-            hasGroup = (arguments.length === 3),
-            group = hasGroup ? arguments[1] : undefined,
-            func = hasGroup ? arguments[2] : arguments[1];
-        function on() {
-            self.off(event, on);
-            func.apply(this, arguments);
-        }
-        this.on(event, group, on);
-        return this;
+    _proto.makeAnswer = function(){
+        var self = this;
+        this.peer.createAnswer(function(desc){
+            console.log('makeAnswer');
+            self.peer.setLocalDescription(desc);
+            self.onSend('msg',{room:self.room, to:self.id, sdp:desc});
+        },null);
+
     };
 
-    // Unbinds an entire group
-    prototype.releaseGroup = function (groupName) {
-        this.callbacks = this.callbacks || {};
-        var item, i, len, handlers;
-        for (item in this.callbacks) {
-            handlers = this.callbacks[item];
-            for (i = 0, len = handlers.length; i < len; i++) {
-                if (handlers[i]._groupName === groupName) {
-                    //console.log('removing');
-                    // remove it and shorten the array we're looping through
-                    handlers.splice(i, 1);
-                    i--;
-                    len--;
-                }
-            }
-        }
-        return this;
+    _proto.addStream =  function(stream){
+        this.peer.addStream(stream);
     };
 
-    // Remove the given callback for `event` or all
-    // registered callbacks.
-    prototype.off = function (event, fn) {
-        this.callbacks = this.callbacks || {};
-        var callbacks = this.callbacks[event],
-            i;
-
-        if (!callbacks) return this;
-
-        // remove all handlers
-        if (arguments.length === 1) {
-            delete this.callbacks[event];
-            return this;
-        }
-
-        // remove specific handler
-        i = callbacks.indexOf(fn);
-        callbacks.splice(i, 1);
-        if (callbacks.length === 0) {
-            delete this.callbacks[event];
-        }
-        return this;
+    _proto.removeStream = function(stream){
+        this.peer.removeStream(stream);
     };
 
-    /// Emit `event` with the given args.
-    // also calls any `*` handlers
-    prototype.emit = function (event) {
-        this.callbacks = this.callbacks || {};
-        var args = [].slice.call(arguments, 1),
-            callbacks = this.callbacks[event],
-            specialCallbacks = this.getWildcardCallbacks(event),
-            i,
-            len,
-            item,
-            listeners;
-
-        if (callbacks) {
-            listeners = callbacks.slice();
-            for (i = 0, len = listeners.length; i < len; ++i) {
-                if (!listeners[i]) {
-                    break;
-                }
-                listeners[i].apply(this, args);
-            }
-        }
-
-        if (specialCallbacks) {
-            len = specialCallbacks.length;
-            listeners = specialCallbacks.slice();
-            for (i = 0, len = listeners.length; i < len; ++i) {
-                if (!listeners[i]) {
-                    break;
-                }
-                listeners[i].apply(this, [event].concat(args));
-            }
-        }
-
-        return this;
+    _proto.setRemoteDescription = function(desc){
+        this.peer.setRemoteDescription(desc);
+        console.log('setRemoteDescription ',desc);
     };
 
-    // Helper for for finding special wildcard event handlers that match the event
-    prototype.getWildcardCallbacks = function (eventName) {
-        this.callbacks = this.callbacks || {};
-        var item,
-            split,
-            result = [];
-
-        for (item in this.callbacks) {
-            split = item.split('*');
-            if (item === '*' || (split.length === 2 && eventName.slice(0, split[0].length) === split[0])) {
-                result = result.concat(this.callbacks[item]);
-            }
-        }
-        return result;
+    _proto.addIceCandidate = function(candidate){
+        this.peer.addIceCandidate(candidate);
+        console.log('addIceCandidate ',candidate);
     };
 
-};
+    _proto.close = function(){
+        console.log('peerConnection close ',this.id);
+        this.peer.close();
+    };
 
-WildEmitter.mixin(WildEmitter);
+    _proto.getId = function(){
+        return this.id;
+    };
+
+    _proto.sendData = function(data){
+        this.dc.send(data);
+    };
+
+    _proto.getDcState =  function(){
+        return this.dc.readyState;
+    };
+
+
+})();
+
+module.exports = peerConn;
 
 },{}]},{},[2]);
