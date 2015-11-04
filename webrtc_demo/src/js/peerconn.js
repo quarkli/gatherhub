@@ -17,8 +17,8 @@ var peerConn;
             this.dc = this.peer.createDataChannel("sendDataChannel",{reliable: false});
             console.log('sendDataChannel created!',this.dc);
             this.dc.onmessage = onRecv;
-            this.dc.onopen = this.onDcState;
-            this.dc.onclose = this.onDcState;
+            this.dc.onopen = onDcState;
+            this.dc.onclose = onDcState;
         }else{
             this.peer.ondatachannel = onDcSetup;
         }
@@ -26,6 +26,7 @@ var peerConn;
         this.peer.onicecandidate = onIce;
         this.peer.onaddstream = onRStrmAdd;
         this.peer.onremovestream = onRStrmRm;
+        this.ctype = options.type;
 
         //internal methods
         function onIce(event){
@@ -41,7 +42,10 @@ var peerConn;
                   candidate: event.candidate.candidate},
                     });
           } else {
-            console.log('End of candidates.');
+            console.log('End of candidates.','dc channel state is '+self.dc.readyState);
+            if(self.ctype == 'calling' && self.dc.readyState != 'open'){
+                self.onConError(self.id);
+            }
           }
         }
 
@@ -49,8 +53,8 @@ var peerConn;
             console.log('Receive Channel:',event.channel);
             self.dc = event.channel;
             self.dc.onmessage = onRecv;
-            self.dc.onopen = self.onDcState;
-            self.dc.onclose = self.onDcState;
+            self.dc.onopen = onDcState;
+            self.dc.onclose = onDcState;
         }
 
         function onRecv(event){
@@ -64,6 +68,9 @@ var peerConn;
         function onRStrmRm(event){
             self.onRmRStrm(event.stream);
         }
+        function onDcState(){
+            console.log('info ','datachannel state is '+self.dc.readyState);
+        }
 
     }
 
@@ -76,9 +83,9 @@ var peerConn;
     //cb functions
     _proto.onSend = function(){};
     _proto.onDcRecv = function(){};
-    _proto.onDcState = function(){};
     _proto.onAddRStrm = function(){};
     _proto.onRmRStrm = function(){};
+    _proto.onConError = function(){};
 
     //api method
     _proto.makeOffer = function(){
@@ -128,11 +135,15 @@ var peerConn;
     };
 
     _proto.sendData = function(data){
-        this.dc.send(data);
+        if(this.dc.readyState != 'open'){
+            console.log('Error','datachannel is not ready, could not send');
+        }else{
+            this.dc.send(data);
+        }
     };
 
     _proto.getDcState =  function(){
-        return this.dc.readyState;
+        return this.dc.readyState == 'open';
     };
 
 

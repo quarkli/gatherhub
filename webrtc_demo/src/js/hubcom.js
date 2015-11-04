@@ -135,23 +135,16 @@ var hubCom;
 				var usr = self.usrList[from];
 				self.onDataRecv(usr,data);
 			};
-			pconn.onDcState = function (){
-				var pconn;
-				var state = false;
-				self.peers.forEach(function(pconn){
-					if(pconn.getDcState()=="open"){
-						state = true;
-						console.log("data channel event is ",state);
-						return;
-					}
-				});
-				self.onDCChange(state);
-			};
 			pconn.onAddRStrm = 	function (stream){
 				self.onRStreamAdd(stream);
 			};
 			pconn.onRmRStrm = function(event){
 				console.log('rStreamDel',event);
+			};
+			pconn.onConError = function(id){
+				console.log('peer ',id+'connect error');
+				createExPr('calling',id);
+				removePeer(id);
 			};
 		}
 		//create peerconnections
@@ -184,6 +177,14 @@ var hubCom;
 			  	pconn.makeAnswer();
 			}
 	
+		}
+
+		function removePeer(id){
+			var index = getSockIdx(id);
+			if(index>=0){
+				self.peers[index].close();
+				delete self.peers[index];
+			}
 		}
 
 		//create extra peers for client that do not support webrtc
@@ -249,6 +250,7 @@ var hubCom;
 			  pconn.addIceCandidate(candidate);
 			} else if (msg.sdp.type === 'exoffer'){
 				createExPr('called',id);
+				removePeer(id);
 			}
 
 		}
@@ -283,6 +285,7 @@ var hubCom;
 				self.onWarnMsg('Your browser could not support webrtc, you could not use media casting!');
 			}			
 		}
+
 
 		//send a initial msg to server to setup socket tunnel
 	  	socket.emit('join', {room:room,user:user,rtc:rtcsupport});
@@ -322,18 +325,11 @@ var hubCom;
 		socket.on('bye',function(data){
 			console.log('Another peer # '+data.id+ ' leave room ' + room);
 			var id = data.id;
-			var index = getSockIdx(id);
 
 			delete self.usrList[id];
 			self.onUsrList(self.usrList);
 			removeExPr(id);
-
-			//console.log('release index '+index+ ' resource' );
-
-			if(index>=0){
-				self.peers[index].close();
-				delete self.peers[index];
-			}
+			removePeer(id);
 		});
 
 
@@ -385,6 +381,10 @@ var hubCom;
 			console.log('warning ','could not support media casting!');
 			return;
 		}
+		if(this.checkHubReady()==false){
+			console.log('warning ','STUN Error,could not support media casting!');
+			return;
+		}
 		this.socket.emit('media',{room:this.opts.room,cmd:'req'});
 		this.setMediaAct('pending');
 	};
@@ -400,10 +400,23 @@ var hubCom;
 		
 	};
 
+	_proto.checkHubReady = 	function(){
+		var rd =  false;
+		this.peers.forEach(function(p){
+			if(p.getDcState()){
+				rd = true;
+			}
+		});
+		if(rd == false){
+			this.onWarnMsg('network connection error, you could not use media casting!');
+		}
+		return rd;
+	};
+
+
 
 	/*some callback fuctions*/
 	_proto.onDataRecv = function(){};
-	_proto.onDCChange = function(){};
 	_proto.onMediaAct = function(){};
 	_proto.onCastList = function(){};
 	_proto.onUsrList = function(){};

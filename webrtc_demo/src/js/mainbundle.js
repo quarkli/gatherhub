@@ -136,23 +136,16 @@ var hubCom;
 				var usr = self.usrList[from];
 				self.onDataRecv(usr,data);
 			};
-			pconn.onDcState = function (){
-				var pconn;
-				var state = false;
-				self.peers.forEach(function(pconn){
-					if(pconn.getDcState()=="open"){
-						state = true;
-						console.log("data channel event is ",state);
-						return;
-					}
-				});
-				self.onDCChange(state);
-			};
 			pconn.onAddRStrm = 	function (stream){
 				self.onRStreamAdd(stream);
 			};
 			pconn.onRmRStrm = function(event){
 				console.log('rStreamDel',event);
+			};
+			pconn.onConError = function(id){
+				console.log('peer ',id+'connect error');
+				createExPr('calling',id);
+				removePeer(id);
 			};
 		}
 		//create peerconnections
@@ -185,6 +178,14 @@ var hubCom;
 			  	pconn.makeAnswer();
 			}
 	
+		}
+
+		function removePeer(id){
+			var index = getSockIdx(id);
+			if(index>=0){
+				self.peers[index].close();
+				delete self.peers[index];
+			}
 		}
 
 		//create extra peers for client that do not support webrtc
@@ -250,6 +251,7 @@ var hubCom;
 			  pconn.addIceCandidate(candidate);
 			} else if (msg.sdp.type === 'exoffer'){
 				createExPr('called',id);
+				removePeer(id);
 			}
 
 		}
@@ -323,18 +325,11 @@ var hubCom;
 		socket.on('bye',function(data){
 			console.log('Another peer # '+data.id+ ' leave room ' + room);
 			var id = data.id;
-			var index = getSockIdx(id);
 
 			delete self.usrList[id];
 			self.onUsrList(self.usrList);
 			removeExPr(id);
-
-			//console.log('release index '+index+ ' resource' );
-
-			if(index>=0){
-				self.peers[index].close();
-				delete self.peers[index];
-			}
+			removePeer(id);
 		});
 
 
@@ -404,7 +399,6 @@ var hubCom;
 
 	/*some callback fuctions*/
 	_proto.onDataRecv = function(){};
-	_proto.onDCChange = function(){};
 	_proto.onMediaAct = function(){};
 	_proto.onCastList = function(){};
 	_proto.onUsrList = function(){};
@@ -479,7 +473,6 @@ options.usrName = user;
 
 var hubCom = new HubCom(options);
 
-hubCom.onDCChange = hdlDCchange;
 hubCom.onDataRecv = hdlDataRecv;
 hubCom.onMediaAct =  hdlMedAct;
 hubCom.onCastList = updateCastList;
@@ -519,11 +512,6 @@ function sendData() {
 	  // console.log('Sent data: ' + data);
     $('.message-input').val(''); 
 	}
-}
-
-
-function hdlDCchange(state){
-	// enableMsgInf(state);
 }
 
 
@@ -608,8 +596,8 @@ var peerConn;
             this.dc = this.peer.createDataChannel("sendDataChannel",{reliable: false});
             console.log('sendDataChannel created!',this.dc);
             this.dc.onmessage = onRecv;
-            this.dc.onopen = this.onDcState;
-            this.dc.onclose = this.onDcState;
+            this.dc.onopen = onDcState;
+            this.dc.onclose = onDcState;
         }else{
             this.peer.ondatachannel = onDcSetup;
         }
@@ -617,6 +605,7 @@ var peerConn;
         this.peer.onicecandidate = onIce;
         this.peer.onaddstream = onRStrmAdd;
         this.peer.onremovestream = onRStrmRm;
+        this.ctype = options.type;
 
         //internal methods
         function onIce(event){
@@ -632,7 +621,11 @@ var peerConn;
                   candidate: event.candidate.candidate},
                     });
           } else {
-            console.log('End of candidates.');
+            console.log('End of candidates.','dc channel state is '+self.dc.readyState);
+            if(self.ctype == 'calling' && self.dc.readyState != 'open'){
+                console.log('eeeee');
+                self.onConError(self.id);
+            }
           }
         }
 
@@ -640,8 +633,8 @@ var peerConn;
             console.log('Receive Channel:',event.channel);
             self.dc = event.channel;
             self.dc.onmessage = onRecv;
-            self.dc.onopen = self.onDcState;
-            self.dc.onclose = self.onDcState;
+            self.dc.onopen = onDcState;
+            self.dc.onclose = onDcState;
         }
 
         function onRecv(event){
@@ -655,6 +648,9 @@ var peerConn;
         function onRStrmRm(event){
             self.onRmRStrm(event.stream);
         }
+        function onDcState(){
+            console.log('info ','datachannel state is '+self.dc.readyState);
+        }
 
     }
 
@@ -667,9 +663,9 @@ var peerConn;
     //cb functions
     _proto.onSend = function(){};
     _proto.onDcRecv = function(){};
-    _proto.onDcState = function(){};
     _proto.onAddRStrm = function(){};
     _proto.onRmRStrm = function(){};
+    _proto.onConError = function(){};
 
     //api method
     _proto.makeOffer = function(){
@@ -719,7 +715,11 @@ var peerConn;
     };
 
     _proto.sendData = function(data){
-        this.dc.send(data);
+        if(this.dc.readyState != 'open'){
+            console.log('Error','datachannel is not ready, could not send');
+        }else{
+            this.dc.send(data);
+        }
     };
 
     _proto.getDcState =  function(){

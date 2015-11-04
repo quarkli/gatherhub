@@ -26,7 +26,6 @@ options.usrName = user;
 
 var hubCom = new HubCom(options);
 
-hubCom.onDCChange = hdlDCchange;
 hubCom.onDataRecv = hdlDataRecv;
 hubCom.onMediaAct =  hdlMedAct;
 hubCom.onCastList = updateCastList;
@@ -66,11 +65,6 @@ function sendData() {
 	  // console.log('Sent data: ' + data);
     $('.message-input').val(''); 
 	}
-}
-
-
-function hdlDCchange(state){
-	// enableMsgInf(state);
 }
 
 
