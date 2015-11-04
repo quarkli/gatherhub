@@ -1,6 +1,8 @@
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
 'use strict';
 var PeerConn = require('./peerconn');
+var webrtc = require('./webrtcsupport');
+
 
 /////////////class HubMedia
 var hubMedia;
@@ -61,6 +63,7 @@ var hubCom;
 
 (function(){
 	var _proto;
+	var rtcsupport;
 	//constructor
 	function HubCom(options){
 		var self = this;
@@ -70,7 +73,11 @@ var hubCom;
 		var user = this.opts.usrName = opts.usrName || 'demo';
 		//array to store webrtc peers
 	  	var peers = this.peers = [];
+	  	//socket communicate with server
 		var socket = this.socket = io.connect();
+		//extra peer connections for client that does not support webrtc
+		var exPeers = this.exPeers = [];
+
 		//ice configuration
 		this.opts.config = opts.config || {'iceServers': 
 				[{'url': 'stun:chi2-tftp2.starnetusa.net'}]};
@@ -91,17 +98,12 @@ var hubCom;
 		//media casting list
 		this.castList = [];
 
+		//rtcsupport
+		rtcsupport = webrtc.support;
+
+
 		//internal methods for constructor
-		function getSockIdx(id){
-			var i = 0;
-			for(i=0;i<self.peers.length;i++){
-				if((self.peers[i])&&(self.peers[i].getId() == id)){
-					return i;
-				}
-			}
-			return -1;
-		}
-		//callback functions for media class
+		//register callback functions for media class
 		function regMediaEvtCb(media){
 			media.onAddLStrm = function(stream){
 				self.addLocMedia(stream);
@@ -115,7 +117,17 @@ var hubCom;
 				self.setMediaAct('idle');
 			};
 		}
-		//callback functions for peerconnections
+		//search valid peer id from peers
+		function getSockIdx(id){
+			var i = 0;
+			for(i=0;i<self.peers.length;i++){
+				if((self.peers[i])&&(self.peers[i].getId() == id)){
+					return i;
+				}
+			}
+			return -1;
+		}
+		//register callback functions for peerconnections
 		function regPconnEvtCb(pconn){
 			pconn.onSend = function(h,c){
 				self.socket.emit(h,c);
@@ -143,167 +155,237 @@ var hubCom;
 				console.log('rStreamDel',event);
 			};
 		}
-
-		//send a initial msg to server to setup socket tunnel
-	  	socket.emit('join', {room:room,user:user});
-
-		//register socket event callback
-
-		socket.on('connected', function (data){
-			//console.log('userid is ', data.id);
-			self.opts.usrId = data.id;
-		});
-
-		///// someone joined the hub room
-		socket.on('joined', function (data){
-		  console.log('Another peer # '+data.id+ ' made a request to join room ' + room);
-			// id = data.id has joined into the room, create pc to connect it.
-			//create peerconnection
-			var id = data.id;
+		//create peerconnections
+		function createPeer(type,id,sdp){
 			var index = getSockIdx(id);
 		  	console.log('get index:', index);
 			var pconn = self.peers[index];
 			if(!pconn){
 				var opts = self.opts;
 				opts.id = id;
-				opts.type = 'calling';
+				opts.type = type;
 				pconn = new PeerConn(opts);
 				self.peers[self.peers.length] = pconn;
 				regPconnEvtCb(pconn);
 			}
 
-			if(self.localStream){
-				pconn.addStream(self.localStream);
+			if(type == 'calling'){
+				if(self.localStream){
+					pconn.addStream(self.localStream);
+				}
+				//create offer
+				pconn.makeOffer();
+			}else{
+				/*if there is a local stream playing, we need remove this */
+				if(self.localStream){
+					self.media.stop();
+				}
+			  	pconn.setRemoteDescription(new RTCSessionDescription(sdp));
+				//make a answer
+			  	pconn.makeAnswer();
 			}
-			
-			//create offer
-			pconn.makeOffer();
-		});
+	
+		}
 
-	  	//////////////handle the signal msg from otherside
-		socket.on('msg', function (message){
-			var id = message.from;
-			var usr = message.usr;
+		//create extra peers for client that do not support webrtc
+		function createExPr(type,id){
+			var exPr = self.exPeers[id];
+			if(!exPr){
+				self.exPeers[id] =  id;
+			}
+			console.log('crateExPr ',type + 'id ' + id );
+			if(type == 'calling'){
+				self.socket.emit('msg',{
+                    room: self.opts.room,
+                    to: id,
+                    sdp: {type: 'exoffer'},
+                    });
+
+			}else{
+				self.socket.emit('msg',{
+                    room: self.opts.room,
+                    to: id,
+                    sdp: {type: 'exanswer'},
+                    });
+			}
+		}
+
+		function removeExPr(id){
+			delete self.exPeers[id];
+		}
+
+		//parse signal messages from other peers
+		function parseSigMsg(msg){
+			var id = msg.from;
+			var usr = msg.usr;
 			var index = getSockIdx(id);
 			console.log('get index:', index);
 
 			if(id>=0 && usr){
 				self.usrList[id] = usr;
 				self.onUsrList(self.usrList);
+				//console.log('usrList is ',self.usrList);
 			}
 
 			var pconn = self.peers[index];
-			console.log('Received message:', message);
-			if (message.sdp.type === 'offer') {
+			console.log('Received msg:', msg);
+			if (msg.sdp.type === 'offer') {
 				//get invite from other side
-				if(!pconn){
-					var opts = self.opts;
-					opts.id = id;
-					opts.type = 'called';
-					pconn = new PeerConn(opts);
-					self.peers[self.peers.length] = pconn;
-					regPconnEvtCb(pconn);
-				}
-
-				/*if there is a local stream playing, we need remove this */
-				if(self.localStream){
-					self.media.stop();
-				}
+				createPeer('called',id,msg.sdp);
 				
-			  pconn.setRemoteDescription(new RTCSessionDescription(message.sdp));
-				//make a answer
-			  pconn.makeAnswer();
-				
-			} else if (message.sdp.type === 'answer' ) {
+			} else if (msg.sdp.type === 'answer' ) {
 				if(!pconn){
 					console.log("wrong answer id from "+id);
 					return;
 				}
-			  pconn.setRemoteDescription(new RTCSessionDescription(message.sdp));
+			  pconn.setRemoteDescription(new RTCSessionDescription(msg.sdp));
 				
-			} else if (message.sdp.type === 'candidate') {
+			} else if (msg.sdp.type === 'candidate') {
 				if(!pconn){
 					console.log("wrong candidate id from "+id);
 					return;
 				}
-			  var candidate = new RTCIceCandidate({sdpMLineIndex:message.sdp.label,
-			    candidate:message.sdp.candidate});
+			  var candidate = new RTCIceCandidate({sdpMLineIndex:msg.sdp.label,
+			    candidate:msg.sdp.candidate});
 			  pconn.addIceCandidate(candidate);
-			} 
-			});
-			
-			//////someone leave the hub room
-			socket.on('bye',function(data){
-			  console.log('Another peer # '+data.id+ ' leave room ' + room);
-				var id = data.id;
-				var index = getSockIdx(id);
-				delete self.usrList[id];
-				self.onUsrList(self.usrList);
-
-				console.log('release index '+index+ ' resource' );
-
-				if(index>=0){
-					self.peers[index].close();
-					delete self.peers[index];
-				}
-			});
-
-
-			//////////////command for audio casting
-			function getMediaCastList(audCon){
-				//reset it everytime
-				self.castList = [];
-
-				if(audCon.state==1){
-					if(audCon.talk == self.opts.usrId){
-						self.castList[0] = self.opts.usrName + ' talking';
-					}else{
-						self.castList[0] = self.usrList[audCon.talk] + ' talking';
-					}
-					
-					audCon.que.forEach(function(id){
-						if(id == self.opts.usrId){
-							self.castList[self.castList.length] = self.opts.usrName + ' pending';
-						}else{
-							self.castList[self.castList.length] = self.usrList[id] + ' pending';
-						}
-					});
-				} 
-
+			} else if (msg.sdp.type === 'exoffer'){
+				createExPr('called',id);
 			}
-			socket.on('media', function (message){
-				var cmd = message.cmd;
-				if(cmd == 'ans'){
-					if(self.media.status === 0){
-						self.media.start();
-					}
-				}else if(cmd == 'update'){
-					console.log('msg update',message.control);
-					if(message.control){
-						getMediaCastList(message.control);
-						self.onCastList(self.castList);
-					}
-				}
-			});
 
-			/////////////// log from server
-			socket.on('log', function (array){
-			  console.log.apply(console, array);
-			});
-		  /////end of socket msg handler
-		  
+		}
+
+		//////////////command for audio casting
+		function getMediaCastList(audCon){
+			//reset it everytime
+			self.castList = [];
+
+			if(audCon.state==1){
+				if(audCon.talk == self.opts.usrId){
+					self.castList[0] = self.opts.usrName + ' talking';
+				}else{
+					self.castList[0] = self.usrList[audCon.talk] + ' talking';
+				}
+				
+				audCon.que.forEach(function(id){
+					if(id == self.opts.usrId){
+						self.castList[self.castList.length] = self.opts.usrName + ' pending';
+					}else{
+						self.castList[self.castList.length] = self.usrList[id] + ' pending';
+					}
+				});
+			} 
+
+		}
+
+		function showWebRtcSupport(){
+			if(rtcsupport == true){
+				self.onWarnMsg('');
+			}else{
+				self.onWarnMsg('Your browser could not support webrtc, you could not use media casting!');
+			}			
+		}
+
+		//send a initial msg to server to setup socket tunnel
+	  	socket.emit('join', {room:room,user:user,rtc:rtcsupport});
+
+		//register socket event callback
+
+		socket.on('connected', function (data){
+			//console.log('userid is ', data.id);
+			self.opts.usrId = data.id;
+			showWebRtcSupport();
+		});
+
+		///// someone joined the hub room
+		socket.on('joined', function (data){
+			console.log('Another peer # '+data.id+ ' made a request to join room ' + room);
+			// id = data.id has joined into the room, create pc to connect it.
+			if(rtcsupport && data.rtc){
+				//create peerconnection
+				createPeer('calling',data.id,null);
+			}else{
+				createExPr('calling',data.id);
+			}
+		});
+
+	  	//////////////handle the signal msg from otherside
+		socket.on('msg', function (data){
+			parseSigMsg(data);
+		});
+
+		// data transfer from server
+		socket.on('dat',function(data){
+			var usr = self.usrList[data.from];
+			self.onDataRecv(usr,data.dat);
+		});
+			
+		//////someone leave the hub room
+		socket.on('bye',function(data){
+			console.log('Another peer # '+data.id+ ' leave room ' + room);
+			var id = data.id;
+			var index = getSockIdx(id);
+
+			delete self.usrList[id];
+			self.onUsrList(self.usrList);
+			removeExPr(id);
+
+			//console.log('release index '+index+ ' resource' );
+
+			if(index>=0){
+				self.peers[index].close();
+				delete self.peers[index];
+			}
+		});
+
+
+		socket.on('media', function (message){
+			var cmd = message.cmd;
+			if(rtcsupport!=true){
+				console.log('warning ','could not support media casting!');
+				return;
+			}
+			if(cmd == 'ans'){
+				if(self.media.status === 0){
+					self.media.start();
+				}
+			}else if(cmd == 'update'){
+				console.log('msg update',message.control);
+				if(message.control){
+					getMediaCastList(message.control);
+					self.onCastList(self.castList);
+				}
+			}
+		});
+
+		/////////////// log from server
+		socket.on('log', function (array){
+		  console.log.apply(console, array);
+		});
+	  /////end of socket msg handler
+	  
 
 	} // end of HubCom contructor
 
 	_proto = HubCom.prototype;
 
 	_proto.sendData = function(data){
+		var self = this;
 		this.peers.forEach(function(pconn){
 			pconn.sendData(data);
+		});
+		this.exPeers.forEach(function(id){
+			self.socket.emit('dat',{
+                room: self.opts.room,
+                to: id,
+                dat: data });
 		});
 	};
 
 	_proto.startAudioCast = function(){
+		if(rtcsupport!=true){
+			console.log('warning ','could not support media casting!');
+			return;
+		}
 		this.socket.emit('media',{room:this.opts.room,cmd:'req'});
 		this.setMediaAct('pending');
 	};
@@ -326,6 +408,7 @@ var hubCom;
 	_proto.onMediaAct = function(){};
 	_proto.onCastList = function(){};
 	_proto.onUsrList = function(){};
+	_proto.onWarnMsg = function(){};
 
 	////internal api called by media class
 
@@ -367,18 +450,16 @@ var hubCom;
 module.exports = hubCom;
 
 
-},{"./peerconn":3}],2:[function(require,module,exports){
+},{"./peerconn":3,"./webrtcsupport":4}],2:[function(require,module,exports){
 'use strict';
 var HubCom = require('./hubcom');
 
 
 var mediaButton = document.getElementById("mediaButton");
-var mediaArea = document.getElementById("mediaAreas");
 
 var localAudio = document.querySelector('#localAudio');
 var remoteAudio = document.querySelector('#remoteAudio');
 
-var castingList = document.getElementById("castingList");
 
 
 
@@ -402,8 +483,9 @@ hubCom.onDCChange = hdlDCchange;
 hubCom.onDataRecv = hdlDataRecv;
 hubCom.onMediaAct =  hdlMedAct;
 hubCom.onCastList = updateCastList;
+hubCom.onUsrList = updateUsrList;
+hubCom.onWarnMsg = showWarnMsg;
 mediaButton.onclick = invokeMedia;
-
 
 
 $('.message-input').keydown(function(e) {
@@ -451,16 +533,28 @@ function hdlDataRecv(from, data) {
 
 }
 
+function updateUsrList(list){
+    var usrStr;
+    usrStr = '<ul class="list-group"> <li class="list-group-item active">' + user + '</li>';
+     $('#usrList').html(usrStr);
+    list.forEach(function(s){
+        usrStr = '<li class="list-group-item list-group-item-warning">' + s + '</li>';
+        $('#usrList').append(usrStr);
+    });
+    $('#usrList').append('</ul>');
+
+}
+
 function hdlMedAct(state){
 	switch(state){
 	case 'active':
-		mediaButton.innerHTML = "Stop Broadcast"
+		mediaButton.innerHTML = "Stop Audio"
 		break;
 	case 'pending':
 		mediaButton.innerHTML = "Trying...Cancel?"
 		break;
 	case 'idle':
-		mediaButton.innerHTML = "Start Broadcast"
+		mediaButton.innerHTML = "Start Audio"
 		break;
 	}
 }
@@ -474,12 +568,22 @@ function invokeMedia(){
 }
 
 function updateCastList(list){
-	castingList.innerHTML = '';
+    $('#castingList').html('');
 	list.forEach(function(item){
-		castingList.innerHTML += '<p>' + item + '</p>';
+		$('#castingList').append('<p>' + item + '</p>') ;
 	});
-	//console.log('casting list',castingList.innerHTML);
-	
+}
+
+function showWarnMsg(msg){
+
+    if(msg==''){
+        $('.warn-msg').hide();
+    }else{
+        $('.warn-msg').show();
+        $('.voice-list').hide();
+    }
+    console.log('warn msg ',msg);
+    $('.warn-msg').html('<strong>Warning: </strong>' + msg);
 }
 
 
@@ -626,5 +730,61 @@ var peerConn;
 })();
 
 module.exports = peerConn;
+
+},{}],4:[function(require,module,exports){
+// created by @HenrikJoreteg
+var webrtcsupport;
+(function(){
+    var prefix;
+    var version;
+
+    if (window.mozRTCPeerConnection || navigator.mozGetUserMedia) {
+        prefix = 'moz';
+        version = parseInt(navigator.userAgent.match(/Firefox\/([0-9]+)\./)[1], 10);
+    } else if (window.webkitRTCPeerConnection || navigator.webkitGetUserMedia) {
+        prefix = 'webkit';
+        version = navigator.userAgent.match(/Chrom(e|ium)/) && parseInt(navigator.userAgent.match(/Chrom(e|ium)\/([0-9]+)\./)[2], 10);
+    }
+
+    var PC = window.RTCPeerConnection || window.mozRTCPeerConnection || window.webkitRTCPeerConnection;
+    var IceCandidate = window.mozRTCIceCandidate || window.RTCIceCandidate;
+    var SessionDescription = window.mozRTCSessionDescription || window.RTCSessionDescription;
+    var MediaStream = window.webkitMediaStream || window.MediaStream;
+    var screenSharing = window.location.protocol === 'https:' &&
+        ((prefix === 'webkit' && version >= 26) ||
+         (prefix === 'moz' && version >= 33))
+    var AudioContext = window.AudioContext || window.webkitAudioContext;
+    var videoEl = document.createElement('video');
+    var supportVp8 = videoEl && videoEl.canPlayType && videoEl.canPlayType('video/webm; codecs="vp8", vorbis') === "probably";
+    var getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.msGetUserMedia || navigator.mozGetUserMedia;
+
+    // export support flags and constructors.prototype && PC
+    var WebRtc = {
+        prefix: prefix,
+        browserVersion: version,
+        support: !!PC && !!getUserMedia,
+        // new support style
+        supportRTCPeerConnection: !!PC,
+        supportVp8: supportVp8,
+        supportGetUserMedia: !!getUserMedia,
+        supportDataChannel: !!(PC && PC.prototype && PC.prototype.createDataChannel),
+        supportWebAudio: !!(AudioContext && AudioContext.prototype.createMediaStreamSource),
+        supportMediaStream: !!(MediaStream && MediaStream.prototype.removeTrack),
+        supportScreenSharing: !!screenSharing,
+        // constructors
+        AudioContext: AudioContext,
+        PeerConnection: PC,
+        SessionDescription: SessionDescription,
+        IceCandidate: IceCandidate,
+        MediaStream: MediaStream,
+        getUserMedia: getUserMedia
+    };
+
+    webrtcsupport = WebRtc;
+
+})();
+
+
+module.exports = webrtcsupport;
 
 },{}]},{},[2]);

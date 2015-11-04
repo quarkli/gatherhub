@@ -3,12 +3,10 @@ var HubCom = require('./hubcom');
 
 
 var mediaButton = document.getElementById("mediaButton");
-var mediaArea = document.getElementById("mediaAreas");
 
 var localAudio = document.querySelector('#localAudio');
 var remoteAudio = document.querySelector('#remoteAudio');
 
-var castingList = document.getElementById("castingList");
 
 
 
@@ -32,8 +30,9 @@ hubCom.onDCChange = hdlDCchange;
 hubCom.onDataRecv = hdlDataRecv;
 hubCom.onMediaAct =  hdlMedAct;
 hubCom.onCastList = updateCastList;
+hubCom.onUsrList = updateUsrList;
+hubCom.onWarnMsg = showWarnMsg;
 mediaButton.onclick = invokeMedia;
-
 
 
 $('.message-input').keydown(function(e) {
@@ -81,16 +80,28 @@ function hdlDataRecv(from, data) {
 
 }
 
+function updateUsrList(list){
+    var usrStr;
+    usrStr = '<ul class="list-group"> <li class="list-group-item active">' + user + '</li>';
+     $('#usrList').html(usrStr);
+    list.forEach(function(s){
+        usrStr = '<li class="list-group-item list-group-item-warning">' + s + '</li>';
+        $('#usrList').append(usrStr);
+    });
+    $('#usrList').append('</ul>');
+
+}
+
 function hdlMedAct(state){
 	switch(state){
 	case 'active':
-		mediaButton.innerHTML = "Stop Broadcast"
+		mediaButton.innerHTML = "Stop Audio"
 		break;
 	case 'pending':
 		mediaButton.innerHTML = "Trying...Cancel?"
 		break;
 	case 'idle':
-		mediaButton.innerHTML = "Start Broadcast"
+		mediaButton.innerHTML = "Start Audio"
 		break;
 	}
 }
@@ -104,12 +115,22 @@ function invokeMedia(){
 }
 
 function updateCastList(list){
-	castingList.innerHTML = '';
+    $('#castingList').html('');
 	list.forEach(function(item){
-		castingList.innerHTML += '<p>' + item + '</p>';
+		$('#castingList').append('<p>' + item + '</p>') ;
 	});
-	//console.log('casting list',castingList.innerHTML);
-	
+}
+
+function showWarnMsg(msg){
+
+    if(msg==''){
+        $('.warn-msg').hide();
+    }else{
+        $('.warn-msg').show();
+        $('.voice-list').hide();
+    }
+    console.log('warn msg ',msg);
+    $('.warn-msg').html('<strong>Warning: </strong>' + msg);
 }
 
 

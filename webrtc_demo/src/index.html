@@ -42,6 +42,7 @@
 <body>
 <div class="container" >
   <div class="col-md-6">
+    <div class="alert alert-warning warn-msg"></div>
     <div class="panel panel-default room">
       <div class="panel-heading room-header">Message List</div>
       <div class="panel-body room-content">
@@ -69,36 +70,24 @@
       <div class="collapse navbar-collapse" id="myNavbar">
         <ul class="nav navbar-nav">
           <li><a href="#usrList">Users</a></li>
-          <li><a href="#voiceList">Talking</a></li>
+          <li class="voice-list"><a href="#voiceList">Talking</a></li>
         </ul>
       </div>  
     </nav>
 
     <div class="usr-container" data-spy="scroll" data-target=".navbar" data-offset="100">
       <div id="usrList">
-        <h1>User List</h1>
-        <p>here is user list</p>
       </div>
       <div id="voiceList">
         <h1>Talking list</h1>
-        <p>Here is talking list</p>
+        <audio id='localAudio' autoplay muted></audio>
+        <audio id='remoteAudio' autoplay></audio>
+        <div id='castingList'></div>
+        <button id="mediaButton">Start Audio</button>
+  
       </div>
     </div>
    </div>
-
-</div>
-
-
-
-<div id='container'>
-
-  <div id='mediaAreas'>
-    <audio id='localAudio' autoplay muted></audio>
-    <audio id='remoteAudio' autoplay></audio>
-    <div id='castingList'></div>
-	<button id="mediaButton">Start Broadcast</button>
-  </div>
-
 
 </div>
 

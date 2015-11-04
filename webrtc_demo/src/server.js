@@ -141,13 +141,14 @@ io.sockets.on('connection', function (socket){
 
 	socket.on('join', function (data) {
 
-    var currentRoom, id,user;
+    var currentRoom, id,user,rtc;
 		if(!data){
 			log('could not join a room with empty name!');
 			return;
 		}
 		currentRoom = data.room;
 		user = data.user;
+		rtc = data.rtc;
 		
 		var room = rooms[currentRoom];
 		
@@ -171,18 +172,18 @@ io.sockets.on('connection', function (socket){
 			rooms[currentRoom] = [{s:socket,u:user}];
 			//init audio manager
 			audsMan[currentRoom] ={state:0,talk:-1,que:[]};
-      console.log('Room created, with name', currentRoom);
+      		console.log('Room created, with name', currentRoom);
 			id = 0;
 			//do you want send back to client something...
 		} else {
 			//io.sockets.in(data).emit('joined', {id:socket.id});
 			//socket.join(data);
-      id = room.length;
-      room.forEach(function (obj) {
-        obj.s.emit('joined', { id: id });
-      });
-      room[id] = {s:socket,u:user};
-      console.log('Peer connected to room', currentRoom, 'with #', id);			
+      		id = room.length;
+      		room.forEach(function (obj) {
+        		obj.s.emit('joined', { id: id, rtc: rtc});
+      		});
+      		room[id] = {s:socket,u:user};
+      		console.log('Peer connected to room', currentRoom, 'with #', id);			
 		} 
 
 		pushNameList(currentRoom);
@@ -191,29 +192,52 @@ io.sockets.on('connection', function (socket){
 	});
 
 
-    socket.on('msg', function (data) {
-    	var currentRoom = data.room;
-			if(!currentRoom){
-				log("wrong room name!");
-				return;
-			}
-      var to = parseInt(data.to, 10);
-			var room = rooms[currentRoom];
-			if(!room){
-				log("undefined rooms");
-				return;
-			}
+	function parseMessage(type,data,socket){
+		var  roomIdx, to, room, from;
+    	roomIdx = data.room;
+		if(!roomIdx){
+			log("wrong room name!");
+			return ;
+		}
+		room = rooms[roomIdx];
+		if(!room){
+			log("undefined rooms");
+			return ;
+		}
 
-			var from = getIdBySocket(room,socket);
-			//console.log('recv msg in',room + 'from ' + from + 'to' + to);
-			
-      if (from!=undefined && room[to]) {
-        //log('from '+from+'Redirecting message to', to);
-        room[to].s.emit('msg', {from:from,usr:room[from].u,sdp:data.sdp});
-      } else {
-        log('Invalid user');
-      }
+      	to = parseInt(data.to, 10);
+      	if(!room[to]){
+			log("undefined sokcet");
+			return ;
+		}
+		
+		from = getIdBySocket(room,socket);
+		if(from == undefined){
+        	log('Invalid user');
+			return ;
+		}
+
+		if(type == 'msg'){
+        	room[to].s.emit('msg', {from:from,usr:room[from].u,sdp:data.sdp});
+		}else if (type == 'dat'){
+			console.log('dat','fromn'+from+'data',data.dat);
+        	room[to].s.emit('dat', {from:from,dat:data.dat});
+		}
+
+	}
+
+
+    socket.on('msg', function (data) {
+    	parseMessage('msg',data,socket);
     });
+
+    socket.on('dat', function (data) {
+    	parseMessage('dat',data,socket);
+    });
+
+
+
+
 
     socket.on('disconnect', function () {
 			/*this message is send by io.socket automatically
