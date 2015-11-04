@@ -438,6 +438,7 @@ var Gatherhub = Gatherhub || {};
 		function drawStart(x, y){
 			//trace(L4, this.constructor.name + '.drawStart' +
 			//	'(' + Array.prototype.slice.call(arguments) + ')');
+			this.zoom(this.zrate);
 			var point = vboxxy.call(this, canvasxy.call(this, screenxy(x, y)));
 			x = point.x;
 			y = point.y;
@@ -699,11 +700,69 @@ var Gatherhub = Gatherhub || {};
 		_proto.tips = '';
 		_proto.text = '';
 		_proto.padding = 0;
-		_proto.rcorner = 0.2; 	// rcorner = 0 (rectangle) ~ 1.0 (circle/ellipse)
+		_proto.rcorner = 0.2; 	// rcorner = 0 (rectangle) ~ 1.0 (circle/oval)
 		_proto.onclick = function(){};
 		_proto.mousedownHdl = function(x, y) {
 			g.VisualPad.prototype.mousedownHdl.call(this, x, y);
+			this.prevborderwd = this.borderwidth();
+			this.borderwidth(this.prevborderwd + 1);
 			this.onclick();
 		};
+		_proto.mouseupHdl = function(x, y) {
+			g.VisualPad.prototype.mouseupHdl.call(this, x, y);
+			this.borderwidth(this.prevborderwd);
+		};
 	})();
+	
+	// Object Prototype: BtnGrp
+	(function(){
+		// Private
+
+		// Gatherhub.SvgButton
+		g.BtnGrp = BtnGrp;
+		// Constructor
+		function BtnGrp(ot) {
+			this.main = $('<div class=".container"/>').css('position', 'absolute').css('font-size', 0);
+			this.key = $('<div/>').css('font-size', 0).appendTo(this.main);
+			this.list = $('<div/>').css('font-size', 0).appendTo(this.main);
+			this.ot = ot || 'vertical';
+			this.orientation(ot);
+			this.buttons = [{}];
+			this.length = 0;
+		}
+		
+		// Prototypes
+		var _proto = BtnGrp.prototype;	// Inheritance
+		_proto.constructor = BtnGrp;	// Overload constructorzx
+		_proto.ot = 'vertical';
+		_proto.orientation = function (ot) {
+			switch (ot) {
+				case 'vertical':
+					this.key.addClass('row');
+					this.list.addClass('row');
+					break;
+				case 'horizontal':
+					this.key.addClass('col-sm-6');
+					this.list.addClass('col-sm-6');
+					break;
+			}
+			return this;
+		};
+		_proto.addbtn = function(btn) {
+			this.buttons[this.length].btn = btn;
+			this.buttons[this.length].selected = false;
+			this.buttons[this.length].btngrp = this;
+			btn.appendto(this.list);
+		};
+		_proto.btnselect = function(sel) {
+			for (var i=0; i < this.length; i++) {
+				this.buttons[i].selected = false;
+				this.list.append(this.buttons[i].btn);
+				if (this.buttons[i].btn === sel || i == sel) {
+					this.buttons[i].selected = true;
+					this.key.append(this.buttons[i].btn);
+				}
+			}
+		};
+	})();	
 })();
