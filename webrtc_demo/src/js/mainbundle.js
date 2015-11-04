@@ -287,6 +287,7 @@ var hubCom;
 			}			
 		}
 
+
 		//send a initial msg to server to setup socket tunnel
 	  	socket.emit('join', {room:room,user:user,rtc:rtcsupport});
 
@@ -381,6 +382,10 @@ var hubCom;
 			console.log('warning ','could not support media casting!');
 			return;
 		}
+		if(this.checkHubReady()==false){
+			console.log('warning ','STUN Error,could not support media casting!');
+			return;
+		}
 		this.socket.emit('media',{room:this.opts.room,cmd:'req'});
 		this.setMediaAct('pending');
 	};
@@ -395,6 +400,20 @@ var hubCom;
 		}
 		
 	};
+
+	_proto.checkHubReady = 	function(){
+		var rd =  false;
+		this.peers.forEach(function(p){
+			if(p.getDcState()){
+				rd = true;
+			}
+		});
+		if(rd == false){
+			this.onWarnMsg('network connection error, you could not use media casting!');
+		}
+		return rd;
+	};
+
 
 
 	/*some callback fuctions*/
@@ -488,8 +507,8 @@ $('.message-input').keydown(function(e) {
     }
 });
 $('#msgsend').click(function(event) {
-  sendData();
-  $('.message-input').focus();
+    sendData();
+    event.preventDefault();
 });
 
 function addMsgHistory(data,type){
@@ -499,7 +518,7 @@ function addMsgHistory(data,type){
     }else{
       chatText = '<li class="list-group-item">'+data+'</li>' ;   
     }
-	$('.messages').append(chatText);
+	 $('.messages').append(chatText);
 	console.log('show message:',chatText);
 }
 
@@ -623,7 +642,6 @@ var peerConn;
           } else {
             console.log('End of candidates.','dc channel state is '+self.dc.readyState);
             if(self.ctype == 'calling' && self.dc.readyState != 'open'){
-                console.log('eeeee');
                 self.onConError(self.id);
             }
           }
@@ -723,7 +741,7 @@ var peerConn;
     };
 
     _proto.getDcState =  function(){
-        return this.dc.readyState;
+        return this.dc.readyState == 'open';
     };
 
 

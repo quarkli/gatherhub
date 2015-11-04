@@ -41,8 +41,8 @@ $('.message-input').keydown(function(e) {
     }
 });
 $('#msgsend').click(function(event) {
-  sendData();
-  $('.message-input').focus();
+    sendData();
+    event.preventDefault();
 });
 
 function addMsgHistory(data,type){
@@ -52,7 +52,7 @@ function addMsgHistory(data,type){
     }else{
       chatText = '<li class="list-group-item">'+data+'</li>' ;   
     }
-	$('.messages').append(chatText);
+	 $('.messages').append(chatText);
 	console.log('show message:',chatText);
 }
 
