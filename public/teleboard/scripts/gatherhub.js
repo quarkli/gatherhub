@@ -170,7 +170,7 @@ var Gatherhub = Gatherhub || {};
 			return this;
 		};
 		_proto.minimize = function() {
-			this.width(this.defaultWidth).height(this.defaultHeight).fitcontent();
+			this.width(this.defaultWidth).height(this.defaultHeight).refreshvbox();
 			return this;
 		};
 		_proto.fitcontent = function() {
