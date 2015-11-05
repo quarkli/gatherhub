@@ -134,6 +134,10 @@ io.sockets.on('connection', function (socket){
 	    socket.emit('log', array);
 	}
 
+	function infError(m){
+		socket.emit('err',m);
+	}
+
 	socket.on('media', function (message) {
 		console.log('msg media',message.room,message.cmd);
 		parseAudioReq(message,socket);
@@ -214,6 +218,7 @@ io.sockets.on('connection', function (socket){
 		from = getIdBySocket(room,socket);
 		if(from == undefined){
         	log('Invalid user');
+        	infError('con-lost');
 			return ;
 		}
 

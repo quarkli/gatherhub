@@ -356,6 +356,13 @@ var hubCom;
 		socket.on('log', function (array){
 		  console.log.apply(console, array);
 		});
+
+		socket.on('err',function(m){
+			if(m == 'con-lost'){
+				//re init connection
+	  			socket.emit('join', {room:room,user:user,rtc:rtcsupport});
+			}
+		});
 	  /////end of socket msg handler
 	  
 

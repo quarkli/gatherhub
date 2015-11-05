@@ -53,7 +53,6 @@ function addMsgHistory(data,type){
       chatText = '<li class="list-group-item">'+data+'</li>' ;   
     }
 	 $('.messages').append(chatText);
-	console.log('show message:',chatText);
 }
 
 
@@ -62,7 +61,6 @@ function sendData() {
 	if(data&&data!=''){
 		hubCom.sendData(data);	
 		addMsgHistory(user+': '+data,1);
-	  // console.log('Sent data: ' + data);
     $('.message-input').val(''); 
 	}
 }

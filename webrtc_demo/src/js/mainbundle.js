@@ -357,6 +357,13 @@ var hubCom;
 		socket.on('log', function (array){
 		  console.log.apply(console, array);
 		});
+
+		socket.on('err',function(m){
+			if(m == 'con-lost'){
+				//re init connection
+	  			socket.emit('join', {room:room,user:user,rtc:rtcsupport});
+			}
+		});
 	  /////end of socket msg handler
 	  
 
@@ -519,7 +526,6 @@ function addMsgHistory(data,type){
       chatText = '<li class="list-group-item">'+data+'</li>' ;   
     }
 	 $('.messages').append(chatText);
-	console.log('show message:',chatText);
 }
 
 
@@ -528,7 +534,6 @@ function sendData() {
 	if(data&&data!=''){
 		hubCom.sendData(data);	
 		addMsgHistory(user+': '+data,1);
-	  // console.log('Sent data: ' + data);
     $('.message-input').val(''); 
 	}
 }
