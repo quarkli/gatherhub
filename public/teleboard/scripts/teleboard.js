@@ -32,7 +32,7 @@ $(function(){
 	btngrppen.key = $('<div/>').css({'position': 'absolute', 'top': '500px', 'left': '390px'}).appendTo('body');
 	btngrppen.list = $('<div/>').css({'position': 'absolute', 'font-size': '0px'}).appendTo('body');
 
-	var arySize = [['circle', 0.1, 1], ['circle', 0.3, 5], ['circle', 0.65, 11], ['circle', 1.275, 21]];
+	var arySize = [['circle', 0.05, 1], ['circle', 0.15, 5], ['circle', 0.35, 11], ['circle', .65, 21]];
 	var btnSize = [{}];
 	var btngrpsize = {};
 	btngrpsize.key = $('<div/>').css('position', 'absolute').appendTo('body');
