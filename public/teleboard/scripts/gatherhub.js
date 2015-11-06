@@ -174,29 +174,33 @@ var Gatherhub = Gatherhub || {};
 			return this;
 		};
 		_proto.fitcontent = function() {
-			this.canvasvbox.x = this.canvas[0].getBBox().x - 20;
-			this.canvasvbox.y = this.canvas[0].getBBox().y - 20;
-			this.canvasvbox.w = this.canvas[0].getBBox().width + 40;
-			this.canvasvbox.h = this.canvas[0].getBBox().height + 40;
-			this.refreshvbox();
+			this.canvasvbox.x = this.canvas[0].getBBox().x;
+			this.canvasvbox.y = this.canvas[0].getBBox().y;
+			this.canvasvbox.w = this.canvas[0].getBBox().width;
+			this.canvasvbox.h = this.canvas[0].getBBox().height;
+			var zw = this.width() / (this.canvas[0].getBBox().width + 40);
+			var zh = this.height() / (this.canvas[0].getBBox().height + 40);
+			this.zrate = zw < zh ? zw : zh;
+			this.zoom(this.zrate);
 
 			return this;
 		};		
 		_proto.zoom = function(z) {
+			if (z === undefined) return this.zrate;
+			
 			if (this.canvasvbox.w == 0) this.canvasvbox.w = this.width();
 			if (this.canvasvbox.h == 0) this.canvasvbox.h = this.height();
-			if (z >= 0.1 && z <= 10) {
-				this.zrate = precision(z, 1);
-				var x = this.zcenter.x * this.canvasvbox.w + this.canvasvbox.x;
-				var y = this.zcenter.y * this.canvasvbox.h + this.canvasvbox.y;
-				this.canvasvbox.w = precision((this.width() - this.borderpadding()) / this.zrate, 3);
-				this.canvasvbox.h = precision((this.height() - this.borderpadding()) / this.zrate, 3);
-				this.canvasvbox.x = precision(x - this.zcenter.x * this.canvasvbox.w, 3);
-				this.canvasvbox.y = precision(y - this.zcenter.y * this.canvasvbox.h, 3);
-				this.refreshvbox();
-				return this;
-			}
-			return this.zrate;
+
+			z = $.isNumeric(z) ? (z > 1000 ? 1000 : z < 0.001 ? 0.001 : precision(z, 3)) : this.zrate;
+			this.zrate = z;
+			var x = this.zcenter.x * this.canvasvbox.w + this.canvasvbox.x;
+			var y = this.zcenter.y * this.canvasvbox.h + this.canvasvbox.y;
+			this.canvasvbox.w = precision((this.width() - this.borderpadding()) / this.zrate, 3);
+			this.canvasvbox.h = precision((this.height() - this.borderpadding()) / this.zrate, 3);
+			this.canvasvbox.x = precision(x - this.zcenter.x * this.canvasvbox.w, 3);
+			this.canvasvbox.y = precision(y - this.zcenter.y * this.canvasvbox.h, 3);
+			this.refreshvbox();
+			return this;
 		};
 		_proto.offsetcanvas = function(axis, offset) {
 			if ($.isNumeric(offset)) {
@@ -668,11 +672,14 @@ var Gatherhub = Gatherhub || {};
 			}
 		};
 		_proto.mousewheelHdl = function(delta) {
+			var offset = Math.pow(10, Math.floor(Math.log10(this.zrate)));
+
 			if (delta > 0) {
-				this.zoom(this.zoom() + (this.zoom() < 1 ? 0.1 : 1));
+				this.zoom(this.zoom() + offset);
 			}
 			else {
-				this.zoom(this.zoom() - (this.zoom() <= 1 ? 0.1 : 1));
+				if (this.zoom() <= offset) offset /= 10;
+				this.zoom(this.zoom() - offset);
 			}
 		};
 	})();

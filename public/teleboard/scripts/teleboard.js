@@ -41,11 +41,11 @@ $(function(){
 	btnZoomin.canvas.css('fill', '#99D').html(svgicon.zoomin);
 	btnZoomin.bordercolor('#99D').borderwidth(2).borderradius(.25).bgcolor('#FFF').fitcontent();
 	btnZoomin.onclick = function(){
+		var offset = Math.pow(10, Math.floor(Math.log10(sp.zrate)));
 		if (!btngrppen.list.is(':hidden')) btngrppen.list.hide();
 		if (!btngrpsize.list.is(':hidden')) btngrpsize.list.hide();
 		sp.zcenter.x = sp.zcenter.y = 0.5;
-		if (sp.zrate < 1) sp.zoom(sp.zrate + 0.1);
-		else sp.zoom(sp.zrate + 1);
+		sp.zoom(sp.zrate + offset);
 	};
 	btnZoomin.pad.hide();
 
@@ -63,11 +63,12 @@ $(function(){
 	btnZoomout.canvas.css('fill', '#99D').html(svgicon.zoomout);
 	btnZoomout.bordercolor('#99D').borderwidth(2).borderradius(.25).bgcolor('#FFF').fitcontent();
 	btnZoomout.onclick = function(){
+		var offset = Math.pow(10, Math.floor(Math.log10(sp.zrate)));
 		if (!btngrppen.list.is(':hidden')) btngrppen.list.hide();
 		if (!btngrpsize.list.is(':hidden')) btngrpsize.list.hide();
 		sp.zcenter.x = sp.zcenter.y = 0.5;
-		if (sp.zrate > 1) sp.zoom(sp.zrate - 1);
-		else sp.zoom(sp.zrate - 0.1);
+		if (sp.zoom() <= offset) offset /= 10;
+		sp.zoom(sp.zrate - offset);
 	};
 	btnZoomout.pad.hide();
 
