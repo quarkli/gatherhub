@@ -610,6 +610,14 @@ var Gatherhub = Gatherhub || {};
 			}
 			return this.ps;
 		};
+		_proto.undo = function() {
+			if (this.pathholder.children().length > 0) this.pathholder.children().last().appendTo(this.redocache);
+			return this;
+		};
+		_proto.redo = function() {
+			if (this.redocache.children().length > 0) this.redocache.children().last().appendTo(this.pathholder);
+			return this;
+		};
 		_proto.clearcanvas = function() {
 			this.pathholder.empty();
 			return this;
@@ -665,7 +673,7 @@ var Gatherhub = Gatherhub || {};
 			if (opt === undefined) opt = {};
 			this.defaultWidth = opt.w || 50;
 			this.defaultHeight = opt.h || 50;
-			this.size = opt.size || .8;
+			this.resize = opt.resize || .8;
 			this.minimize();
 			this.bgcolor(opt.bgcolor || 'white');
 			this.bordercolor(opt.bordercolor || 'black');
@@ -695,12 +703,12 @@ var Gatherhub = Gatherhub || {};
 		};
 		_proto.appendto = function(target) {
 			g.VisualPad.prototype.appendto.call(this, target);
-			this.fitcontent();
-			this.zoom(this.zrate * this.size);
+			this.fitcontent().zoom(this.zrate * this.resize);
 			return this;
 		};
 		_proto.mousedownHdl = function(x, y) {
 			g.VisualPad.prototype.mousedownHdl.call(this, x, y);
+			this.fitcontent().zoom(this.zrate * this.resize);
 			this.prevborderwd = this.borderwidth();
 			this.borderwidth(this.prevborderwd + 1);
 		};

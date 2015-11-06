@@ -25,7 +25,102 @@ $(function(){
 		if (!btnClear.pad.is(':hidden')) btnClear.pad.hide();
 		btnMenu.moveto('top', 9999).moveto('left', 9999);
 	};
-	  
+
+	var btnList = [
+		{
+			btn: new Gatherhub.SvgButton({icon: svgicon.pen}),
+			onclick: function(){sp.pencolor('black');}
+		},
+		{
+			btn: new Gatherhub.SvgButton({icon: svgicon.pen, iconcolor: 'red'}),
+			onclick: function(){sp.pencolor('red');}
+		},
+		{
+			btn: new Gatherhub.SvgButton({icon: svgicon.pen, iconcolor: 'green'}),
+			onclick: function(){sp.pencolor('green');}
+		},
+		{
+			btn: new Gatherhub.SvgButton({icon: svgicon.pen, iconcolor: 'blue'}),
+			onclick: function(){sp.pencolor('blue');}
+		},
+		{
+			btn: new Gatherhub.SvgButton({icon: svgicon.eraser}),
+			onclick: function(){sp.pencolor('white');}
+		},
+		{
+			btn: new Gatherhub.SvgButton({icon: svgicon.zoom}),
+			sublist: [
+				{
+					btn: new Gatherhub.SvgButton({icon: svgicon.zoomin}),
+					onclick: function(){sp.zoom(sp.zoom() * 1.1);}
+				},
+				{
+					btn: new Gatherhub.SvgButton({icon: svgicon.fit}),
+					onclick: function(){sp.fitcontent();}
+				},
+				{
+					btn: new Gatherhub.SvgButton({icon: svgicon.zoomout}),
+					onclick: function(){sp.zoom(sp.zoom() * 0.9);}
+				}
+			]
+		},
+		{
+			btn: new Gatherhub.SvgButton({icon: svgicon.setting, iconcolor: 'black'}),
+			sublist: [
+				{
+					btn: new Gatherhub.SvgButton({icon: svgicon.undo, iconcolor: 'black'}),
+					onclick: function(){sp.undo();}
+				},
+				{
+					btn: new Gatherhub.SvgButton({icon: svgicon.redo, iconcolor: 'black'}),
+					onclick: function(){sp.redo();}
+				},
+				{
+					btn: new Gatherhub.SvgButton({icon: svgicon.clear, iconcolor: 'black'}),
+					onclick: function(){sp.clearcanvas();}
+				}
+			]
+		}
+	];
+	
+	function createMenu(list) {
+		var menu = $('<div/>').css({'position': 'absolute', 'bottom': 7, 'right': 6, 'font-size': 0}).appendTo('body');
+		
+		for  (var i = 0; i < list.length; i++)  {
+			if (list[i].sublist) {
+				list[i].submenu = createMenu(list[i].sublist).hide();
+				list[i].btn.appendto(menu);
+				list[i].btn.onclick = function() {
+					for  (var i = 0; i < list.length; i++)  {
+						if (list[i].btn === this) {
+							var top = menu.position().top + this.pad.position().top;
+							var left = menu.position().left - 150;
+							list[i].submenu.children().css('float', 'left');
+							list[i].submenu.css({'top': top, 'left': left, 'bottom': 'auto', 'right': 'auto'}).toggle();
+							break;
+						}
+					}					
+				};
+			}
+			else {
+				list[i].btn.appendto(menu);
+				list[i].btn.onclick = function() {
+					for  (var i = 0; i < list.length; i++)  {
+						if (list[i].btn === this) {
+							list[i].onclick();
+							break;
+						}
+					}
+					
+				};
+			}
+		}
+		return menu;
+	}
+	
+	var menu = createMenu(btnList);
+
+/*	
 	var aryPen = [['pen', 'black'], ['pen', 'red'], ['pen', 'green'], ['pen', 'blue'], ['eraser', 'black']];
 	var btnPen = [{}];
 	var btngrppen = {};
@@ -102,7 +197,7 @@ $(function(){
 
 	for (var i=0; i < arySize.length; i++){
 	    btnSize[i] = {};
-		btnSize[i].btn = new Gatherhub.SvgButton({icon: svgicon[arySize[i][0]], size: arySize[i][1]}).appendto(btngrpsize.list);
+		btnSize[i].btn = new Gatherhub.SvgButton({icon: svgicon[arySize[i][0]], resize: arySize[i][1]}).appendto(btngrpsize.list);
 	    btnSize[i].btn.onclick = function(){
 			if (btngrpsize.key.children().eq(0)[0] == this.pad[0]) {
 				if (!btngrppen.list.is(':hidden')) btngrppen.list.hide();
@@ -176,5 +271,5 @@ $(function(){
 	}
 	btnPen[0].btn.onclick();
 	btngrppen.key.hide();
-	  
+*/
 });
