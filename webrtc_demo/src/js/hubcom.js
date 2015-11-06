@@ -135,11 +135,12 @@ var hubCom;
 				var usr = self.usrList[from];
 				self.onDataRecv(usr,data);
 			};
-			pconn.onAddRStrm = 	function (stream){
-				self.onRStreamAdd(stream);
+			pconn.onAddRStrm = 	function (s){
+				self.onRStreamAdd(s);
 			};
-			pconn.onRmRStrm = function(event){
-				console.log('rStreamDel',event);
+			pconn.onRmRStrm = function(s){
+				console.log('rStreamDel',s);
+				self.onRStreamDel(s)
 			};
 			pconn.onConError = function(id){
 				console.log('peer ',id+'connect error');
@@ -392,15 +393,21 @@ var hubCom;
 			console.log('warning ','STUN Error,could not support media casting!');
 			return;
 		}
-		this.socket.emit('media',{room:this.opts.room,cmd:'req'});
-		this.setMediaAct('pending');
+		if(this.opts.twoway == true){
+
+		}else{
+			this.socket.emit('media',{room:this.opts.room,cmd:'req'});
+			this.setMediaAct('pending');
+		}
 	};
 
 	_proto.stopAudioCast = function(){
 		if(this.media.getStatus() === 1){
 			this.media.stop();
 		}
-		this.socket.emit('media',{room:this.opts.room,cmd:'rls'});
+		if(this.opts.twoway != true){
+			this.socket.emit('media',{room:this.opts.room,cmd:'rls'});
+		}
 		if(this.mediaActive == 'pending'){
 			this.setMediaAct('idle');
 		}
@@ -428,25 +435,31 @@ var hubCom;
 	_proto.onCastList = function(){};
 	_proto.onUsrList = function(){};
 	_proto.onWarnMsg = function(){};
+	_proto.onLMedAdd = function(){};
+	_proto.onRMedAdd = function(){};
+	_proto.onRMedDel = function(){};
 
 	////internal api called by media class
 
-	_proto.addLocMedia = function(stream){
-		if(this.opts.locAudio){
-	  	console.log('local stream added.');
-			attachMediaStream(this.opts.locAudio,stream);
-		}
-		this.localStream = stream;
+	_proto.addLocMedia = function(s){
+		// if(this.opts.locAudio){
+	 //  	console.log('local stream added.');
+		// 	attachMediaStream(this.opts.locAudio,stream);
+		// }
+		this.onLMedAdd(s);
+		this.localStream = s;
 		this.peers.forEach(function(pconn){
-			pconn.addStream(stream);
+			pconn.addStream(s);
 			pconn.makeOffer();
 		});
 	};
 	_proto.rmLocMedia = function(){
-		this.localStream = undefined;
+		var s = this.localStream;
 		this.peers.forEach(function(pconn){
+			pconn.removeStream(s);
 			pconn.makeOffer();
 		});
+		this.localStream = undefined;
 	};
 
 	_proto.setMediaAct = function(state){
@@ -454,13 +467,13 @@ var hubCom;
 		this.onMediaAct(state);
 	};
 
-	_proto.onRStreamAdd = function(stream){
-		if(this.opts.remAudio){
-	  	console.log('Remote stream added.');
-	  	attachMediaStream(this.opts.remAudio, stream);
-		}
-	  //this.remoteStream = stream;
+	_proto.onRStreamAdd = function(s){
+		this.onRMedAdd(s);
 	};
+
+	_proto.onRStreamDel = function(s){
+		this.onRMedDel(s);
+	}
 
 	hubCom =HubCom;
 

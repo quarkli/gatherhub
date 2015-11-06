@@ -5,15 +5,16 @@ var HubCom = require('./hubcom');
 var mediaButton = document.getElementById("mediaButton");
 
 var localAudio = document.querySelector('#localAudio');
-var remoteAudio = document.querySelector('#remoteAudio');
+// var remoteAudio = document.querySelector('#remoteAudio');
 
 
 
 
 var options = {};
 /*pass local and remote audio element to hubcom*/
-options.locAudio = localAudio;
-options.remAudio = remoteAudio;
+// options.locAudio = localAudio;
+// options.remAudio = remoteAudio;
+//options.twoway = true;
 
 /*get userName*/
 var user = prompt("Please enter your name","");
@@ -26,11 +27,15 @@ options.usrName = user;
 
 var hubCom = new HubCom(options);
 
+
 hubCom.onDataRecv = hdlDataRecv;
 hubCom.onMediaAct =  hdlMedAct;
 hubCom.onCastList = updateCastList;
 hubCom.onUsrList = updateUsrList;
 hubCom.onWarnMsg = showWarnMsg;
+hubCom.onLMedAdd = hdlLMedAdd;
+hubCom.onRMedAdd = hdlRMedAdd;
+hubCom.onRMedDel = hdlRMedDel;
 mediaButton.onclick = invokeMedia;
 
 
@@ -83,6 +88,36 @@ function updateUsrList(list){
     $('#usrList').append('</ul>');
 
 }
+var medList = [];
+
+function hdlLMedAdd(s){
+    attachMediaStream(localAudio,s);
+}
+
+function hdlRMedAdd(s){
+    //<audio id='localAudio' autoplay muted></audio>
+    var mNode,au;
+    mNode = {};
+    mNode.id = 'rAudio'+medList.length;
+    mNode.ln = "<audio id="+mNode.id+" autoplay></audio>"
+    mNode.s = s;
+    medList[medList.length] = mNode;
+    $('.rStrmList').append(mNode.ln);
+    au = document.querySelector('#'+mNode.id);
+    attachMediaStream(au,s);
+}
+
+function hdlRMedDel(s){
+    var i, len;
+    len = medList.length;
+    for(i=0;i<len;i++){
+        if(medList[i] && medList[i].s == s){
+            $('#'+medList[i].id).remove();
+            delete medList[i];
+            return;
+        }
+    }
+}
 
 function hdlMedAct(state){
 	switch(state){
@@ -125,4 +160,17 @@ function showWarnMsg(msg){
     $('.warn-msg').html('<strong>Warning: </strong>' + msg);
 }
 
-
+var cnt = 0;
+$('#addAudio').click(function(event) {
+    var aulink; 
+    cnt += 1;
+    aulink = "<audio id='testAudio"+cnt+"'></audio>";
+    console.log('add audio link',aulink);
+    $('.test-area').append(aulink);
+});
+$('#rmAudio').click(function(event) {
+    var aulink = '#testAudio'+cnt;
+    console.log('rm audio link',aulink);
+    $(aulink).remove();
+    cnt -= 1;
+});
