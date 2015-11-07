@@ -612,10 +612,18 @@ var Gatherhub = Gatherhub || {};
 		};
 		_proto.undo = function() {
 			if (this.pathholder.children().length > 0) this.pathholder.children().last().appendTo(this.redocache);
+			if (this.vpad) {
+				this.vpad.fitcontent();
+				this.zoom(this.zrate);
+			}
 			return this;
 		};
 		_proto.redo = function() {
 			if (this.redocache.children().length > 0) this.redocache.children().last().appendTo(this.pathholder);
+			if (this.vpad) {
+				this.vpad.fitcontent();
+				this.zoom(this.zrate);
+			}
 			return this;
 		};
 		_proto.clearcanvas = function() {
@@ -673,6 +681,7 @@ var Gatherhub = Gatherhub || {};
 			if (opt === undefined) opt = {};
 			this.defaultWidth = opt.w || 50;
 			this.defaultHeight = opt.h || 50;
+			this.tip = opt.tip || '';
 			this.resize = opt.resize || .8;
 			this.minimize();
 			this.bgcolor(opt.bgcolor || 'white');
@@ -689,10 +698,6 @@ var Gatherhub = Gatherhub || {};
 		// Prototypes
 		var _proto = SvgButton.prototype = extend(g.VisualPad);	// Inheritance
 		_proto.constructor = SvgButton;							// Overload constructor
-		_proto.tips = '';
-		_proto.text = '';
-		_proto.padding = 0;
-		_proto.rcorner = 0.2; 	// rcorner = 0 (rectangle) ~ 1.0 (circle/oval)
 		_proto.onclick = function(){};
 		_proto.icon = function(svg) {
 			this.canvas.html(svg);
@@ -719,4 +724,94 @@ var Gatherhub = Gatherhub || {};
 		};
 	})();
 	
+	// Object Prototype: BtnMenu
+	(function(){
+		// Private
+		function toggleSubmenu(){
+			var submenu = $('#' + $(this).children().last().attr('class'))
+			if (submenu.length == 0) submenu = $('.' + $(this).attr('id'));
+			var top = $(this).parent().position().top + $(this).children().last().position().top;
+			var left = $(this).parent().position().left;
+
+			if (submenu.children().last().css('float') == 'left') {
+				left += $(this).width();
+				if (left + $(this).width() * submenu.children().length > $(window).width()){
+					left -= $(this).width() * (submenu.children().length + 1);
+					for (var i = 0; i < submenu.children().length; i++) {
+						submenu.children().eq(submenu.children().length - i -1).appendTo(submenu);
+					}								
+				}
+			}
+			else {
+				if (left + $(this).width() * 2 > $(window).width())	left -= $(this).width();
+				else left += $(this).width();
+				if (submenu.children().length * $(this).height() + top > $(window).height())
+					top -= $(this).height() * (submenu.children().length - 1);
+			}
+			submenu.css({'top': top, 'left': left});
+			if (submenu.is(':hidden')) submenu.show();
+			else submenu.hide();
+		}
+		
+		function createMenu(list) {
+			var menu = $('<div/>').css('font-size', 0).appendTo('body');
+			menu.attr('id', 0 | (Math.random() * 10000));
+			
+			list.forEach(function(e, i){
+				e.id = 0 | (Math.random() * 10000);
+
+				if (e.sublist) {
+					e.sublist = createMenu(e.sublist);
+					if (e.direction == 'horizontal') e.sublist.children().css('float', 'left');
+					e.sublist.css('position', 'absolute').attr('class', e.id).appendTo('body').hide();
+					e.sublist.children().addClass(e.sublist.attr('id'));
+				}
+
+				if (e.btn) {
+					e.btn = new Gatherhub.SvgButton(e.btn).appendto(menu).pad.attr('id', e.id);	
+					if (e.act) {
+						e.btn.on('click', function(){
+							e.act();
+							var btngrp = $('.' + $(this).attr('class'));
+							if ($(this).parent().attr('id') == $(this).attr('class')) {
+								for (var i = 0; i < btngrp.length; i++) {
+									if ($(btngrp[i]).parent().attr('id') != $(this).attr('class')) {
+										$(this).appendTo($(btngrp[i]).parent());
+										$(btngrp[i]).appendTo($('#' + $(this).attr('class')));
+										break;
+									}
+								}
+							}
+						});
+					}
+				}
+				else {
+					e.btn = $('<div/>').css('font-size', 0).attr('id', e.id).appendTo(menu);
+					if (e.sublist.children().length > 0) e.sublist.children().first().show().appendTo(e.btn);
+				}
+				
+				if (e.sublist) {
+					e.btn.on('click', toggleSubmenu);
+				}
+			});
+			return menu;
+		}
+
+		// Gatherhub.BtnMenu
+		g.BtnMenu = BtnMenu;
+		
+		// Constructor
+		function BtnMenu(list) {
+			if (list.rootlist.length > 0) {
+				this.root = createMenu(list.rootlist);
+				if (list.direction == 'horizontal') this.root.children().css('float', 'left');
+				list.id = this.root.attr('id');
+				this.root.children().addClass(list.id);
+			}
+		}
+
+		// Prototypes
+		var _proto = BtnMenu.prototype;
+		_proto.constructor = BtnMenu;
+	})();
 })();
