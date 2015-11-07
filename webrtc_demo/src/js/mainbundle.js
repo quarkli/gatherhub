@@ -97,6 +97,9 @@ var hubCom;
 		this.mediaActive = 'idle';
 		//media casting list
 		this.castList = [];
+		//two way calls
+		this.twoway = opts.twoway;
+		this.negoiateState = 0;
 
 		//rtcsupport
 		rtcsupport = webrtc.support;
@@ -152,7 +155,7 @@ var hubCom;
 		//create peerconnections
 		function createPeer(type,id,sdp){
 			var index = getSockIdx(id);
-		  	console.log('get index:', index);
+		  	// console.log('get index:', index);
 			var pconn = self.peers[index];
 			if(!pconn){
 				var opts = self.opts;
@@ -163,6 +166,8 @@ var hubCom;
 				regPconnEvtCb(pconn);
 			}
 
+			//udpate call type
+
 			if(type == 'calling'){
 				if(self.localStream){
 					pconn.addStream(self.localStream);
@@ -170,13 +175,39 @@ var hubCom;
 				//create offer
 				pconn.makeOffer();
 			}else{
-				/*if there is a local stream playing, we need remove this */
-				if(self.localStream){
-					self.media.stop();
+				//recieve offer part is called
+				pconn.callType(type);
+				pconn.negoState(true);
+				if(self.twoway == true){
+					//check whether sdp contain audio on/off information
+					if(isSdpWithAudio(sdp.sdp)){
+						console.log('offer with audio sdp');
+						if(self.media.status==0){
+							self.media.start();
+					  		pconn.setRmtDesc(sdp);
+					}else{
+						  	pconn.setRmtDesc(sdp);
+					  		pconn.makeAnswer();
+						}
+					}else{
+						console.log('offer without audio!');
+						if(self.media.status==1){
+							self.media.stop();
+					  		pconn.setRmtDesc(sdp);
+					}else{
+						  	pconn.setRmtDesc(sdp);
+					  		pconn.makeAnswer();
+						}
+					}
+
+				}else{
+					/*if there is a local stream playing, we need remove this */
+					if(self.localStream){
+						self.media.stop();
+					}
+				  	pconn.setRmtDesc(sdp);
+			  		pconn.makeAnswer();
 				}
-			  	pconn.setRemoteDescription(new RTCSessionDescription(sdp));
-				//make a answer
-			  	pconn.makeAnswer();
 			}
 	
 		}
@@ -216,6 +247,23 @@ var hubCom;
 			delete self.exPeers[id];
 		}
 
+		function isSdpWithAudio(s){
+			var sdps,idx,sdp,ret;
+			ret = false;
+			sdps =s.split('m=');
+			sdps.forEach(function(d){
+				sdp = 'm=' +d;
+				idx = sdp.search('m=audio');
+				if(idx >=0){
+					if(sdp.slice(idx).search('a=sendrecv')>=0){
+						ret = true;
+						return;
+					}
+				}
+			});
+			return ret;
+		}
+
 		//parse signal messages from other peers
 		function parseSigMsg(msg){
 			var id = msg.from;
@@ -240,7 +288,7 @@ var hubCom;
 					console.log("wrong answer id from "+id);
 					return;
 				}
-			  pconn.setRemoteDescription(new RTCSessionDescription(msg.sdp));
+			  pconn.setRmtDesc(msg.sdp);
 				
 			} else if (msg.sdp.type === 'candidate') {
 				if(!pconn){
@@ -394,7 +442,8 @@ var hubCom;
 			console.log('warning ','STUN Error,could not support media casting!');
 			return;
 		}
-		if(this.opts.twoway == true){
+		if(this.twoway == true){
+			if(this.media.status==0)this.media.start();
 
 		}else{
 			this.socket.emit('media',{room:this.opts.room,cmd:'req'});
@@ -406,7 +455,7 @@ var hubCom;
 		if(this.media.getStatus() === 1){
 			this.media.stop();
 		}
-		if(this.opts.twoway != true){
+		if(this.twoway != true){
 			this.socket.emit('media',{room:this.opts.room,cmd:'rls'});
 		}
 		if(this.mediaActive == 'pending'){
@@ -451,14 +500,24 @@ var hubCom;
 		this.localStream = s;
 		this.peers.forEach(function(pconn){
 			pconn.addStream(s);
-			pconn.makeOffer();
+			if(pconn.negoState()){
+				pconn.makeAnswer();
+			}else{
+				pconn.makeOffer();
+			}
+
+
 		});
 	};
 	_proto.rmLocMedia = function(){
 		var s = this.localStream;
 		this.peers.forEach(function(pconn){
 			pconn.removeStream(s);
-			pconn.makeOffer();
+			if(pconn.negoState()){
+				pconn.makeAnswer();
+			}else{
+				pconn.makeOffer();
+			}
 		});
 		this.localStream = undefined;
 	};
@@ -500,7 +559,7 @@ var options = {};
 /*pass local and remote audio element to hubcom*/
 // options.locAudio = localAudio;
 // options.remAudio = remoteAudio;
-//options.twoway = true;
+options.twoway = true;
 
 /*get userName*/
 var user = prompt("Please enter your name","");
@@ -646,20 +705,6 @@ function showWarnMsg(msg){
     $('.warn-msg').html('<strong>Warning: </strong>' + msg);
 }
 
-var cnt = 0;
-$('#addAudio').click(function(event) {
-    var aulink; 
-    cnt += 1;
-    aulink = "<audio id='testAudio"+cnt+"'></audio>";
-    console.log('add audio link',aulink);
-    $('.test-area').append(aulink);
-});
-$('#rmAudio').click(function(event) {
-    var aulink = '#testAudio'+cnt;
-    console.log('rm audio link',aulink);
-    $(aulink).remove();
-    cnt -= 1;
-});
 
 },{"./hubcom":1}],3:[function(require,module,exports){
 'use strict';
@@ -690,7 +735,8 @@ var peerConn;
         this.peer.onicecandidate = onIce;
         this.peer.onaddstream = onRStrmAdd;
         this.peer.onremovestream = onRStrmRm;
-        this.ctype = options.type;
+        this.ctyp = options.type;
+        this.negostate = false;
 
         //internal methods
         function onIce(event){
@@ -707,7 +753,7 @@ var peerConn;
                     });
           } else {
             console.log('End of candidates.','dc channel state is '+self.dc.readyState);
-            if(self.ctype == 'calling' && self.dc.readyState != 'open'){
+            if(self.ctyp == 'calling' && self.dc.readyState != 'open'){
                 self.onConError(self.id);
             }
           }
@@ -754,6 +800,8 @@ var peerConn;
     //api method
     _proto.makeOffer = function(){
         var self = this;
+        //in each negoiation, the party who make offer should be calling 
+        this.ctyp = "calling";
         this.peer.createOffer(function(desc){
             console.log('makeOffer',desc);
             self.peer.setLocalDescription(desc);
@@ -763,11 +811,13 @@ var peerConn;
 
     _proto.makeAnswer = function(){
         var self = this;
+        //this.peer.setRemoteDescription(this.rmtSdp);
         this.peer.createAnswer(function(desc){
             console.log('makeAnswer');
             self.peer.setLocalDescription(desc);
             self.onSend('msg',{room:self.room, to:self.id, sdp:desc});
         },null);
+        this.negostate = false;
 
     };
 
@@ -779,9 +829,13 @@ var peerConn;
         this.peer.removeStream(stream);
     };
 
-    _proto.setRemoteDescription = function(desc){
-        this.peer.setRemoteDescription(desc);
-        console.log('setRemoteDescription ',desc);
+    _proto.setRmtDesc = function(desc){
+        var sdp = new RTCSessionDescription(desc);
+        this.peer.setRemoteDescription(sdp);
+        // if(this.negostate == false){
+        //     this.peer.setRemoteDescription(sdp);
+        // }
+        console.log('setRemoteDescription ',sdp);
     };
 
     _proto.addIceCandidate = function(candidate){
@@ -808,6 +862,14 @@ var peerConn;
 
     _proto.getDcState =  function(){
         return this.dc.readyState == 'open';
+    };
+
+    _proto.callType = function(v){
+        return (v == undefined)?this.ctyp : this.ctype = v; 
+    };
+
+    _proto.negoState = function(v){
+        return (v == undefined)?this.negostate : this.negostate = v; 
     };
 
 

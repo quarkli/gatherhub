@@ -26,7 +26,8 @@ var peerConn;
         this.peer.onicecandidate = onIce;
         this.peer.onaddstream = onRStrmAdd;
         this.peer.onremovestream = onRStrmRm;
-        this.ctype = options.type;
+        this.ctyp = options.type;
+        this.negostate = false;
 
         //internal methods
         function onIce(event){
@@ -43,7 +44,7 @@ var peerConn;
                     });
           } else {
             console.log('End of candidates.','dc channel state is '+self.dc.readyState);
-            if(self.ctype == 'calling' && self.dc.readyState != 'open'){
+            if(self.ctyp == 'calling' && self.dc.readyState != 'open'){
                 self.onConError(self.id);
             }
           }
@@ -90,6 +91,8 @@ var peerConn;
     //api method
     _proto.makeOffer = function(){
         var self = this;
+        //in each negoiation, the party who make offer should be calling 
+        this.ctyp = "calling";
         this.peer.createOffer(function(desc){
             console.log('makeOffer',desc);
             self.peer.setLocalDescription(desc);
@@ -99,11 +102,13 @@ var peerConn;
 
     _proto.makeAnswer = function(){
         var self = this;
+        //this.peer.setRemoteDescription(this.rmtSdp);
         this.peer.createAnswer(function(desc){
             console.log('makeAnswer');
             self.peer.setLocalDescription(desc);
             self.onSend('msg',{room:self.room, to:self.id, sdp:desc});
         },null);
+        this.negostate = false;
 
     };
 
@@ -115,9 +120,13 @@ var peerConn;
         this.peer.removeStream(stream);
     };
 
-    _proto.setRemoteDescription = function(desc){
-        this.peer.setRemoteDescription(desc);
-        console.log('setRemoteDescription ',desc);
+    _proto.setRmtDesc = function(desc){
+        var sdp = new RTCSessionDescription(desc);
+        this.peer.setRemoteDescription(sdp);
+        // if(this.negostate == false){
+        //     this.peer.setRemoteDescription(sdp);
+        // }
+        console.log('setRemoteDescription ',sdp);
     };
 
     _proto.addIceCandidate = function(candidate){
@@ -144,6 +153,14 @@ var peerConn;
 
     _proto.getDcState =  function(){
         return this.dc.readyState == 'open';
+    };
+
+    _proto.callType = function(v){
+        return (v == undefined)?this.ctyp : this.ctype = v; 
+    };
+
+    _proto.negoState = function(v){
+        return (v == undefined)?this.negostate : this.negostate = v; 
     };
 
 

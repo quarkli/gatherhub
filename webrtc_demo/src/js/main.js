@@ -14,7 +14,7 @@ var options = {};
 /*pass local and remote audio element to hubcom*/
 // options.locAudio = localAudio;
 // options.remAudio = remoteAudio;
-//options.twoway = true;
+options.twoway = true;
 
 /*get userName*/
 var user = prompt("Please enter your name","");
@@ -160,17 +160,3 @@ function showWarnMsg(msg){
     $('.warn-msg').html('<strong>Warning: </strong>' + msg);
 }
 
-var cnt = 0;
-$('#addAudio').click(function(event) {
-    var aulink; 
-    cnt += 1;
-    aulink = "<audio id='testAudio"+cnt+"'></audio>";
-    console.log('add audio link',aulink);
-    $('.test-area').append(aulink);
-});
-$('#rmAudio').click(function(event) {
-    var aulink = '#testAudio'+cnt;
-    console.log('rm audio link',aulink);
-    $(aulink).remove();
-    cnt -= 1;
-});
