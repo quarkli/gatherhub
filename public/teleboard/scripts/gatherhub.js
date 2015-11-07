@@ -170,33 +170,37 @@ var Gatherhub = Gatherhub || {};
 			return this;
 		};
 		_proto.minimize = function() {
-			this.width(this.defaultWidth).height(this.defaultHeight).fitcontent();
+			this.width(this.defaultWidth).height(this.defaultHeight).refreshvbox();
 			return this;
 		};
 		_proto.fitcontent = function() {
-			this.canvasvbox.x = this.canvas[0].getBBox().x - 20;
-			this.canvasvbox.y = this.canvas[0].getBBox().y - 20;
-			this.canvasvbox.w = this.canvas[0].getBBox().width + 40;
-			this.canvasvbox.h = this.canvas[0].getBBox().height + 40;
-			this.refreshvbox();
+			this.canvasvbox.x = this.canvas[0].getBBox().x;
+			this.canvasvbox.y = this.canvas[0].getBBox().y;
+			this.canvasvbox.w = this.canvas[0].getBBox().width;
+			this.canvasvbox.h = this.canvas[0].getBBox().height;
+			var zw = this.width() / (this.canvas[0].getBBox().width + 10);
+			var zh = this.height() / (this.canvas[0].getBBox().height + 10);
+			this.zrate = zw < zh ? zw : zh;
+			this.zoom(this.zrate);
 
 			return this;
 		};		
 		_proto.zoom = function(z) {
+			if (z === undefined) return this.zrate;
+			
 			if (this.canvasvbox.w == 0) this.canvasvbox.w = this.width();
 			if (this.canvasvbox.h == 0) this.canvasvbox.h = this.height();
-			if (z >= 0.1 && z <= 10) {
-				this.zrate = precision(z, 1);
-				var x = this.zcenter.x * this.canvasvbox.w + this.canvasvbox.x;
-				var y = this.zcenter.y * this.canvasvbox.h + this.canvasvbox.y;
-				this.canvasvbox.w = precision((this.width() - this.borderpadding()) / this.zrate, 3);
-				this.canvasvbox.h = precision((this.height() - this.borderpadding()) / this.zrate, 3);
-				this.canvasvbox.x = precision(x - this.zcenter.x * this.canvasvbox.w, 3);
-				this.canvasvbox.y = precision(y - this.zcenter.y * this.canvasvbox.h, 3);
-				this.refreshvbox();
-				return this;
-			}
-			return this.zrate;
+
+			z = $.isNumeric(z) ? (z > 1000 ? 1000 : z < 0.001 ? 0.001 : precision(z, 3)) : this.zrate;
+			this.zrate = z;
+			var x = this.zcenter.x * this.canvasvbox.w + this.canvasvbox.x;
+			var y = this.zcenter.y * this.canvasvbox.h + this.canvasvbox.y;
+			this.canvasvbox.w = precision((this.width() - this.borderpadding()) / this.zrate, 3);
+			this.canvasvbox.h = precision((this.height() - this.borderpadding()) / this.zrate, 3);
+			this.canvasvbox.x = precision(x - this.zcenter.x * this.canvasvbox.w, 3);
+			this.canvasvbox.y = precision(y - this.zcenter.y * this.canvasvbox.h, 3);
+			this.refreshvbox();
+			return this;
 		};
 		_proto.offsetcanvas = function(axis, offset) {
 			if ($.isNumeric(offset)) {
@@ -331,39 +335,6 @@ var Gatherhub = Gatherhub || {};
 		_proto.defsize = function(w, h) {
 			this.defaultWidth = w;
 			this.defaultHeight = h;
-			return this;
-		};
-		_proto.showresol = function() {
-			this.resolution = true;
-			return this;
-		};
-		_proto.updateresol = function() {
-			if (this.resolution) {
-				if (this.pad.children('span').length) {
-					this.pad.children('span').eq(0).html(precision(this.canvasvbox.w, 0));
-					this.pad.children('span').eq(1).html(precision(this.canvasvbox.h, 0));
-				}
-				else {
-					var hcss = {
-						'position': 'absolute', 
-						'color': '#888', 
-						'font-size': '8px', 
-						'bottom': '5px', 
-						'left': '5px'
-						};
-					var vcss = {
-						'position': 'absolute', 
-						'color': '#888', 
-						'font-size': '8px', 
-						'top': '5px', 
-						'right': '0px',
-						'display': 'block',
-						'transform': 'rotate(270deg)'
-						};
-					$('<span/>').html(precision(this.canvasvbox.w, 0)).css(hcss).appendTo(this.pad);
-					$('<span/>').html(precision(this.canvasvbox.h, 0)).css(vcss).appendTo(this.pad);				
-				}
-			}
 			return this;
 		};
 		_proto.mousedownHdl = function(x, y) {
@@ -639,6 +610,14 @@ var Gatherhub = Gatherhub || {};
 			}
 			return this.ps;
 		};
+		_proto.undo = function() {
+			if (this.pathholder.children().length > 0) this.pathholder.children().last().appendTo(this.redocache);
+			return this;
+		};
+		_proto.redo = function() {
+			if (this.redocache.children().length > 0) this.redocache.children().last().appendTo(this.pathholder);
+			return this;
+		};
 		_proto.clearcanvas = function() {
 			this.pathholder.empty();
 			return this;
@@ -668,11 +647,14 @@ var Gatherhub = Gatherhub || {};
 			}
 		};
 		_proto.mousewheelHdl = function(delta) {
+			var offset = Math.pow(10, Math.floor(Math.log10(this.zrate)));
+
 			if (delta > 0) {
-				this.zoom(this.zoom() + (this.zoom() < 1 ? 0.1 : 1));
+				this.zoom(this.zoom() + offset);
 			}
 			else {
-				this.zoom(this.zoom() - (this.zoom() <= 1 ? 0.1 : 1));
+				if (this.zoom() <= offset) offset /= 10;
+				this.zoom(this.zoom() - offset);
 			}
 		};
 	})();
@@ -684,14 +666,24 @@ var Gatherhub = Gatherhub || {};
 		// Gatherhub.SvgButton
 		g.SvgButton = SvgButton;
 		// Constructor
-		function SvgButton(w, h) {
+		function SvgButton(opt) {
 			trace(L1, this.constructor.name + '.SvgButton' +
 				'(' + Array.prototype.slice.call(arguments) + ')');
 			g.VisualPad.call(this);
-			this.defaultWidth = w || 50;
-			this.defaultHeight = h || 50;
+			if (opt === undefined) opt = {};
+			this.defaultWidth = opt.w || 50;
+			this.defaultHeight = opt.h || 50;
+			this.resize = opt.resize || .8;
 			this.minimize();
+			this.bgcolor(opt.bgcolor || 'white');
+			this.bordercolor(opt.bordercolor || 'black');
+			this.borderwidth(opt.borderwidth || 1);
+			this.borderradius(opt.borderradius || .25);
+			this.iconcolor(opt.iconcolor || 'black');
+			this.icon(opt.icon || '');
 			this.resizable = false;
+			
+			this.pad.off('mouseleave');
 		}
 		
 		// Prototypes
@@ -702,67 +694,29 @@ var Gatherhub = Gatherhub || {};
 		_proto.padding = 0;
 		_proto.rcorner = 0.2; 	// rcorner = 0 (rectangle) ~ 1.0 (circle/oval)
 		_proto.onclick = function(){};
+		_proto.icon = function(svg) {
+			this.canvas.html(svg);
+		};
+		_proto.iconcolor = function(c) {
+			this.canvas.css('fill', c);
+			return this;
+		};
+		_proto.appendto = function(target) {
+			g.VisualPad.prototype.appendto.call(this, target);
+			this.fitcontent().zoom(this.zrate * this.resize);
+			return this;
+		};
 		_proto.mousedownHdl = function(x, y) {
 			g.VisualPad.prototype.mousedownHdl.call(this, x, y);
+			this.fitcontent().zoom(this.zrate * this.resize);
 			this.prevborderwd = this.borderwidth();
 			this.borderwidth(this.prevborderwd + 1);
-			this.onclick();
 		};
 		_proto.mouseupHdl = function(x, y) {
 			g.VisualPad.prototype.mouseupHdl.call(this, x, y);
 			this.borderwidth(this.prevborderwd);
+			this.onclick();
 		};
 	})();
 	
-	// Object Prototype: BtnGrp
-	(function(){
-		// Private
-
-		// Gatherhub.SvgButton
-		g.BtnGrp = BtnGrp;
-		// Constructor
-		function BtnGrp(ot) {
-			this.main = $('<div class=".container"/>').css('position', 'absolute').css('font-size', 0);
-			this.key = $('<div/>').css('font-size', 0).appendTo(this.main);
-			this.list = $('<div/>').css('font-size', 0).appendTo(this.main);
-			this.ot = ot || 'vertical';
-			this.orientation(ot);
-			this.buttons = [{}];
-			this.length = 0;
-		}
-		
-		// Prototypes
-		var _proto = BtnGrp.prototype;	// Inheritance
-		_proto.constructor = BtnGrp;	// Overload constructorzx
-		_proto.ot = 'vertical';
-		_proto.orientation = function (ot) {
-			switch (ot) {
-				case 'vertical':
-					this.key.addClass('row');
-					this.list.addClass('row');
-					break;
-				case 'horizontal':
-					this.key.addClass('col-sm-6');
-					this.list.addClass('col-sm-6');
-					break;
-			}
-			return this;
-		};
-		_proto.addbtn = function(btn) {
-			this.buttons[this.length].btn = btn;
-			this.buttons[this.length].selected = false;
-			this.buttons[this.length].btngrp = this;
-			btn.appendto(this.list);
-		};
-		_proto.btnselect = function(sel) {
-			for (var i=0; i < this.length; i++) {
-				this.buttons[i].selected = false;
-				this.list.append(this.buttons[i].btn);
-				if (this.buttons[i].btn === sel || i == sel) {
-					this.buttons[i].selected = true;
-					this.key.append(this.buttons[i].btn);
-				}
-			}
-		};
-	})();	
 })();
