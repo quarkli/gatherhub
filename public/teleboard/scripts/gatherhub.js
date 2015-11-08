@@ -771,7 +771,7 @@ var Gatherhub = Gatherhub || {};
 				if (e.btn) {
 					e.btn = new Gatherhub.SvgButton(e.btn).appendto(menu).pad.attr('id', e.id);	
 					if (e.act) {
-						e.btn.on('click', function(){
+						e.btn.on('click touchstart', function(){
 							e.act();
 							var btngrp = $('.' + $(this).attr('class'));
 							if ($(this).parent().attr('id') == $(this).attr('class')) {
@@ -792,7 +792,7 @@ var Gatherhub = Gatherhub || {};
 				}
 				
 				if (e.sublist) {
-					e.btn.on('click', toggleSubmenu);
+					e.btn.on('click touchstart', toggleSubmenu);
 				}
 			});
 			return menu;
