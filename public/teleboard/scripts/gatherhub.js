@@ -690,6 +690,7 @@ var Gatherhub = Gatherhub || {};
 			this.borderradius(opt.borderradius || .25);
 			this.iconcolor(opt.iconcolor || 'black');
 			this.icon(opt.icon || '');
+			this.pad.attr('title', opt.tip || '');
 			this.resizable = false;
 			
 			this.pad.off('mouseleave');
