@@ -19,11 +19,12 @@ $(function(){
 	};
 
 	var penList = [
-		{btn: {icon: svgicon.pen, tip: 'Black Pen'}, act: function(){sp.pencolor('black')}},
-		{btn: {icon: svgicon.pen, iconcolor: 'red', tip: 'Red Pen'}, act: function(){sp.pencolor('red')}},
-		{btn: {icon: svgicon.pen, iconcolor: 'green', tip: 'Green Pen'}, act: function(){sp.pencolor('green')}},
-		{btn: {icon: svgicon.pen, iconcolor: 'blue', tip: 'Blue Pen'}, act: function(){sp.pencolor('blue')}},
-		{btn: {icon: svgicon.eraser, tip: 'Eraser'}, act: function(){sp.pencolor('white')}}
+		{btn: {icon: svgicon.pen, tip: 'Black Pen'}, act: function(){sp.dragmode = false;sp.pencolor('black');}},
+		{btn: {icon: svgicon.pen, iconcolor: 'red', tip: 'Red Pen'}, act: function(){sp.dragmode = false;sp.pencolor('red');}},
+		{btn: {icon: svgicon.pen, iconcolor: 'green', tip: 'Green Pen'}, act: function(){sp.dragmode = false;sp.pencolor('green');}},
+		{btn: {icon: svgicon.pen, iconcolor: 'blue', tip: 'Blue Pen'}, act: function(){sp.dragmode = false;sp.pencolor('blue');}},
+		{btn: {icon: svgicon.eraser, tip: 'Eraser'}, act: function(){sp.dragmode = false;sp.pencolor('white');}},
+		{btn: {icon: svgicon.move, tip: 'Move Canvas'}, act: function(){sp.dragmode = true;}}
 	];
 	var sizeList = [
 		{btn: {icon: svgicon.circle, resize: 0.15, tip: 'Small (5px)'},	act: function(){sp.penwidth(5)}},

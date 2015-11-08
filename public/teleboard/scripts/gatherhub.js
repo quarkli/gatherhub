@@ -57,7 +57,7 @@ var Gatherhub = Gatherhub || {};
 		
 		// Constructor
 		function SvgPad(w, h) {
-			this.pad = $('<div/>');
+			this.pad = $('<div/>').css('font-size', 0);
 			this.canvas = $(document.createElementNS('http://www.w3.org/2000/svg', 'svg')).appendTo(this.pad);
 			this.zrate = 1;
 			this.zcenter = {x: 0.5, y: 0.5};
@@ -329,7 +329,8 @@ var Gatherhub = Gatherhub || {};
 		_proto.pinchSensitivity = 3;
 		_proto.src = function(srcid) {
 			this.source = (srcid && srcid[0] == '#' ? $(srcid) : $('#' + srcid));
-			if (this.source.length)	this.canvas.html('<use xlink:href="#' + this.source.attr('id') +'"/>');
+			// this is a workaround method to resolve <svg> namespace issue that could not be display properly in some browser
+			this.canvas.append($('<svg><use xlink:href="#' + this.source.attr('id') + '"/></svg>').children().eq(0));
 			return this;
 		};
 		_proto.defsize = function(w, h) {
@@ -580,6 +581,7 @@ var Gatherhub = Gatherhub || {};
 		_proto.activepath = -1;
 		_proto.pinchSensitivity = 7;
 		_proto.dragging = false;
+		_proto.dragmode = false;
 		_proto.bWsReady = false;
 		_proto.attachvp = function(vp) {
 			if (Object.getPrototypeOf(vp) === g.VisualPad.prototype) {
@@ -633,6 +635,10 @@ var Gatherhub = Gatherhub || {};
 		_proto.mousedownHdl = function(x, y) {
 			//trace(L4, this.constructor.name + '.mousedownHdl' +
 			//	'(' + Array.prototype.slice.call(arguments) + ')');
+			if (this.dragmode) {
+				this.dragging = true;
+				return;
+			}
 			drawStart.call(this, x, y);
 			//trace(L4, 'window=' + $(window).width() + 'x' + $(window).height());
 			//trace(L4, 'cavasvbox=' + this.canvasvbox.x + ' ' + this.canvasvbox.y + ' ' + this.canvasvbox.w + ' ' + this.canvasvbox.h);
@@ -701,7 +707,7 @@ var Gatherhub = Gatherhub || {};
 		_proto.constructor = SvgButton;							// Overload constructor
 		_proto.onclick = function(){};
 		_proto.icon = function(svg) {
-			this.canvas.html(svg);
+			$('<svg>'+svg+'</svg>').children().eq(0).appendTo(this.canvas);
 		};
 		_proto.iconcolor = function(c) {
 			this.canvas.css('fill', c);
@@ -728,48 +734,51 @@ var Gatherhub = Gatherhub || {};
 	// Object Prototype: BtnMenu
 	(function(){
 		// Private
-		function toggleSubmenu(){
-			var submenu = $('#' + $(this).children().last().attr('class'))
-			if (submenu.length == 0) submenu = $('.' + $(this).attr('id'));
+		function togglesub(){
+			var w = $(this).width();
+			var sub = $('#' + $(this).children().last().attr('class'));
+			var sc = sub.children();
+			if (sub.length == 0) sub = $('.' + $(this).attr('id'));
 			var top = $(this).parent().position().top + $(this).children().last().position().top;
 			var left = $(this).parent().position().left;
 
-			if (submenu.children().last().css('float') == 'left') {
-				left += $(this).width();
-				if (left + $(this).width() * submenu.children().length > $(window).width()){
-					left -= $(this).width() * (submenu.children().length + 1);
-					for (var i = 0; i < submenu.children().length; i++) {
-						submenu.children().eq(submenu.children().length - i -1).appendTo(submenu);
+			if (sub.children().last().css('float') == 'left') {
+				left += w;
+				if (left + w * sub.children().length > $(window).width()){
+					left -= w * (sub.children().length + 1);
+					for (var i = 0; i < sub.children().length; i++) {
+						sub.children().eq(sub.children().length - i -1).appendTo(sub);
 					}								
 				}
 			}
 			else {
-				if (left + $(this).width() * 2 > $(window).width())	left -= $(this).width();
-				else left += $(this).width();
-				if (submenu.children().length * $(this).height() + top > $(window).height())
-					top -= $(this).height() * (submenu.children().length - 1);
+				if (left + w * 2 > $(window).width())	left -= w;
+				else left += w;
+				if (sub.children().length * w + top > $(window).height())
+					top -= w * (sub.children().length - 1);
 			}
-			submenu.css({'top': top, 'left': left});
-			if (submenu.is(':hidden')) submenu.show();
-			else submenu.hide();
+			sub.css({'top': top, 'left': left});
+			if (sub.is(':hidden')) sub.show();
+			else sub.hide();
 		}
 		
 		function createMenu(list) {
-			var menu = $('<div/>').css('font-size', 0).appendTo('body');
-			menu.attr('id', 0 | (Math.random() * 10000));
+			var m = $('<div/>').css('font-size', 0).appendTo('body');
+			m.attr('id', 0 | (Math.random() * 10000));
 			
-			list.forEach(function(e, i){
-				e.id = 0 | (Math.random() * 10000);
+			list.forEach(function(e){
+				var id = e.id = 0 | (Math.random() * 10000);
+				var slist = e.sublist;
 
-				if (e.sublist) {
-					e.sublist = createMenu(e.sublist);
-					if (e.direction == 'horizontal') e.sublist.children().css('float', 'left');
-					e.sublist.css('position', 'absolute').attr('class', e.id).appendTo('body').hide();
-					e.sublist.children().addClass(e.sublist.attr('id'));
+				if (slist) {
+					slist = createMenu(slist);
+					if (e.direction == 'horizontal') slist.children().css('float', 'left');
+					slist.css('position', 'absolute').attr('class', id).appendTo('body').hide();
+					slist.children().addClass(slist.attr('id'));
 				}
 
 				if (e.btn) {
-					e.btn = new Gatherhub.SvgButton(e.btn).appendto(menu).pad.attr('id', e.id);	
+					e.btn = new Gatherhub.SvgButton(e.btn).appendto(m).pad.attr('id', id);	
 					if (e.act) {
 						e.btn.on('click touchstart', function(){
 							e.act();
@@ -787,15 +796,15 @@ var Gatherhub = Gatherhub || {};
 					}
 				}
 				else {
-					e.btn = $('<div/>').css('font-size', 0).attr('id', e.id).appendTo(menu);
-					if (e.sublist.children().length > 0) e.sublist.children().first().show().appendTo(e.btn);
+					e.btn = $('<div/>').css('font-size', 0).attr('id', id).appendTo(m);
+					if (slist.children().length > 0) slist.children().first().show().appendTo(e.btn);
 				}
 				
-				if (e.sublist) {
-					e.btn.on('click touchstart', toggleSubmenu);
+				if (slist) {
+					e.btn.on('click touchstart', togglesub);
 				}
 			});
-			return menu;
+			return m;
 		}
 
 		// Gatherhub.BtnMenu
@@ -803,11 +812,13 @@ var Gatherhub = Gatherhub || {};
 		
 		// Constructor
 		function BtnMenu(list) {
-			if (list.rootlist.length > 0) {
-				this.root = createMenu(list.rootlist);
-				if (list.direction == 'horizontal') this.root.children().css('float', 'left');
-				list.id = this.root.attr('id');
-				this.root.children().addClass(list.id);
+			var l = list.rootlist;
+			if (l.length > 0) {
+				var root = this.root = createMenu(l);
+				var children = root.children();
+				if (list.direction == 'horizontal') children.css('float', 'left');
+				list.id = root.attr('id');
+				children.addClass(list.id);
 			}
 		}
 
