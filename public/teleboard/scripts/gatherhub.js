@@ -191,7 +191,7 @@ var Gatherhub = Gatherhub || {};
 			if (this.canvasvbox.w == 0) this.canvasvbox.w = this.width();
 			if (this.canvasvbox.h == 0) this.canvasvbox.h = this.height();
 
-			z = $.isNumeric(z) ? (z > 1000 ? 1000 : z < 0.001 ? 0.001 : precision(z, 3)) : this.zrate;
+			z = $.isNumeric(z) ? (z > 100 ? 100 : z < 0.01 ? 0.01 : precision(z, 3)) : this.zrate;
 			this.zrate = z;
 			var x = this.zcenter.x * this.canvasvbox.w + this.canvasvbox.x;
 			var y = this.zcenter.y * this.canvasvbox.h + this.canvasvbox.y;
@@ -737,11 +737,10 @@ var Gatherhub = Gatherhub || {};
 		function togglesub(){
 			var w = $(this).width();
 			var sub = $('#' + $(this).children().last().attr('class'));
-			var sc = sub.children();
 			if (sub.length == 0) sub = $('.' + $(this).attr('id'));
-			var top = $(this).parent().position().top + $(this).children().last().position().top;
+			var top = $(this).parent().position().top + $(this).index() * w;
 			var left = $(this).parent().position().left;
-
+			
 			if (sub.children().last().css('float') == 'left') {
 				left += w;
 				if (left + w * sub.children().length > $(window).width()){
