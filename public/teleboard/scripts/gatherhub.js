@@ -415,14 +415,14 @@ var Gatherhub = Gatherhub || {};
 			x = point.x;
 			y = point.y;
 
-			var $node =  $(document.createElementNS('http://www.w3.org/2000/svg', 'path'));
-			$node.attr('stroke-width', this.pw);
-			$node.attr('stroke-linecap', this.ps);
-			$node.attr('stroke', this.pc);
-			$node.attr('fill', 'none');
-			$node.attr('d', 'M' + x + ',' + y);
+			var node =  $(document.createElementNS('http://www.w3.org/2000/svg', 'path'));
+			node.attr('stroke-width', this.pw);
+			node.attr('stroke-linecap', this.ps);
+			node.attr('stroke', this.pc);
+			node.attr('fill', 'none');
+			node.attr('d', 'M' + x + ',' + y);
 
-			this.pathholder.append($node);
+			this.pathholder.append(node);
 			//clearPathsCache();
 			this.activepath = this.pathholder.children('path').length - 1;
 			falseTouch = true;
@@ -455,13 +455,13 @@ var Gatherhub = Gatherhub || {};
 					this.vpad.fitcontent();
 					this.zoom(this.zrate);
 				}
-				
-				if (this.bWsReady) {
-					ws.send(
+
+				if (this.wsready) {
+					this.ws.send(
 						JSON.stringify(
 							{
-								id: hubid,
-								name: peername,
+								id: this.hubid,
+								name: this.peername,
 								action: 'path',
 								stroke: $node.attr('stroke'),
 								strokeWidth: $node.attr('stroke-width'),
@@ -572,6 +572,11 @@ var Gatherhub = Gatherhub || {};
 		// Prototypes
 		var _proto = SketchPad.prototype = extend(g.SvgPad);	// Inheritance
 		_proto.constructor = SketchPad;							// Overload constructor
+		_proto.ws = null;
+		_proto.wsready = false;
+		_proto.hubid = 0;
+		_proto.peername = null;
+		_proto.pulse = null;
 		_proto.vpad = null;
 		_proto.pathholder = null;
 		_proto.redocache = null;
@@ -582,7 +587,50 @@ var Gatherhub = Gatherhub || {};
 		_proto.pinchSensitivity = 7;
 		_proto.dragging = false;
 		_proto.dragmode = false;
-		_proto.bWsReady = false;
+		_proto.connect = function(svr, port) {
+			var self = this;
+			var ws = this.ws = new WebSocket('ws://' + svr + ':' + port);
+			ws.onopen = function(){
+				self.hubid = self.hubid || (0 | Math.random() * 10000);
+				self.peername = self.peername || 'Peer' + (0 | Math.random() * 10000);
+				ws.send(JSON.stringify({id: self.hubid, name: self.peername, action: 'connect'}));
+				self.wsready = true;
+				if (self.wsready) {
+					self.pulse = setInterval(function(){if (self.wsready) ws.send('');}, 30000);
+				}
+			};
+			ws.onmessage = function(msg){
+				if (msg.data.match('path')){
+					var ctx = JSON.parse(msg.data);
+					if (ctx.id == self.hubid && ctx.name != self.peername){
+						if (ctx.ops && ctx.ops == 'clear') {		
+							self.clearcanvas();
+						}
+						else if (ctx.d) {
+							var node = $(document.createElementNS('http://www.w3.org/2000/svg', 'path'));
+							node.attr('stroke-width', ctx.strokeWidth);
+							node.attr('stroke', ctx.stroke);
+							node.attr('stroke-linecap', ctx.strokeLinecap);
+							node.attr('fill', ctx.fill);
+							node.attr('d', ctx.d);
+							node.appendTo(self.pathholder);
+							if (self.vpad) {
+								self.vpad.fitcontent();
+								self.zoom(self.zrate);
+							}
+						}
+					}
+				}
+				else {
+					console.log(msg.data);
+				}
+			};
+			ws.onclose = function(){
+				clearInterval(self.pulse);
+				self.wsready = false;
+			};
+
+		};
 		_proto.attachvp = function(vp) {
 			if (Object.getPrototypeOf(vp) === g.VisualPad.prototype) {
 				vp.src(this.pathholder.attr('id'));

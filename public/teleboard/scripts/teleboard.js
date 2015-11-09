@@ -12,7 +12,9 @@ $(function(){
 	vp.defsize(sp.width()/4, sp.height()/4).minimize().appendto('body');
 
 	sp.attachvp(vp);
-
+	sp.hubid = 1000;
+	sp.connect('192.168.11.123', 55688);
+	
 	window.onresize = function(){
 		vp.defsize(sp.width()/4, sp.height()/4).minimize();
 		sp.width(sp.width()).height(sp.width()).maximize().zoom(sp.zoom());
