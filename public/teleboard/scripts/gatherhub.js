@@ -407,6 +407,13 @@ var Gatherhub = Gatherhub || {};
 			return {x: precision(canvasxy.x / this.zrate + this.canvasvbox.x, 3),
 					y: precision(canvasxy.y / this.zrate + this.canvasvbox.y, 3)};
 		}
+		function vbox2scn(vboxxy) {
+			var x = (vboxxy.x - this.canvasvbox.x) * this.zrate;
+			x = x < 0 ? 0 : x > this.width() ? this.width() : x;
+			var y = (vboxxy.y - this.canvasvbox.y) * this.zrate;
+			y = y < 0 ? 0 : y > this.height() ? this.height() : y;
+			return {x: x, y: y};
+		}
 		function drawStart(x, y){
 			//trace(L4, this.constructor.name + '.drawStart' +
 			//	'(' + Array.prototype.slice.call(arguments) + ')');
@@ -426,30 +433,46 @@ var Gatherhub = Gatherhub || {};
 
 			this.pathholder.append(path);
 			//clearPathsCache();
-			this.activepath = this.pathholder.children('path').length - 1;
+			this.activepath = path;
 			falseTouch = true;
 			setTimeout(function(){falseTouch=false;}, 5);
+			if (this.wsready) {
+				this.ws.send(
+					JSON.stringify(
+						{
+							id: this.hubid,
+							name: this.peername,
+							action: 'path',
+							pid: path.attr('id'),
+							ops: 'start',
+							x: point.x,
+							y: point.y,
+							c: this.repcolor
+						}
+					)
+				);
+			}
 		}
 		function drawPath(x, y){
 			//trace(L4, this.constructor.name + '.drawPath' +
 			//	'(' + Array.prototype.slice.call(arguments) + ')');
-			if (this.activepath >= 0) {
+			if (this.activepath) {
 				var point = vboxxy.call(this, canvasxy.call(this, screenxy(x, y)));
 				x = point.x;
 				y = point.y;
-				this.pathholder.children('path').eq(this.activepath).attr('d', this.pathholder.children('path').eq(this.activepath).attr('d') + 'L' + x + ',' + y);
+				this.activepath.attr('d', this.activepath.attr('d') + 'L' + x + ',' + y);
 			}
 		}
 		function drawEnd(){
 			//trace(L4, this.constructor.name + '.drawEnd' +
 			//	'(' + Array.prototype.slice.call(arguments) + ')');
-			if (this.activepath >= 0) {
-				var path = this.pathholder.children('path').eq(this.activepath);
+			if (this.activepath) {
+				var path = this.activepath;
 				var move = path.attr('d').split('L').length;
-				this.activepath = -1;
+				this.activepath = null;
 				
 				if (move < 2 || (falseTouch && move < 3)) {
-					this.pathholder.children('path').eq(this.activepath).remove();
+					path.remove();
 					return;
 				}
 				flush(this);
@@ -606,7 +629,7 @@ var Gatherhub = Gatherhub || {};
 		_proto.pc = 'black';
 		_proto.pw = 5;
 		_proto.ps = 'round';
-		_proto.activepath = -1;
+		_proto.activepath = null;
 		_proto.pinchSensitivity = 7;
 		_proto.dragging = false;
 		_proto.dragmode = false;
@@ -649,6 +672,19 @@ var Gatherhub = Gatherhub || {};
 									self.clearcanvas();
 									flush(self);
 									break;
+								case 'start':
+									var point = {x: ctx.x, y: ctx.y};
+									var scnxy = vbox2scn.call(self, point);
+									var left = scnxy.x == 0 ? 1 : (scnxy.x / self.width() > 0.5) ? scnxy.x - self.width() : scnxy.x;
+									var top = scnxy.y == 0 ? 1 : (scnxy.y / self.height() > 0.5) ? scnxy.y - self.height() : scnxy.y;
+									var i = ctx.pid.split('-', 1);
+									var r = $('<span/>').attr('id', i).html(i).appendTo('body');
+									r.css({'position': 'absolute', 'color': ctx.c, 'border-width': 1, 'border-style': 'solid'});
+									if (left > 0) r.css('left', left);
+									else r.css('right', -left);
+									if (top > 0) r.css('top', top );
+									else r.css('bottom', -top);
+									break;
 							}
 						}
 						else if (ctx.d) {
@@ -661,6 +697,7 @@ var Gatherhub = Gatherhub || {};
 							path.attr('d', ctx.d);
 							path.appendTo(self.pathholder);
 							flush(self);
+							$('#' + ctx.pid.split('-', 1)).remove();
 						}
 					}
 				}
@@ -712,6 +749,23 @@ var Gatherhub = Gatherhub || {};
 				return this;
 			}
 			return this.ps;
+		};
+		_proto.clearall = function() {
+			if (this.wsready) {
+				this.ws.send(
+					JSON.stringify(
+						{
+							id: this.hubid,
+							name: this.peername,
+							action: 'path',
+							ops: 'clear'
+						}
+					)
+				);
+			}
+			this.clearcanvas();
+			flush(this);
+			return this;
 		};
 		_proto.undoall = function() {
 			while ($('.' + this.peername).length) this.undo();
