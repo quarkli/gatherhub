@@ -636,8 +636,10 @@ var Gatherhub = Gatherhub || {};
 		_proto.dragmode = false;
 		_proto.connect = function(svr, port) {
 			var self = this;
-			this.svr = svr = svr || this.svr || '127.0.0.1';
-			this.port = port = port || this.port || 0;
+			svr = svr || this.svr || '127.0.0.1';
+			if (this.svr == null) this.svr = svr;
+			port = port || this.port || 0;
+			if (this.port == null) this.port = port;
 			var ws = this.ws = new WebSocket('ws://' + svr + ':' + port);
 			ws.onerror = function(){
 				if (svr == self.svr) {
@@ -685,6 +687,7 @@ var Gatherhub = Gatherhub || {};
 									else r.css('right', -left);
 									if (top > 0) r.css('top', top );
 									else r.css('bottom', -top);
+									setTimeout(function(){$('#' + i).remove();}, 2000);
 									break;
 							}
 						}
