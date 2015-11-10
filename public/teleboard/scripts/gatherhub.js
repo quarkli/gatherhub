@@ -475,6 +475,7 @@ var Gatherhub = Gatherhub || {};
 					path.remove();
 					return;
 				}
+				this.redocache.empty();
 				flush(this);
 
 				if (this.wsready) {
@@ -764,6 +765,7 @@ var Gatherhub = Gatherhub || {};
 				);
 			}
 			this.clearcanvas();
+			this.redocache.empty();
 			flush(this);
 			return this;
 		};
@@ -820,6 +822,7 @@ var Gatherhub = Gatherhub || {};
 		};
 		_proto.clearcanvas = function() {
 			this.pathholder.empty();
+			this.redocache.empty();
 			return this;
 		};
 		_proto.mousedownHdl = function(x, y) {
