@@ -415,14 +415,16 @@ var Gatherhub = Gatherhub || {};
 			x = point.x;
 			y = point.y;
 
-			var node =  $(document.createElementNS('http://www.w3.org/2000/svg', 'path'));
-			node.attr('stroke-width', this.pw);
-			node.attr('stroke-linecap', this.ps);
-			node.attr('stroke', this.pc);
-			node.attr('fill', 'none');
-			node.attr('d', 'M' + x + ',' + y);
+			var path =  $(document.createElementNS('http://www.w3.org/2000/svg', 'path'));
+			path.attr('id', this.peername + '-' + this.seq++);
+			path.attr('class', this.peername);
+			path.attr('stroke-width', this.pw);
+			path.attr('stroke-linecap', this.ps);
+			path.attr('stroke', this.pc);
+			path.attr('fill', 'none');
+			path.attr('d', 'M' + x + ',' + y);
 
-			this.pathholder.append(node);
+			this.pathholder.append(path);
 			//clearPathsCache();
 			this.activepath = this.pathholder.children('path').length - 1;
 			falseTouch = true;
@@ -442,19 +444,15 @@ var Gatherhub = Gatherhub || {};
 			//trace(L4, this.constructor.name + '.drawEnd' +
 			//	'(' + Array.prototype.slice.call(arguments) + ')');
 			if (this.activepath >= 0) {
-				var $node = this.pathholder.children('path').eq(this.activepath);
-				var move = $node.attr('d').split('L').length;
+				var path = this.pathholder.children('path').eq(this.activepath);
+				var move = path.attr('d').split('L').length;
 				this.activepath = -1;
 				
 				if (move < 2 || (falseTouch && move < 3)) {
 					this.pathholder.children('path').eq(this.activepath).remove();
 					return;
 				}
-				
-				if (this.vpad) {
-					this.vpad.fitcontent();
-					this.zoom(this.zrate);
-				}
+				flush(this);
 
 				if (this.wsready) {
 					this.ws.send(
@@ -463,17 +461,34 @@ var Gatherhub = Gatherhub || {};
 								id: this.hubid,
 								name: this.peername,
 								action: 'path',
-								stroke: $node.attr('stroke'),
-								strokeWidth: $node.attr('stroke-width'),
-								strokeLinecap: $node.attr('stroke-linecap'),
-								fill: $node.attr('fill'),
-								d: $node.attr('d')
+								pid: path.attr('id'),
+								stroke: path.attr('stroke'),
+								strokeWidth: path.attr('stroke-width'),
+								strokeLinecap: path.attr('stroke-linecap'),
+								fill: path.attr('fill'),
+								d: path.attr('d')
 							}
 						)
 					);
 				}
 			}
-		}	
+		}
+		function flush(sp) {
+			if (sp) {
+				sp.vpad.fitcontent();
+				sp.zoom(sp.zrate);
+			}			
+		}
+		function randcolor() {
+			var c = '#', m = 0 | Math.random() * 255;
+			while (c.length < 7) {
+				var n = 0 | Math.random() * 255;
+				while (Math.abs(n - m) < 16) n = 0 | Math.random() * 255;
+				m = n;
+				c += n < 16 ? '0' + n.toString(16) : n.toString(16);
+			}
+			return c.toUpperCase();
+		}
 		
 		// Gatherhub.SketchPad
 		g.SketchPad = SketchPad;
@@ -484,6 +499,8 @@ var Gatherhub = Gatherhub || {};
 			this.pathholder = $(document.createElementNS('http://www.w3.org/2000/svg', 'g')).attr('id', 'g' + (0 | Math.random() * 1000)).appendTo(this.canvas);
 			this.redocache = $(document.createElementNS('http://www.w3.org/2000/svg', 'g'));
 			this.nocontext();
+			this.peername = 'Peer' + (0 | Math.random() * 1000);
+			this.repcolor = randcolor();
 
 			this.pad.on('mousedown touchstart', function(evt){
 				var e = evt.originalEvent;
@@ -572,14 +589,20 @@ var Gatherhub = Gatherhub || {};
 		// Prototypes
 		var _proto = SketchPad.prototype = extend(g.SvgPad);	// Inheritance
 		_proto.constructor = SketchPad;							// Overload constructor
+		_proto.svr = null;
+		_proto.altsvr = null;
+		_proto.port = null;
+		_proto.altport = null;
 		_proto.ws = null;
 		_proto.wsready = false;
 		_proto.hubid = 0;
 		_proto.peername = null;
+		_proto.repcolor = '#FFF';
 		_proto.pulse = null;
 		_proto.vpad = null;
 		_proto.pathholder = null;
 		_proto.redocache = null;
+		_proto.seq = 0;
 		_proto.pc = 'black';
 		_proto.pw = 5;
 		_proto.ps = 'round';
@@ -589,10 +612,21 @@ var Gatherhub = Gatherhub || {};
 		_proto.dragmode = false;
 		_proto.connect = function(svr, port) {
 			var self = this;
+			this.svr = svr = svr || this.svr || '127.0.0.1';
+			this.port = port = port || this.port || 0;
 			var ws = this.ws = new WebSocket('ws://' + svr + ':' + port);
+			ws.onerror = function(){
+				if (svr == self.svr) {
+					svr = self.altsvr || svr;
+					port = self.altport || port;
+				}
+				else {
+					svr = self.svr || svr;
+					port = self.port || port;
+				}
+				self.connect(svr, port);
+			};
 			ws.onopen = function(){
-				self.hubid = self.hubid || (0 | Math.random() * 10000);
-				self.peername = self.peername || 'Peer' + (0 | Math.random() * 10000);
 				ws.send(JSON.stringify({id: self.hubid, name: self.peername, action: 'connect'}));
 				self.wsready = true;
 				if (self.wsready) {
@@ -603,33 +637,52 @@ var Gatherhub = Gatherhub || {};
 				if (msg.data.match('path')){
 					var ctx = JSON.parse(msg.data);
 					if (ctx.id == self.hubid && ctx.name != self.peername){
-						if (ctx.ops && ctx.ops == 'clear') {		
-							self.clearcanvas();
+						if (ctx.ops) {
+							switch (ctx.ops) {
+								case 'undo':
+									$('#' + ctx.pid).remove();
+									flush(self);
+									break;
+								case 'redo':
+									break;
+								case 'clear':
+									self.clearcanvas();
+									flush(self);
+									break;
+							}
 						}
 						else if (ctx.d) {
-							var node = $(document.createElementNS('http://www.w3.org/2000/svg', 'path'));
-							node.attr('stroke-width', ctx.strokeWidth);
-							node.attr('stroke', ctx.stroke);
-							node.attr('stroke-linecap', ctx.strokeLinecap);
-							node.attr('fill', ctx.fill);
-							node.attr('d', ctx.d);
-							node.appendTo(self.pathholder);
-							if (self.vpad) {
-								self.vpad.fitcontent();
-								self.zoom(self.zrate);
-							}
+							var path = $(document.createElementNS('http://www.w3.org/2000/svg', 'path'));
+							path.attr('id', ctx.pid);
+							path.attr('stroke-width', ctx.strokeWidth);
+							path.attr('stroke', ctx.stroke);
+							path.attr('stroke-linecap', ctx.strokeLinecap);
+							path.attr('fill', ctx.fill);
+							path.attr('d', ctx.d);
+							path.appendTo(self.pathholder);
+							flush(self);
 						}
 					}
 				}
 				else {
 					console.log(msg.data);
+					if (msg.data.indexOf(this.peername) < 0 && msg.data.indexOf('has entered')) {
+						self.undoall();
+						self.redoall();
+					}
 				}
 			};
 			ws.onclose = function(){
 				clearInterval(self.pulse);
 				self.wsready = false;
 			};
-
+			return this;
+		};
+		_proto.sendmsg = function(msg, tgt) {
+			if (this.wsready) {
+				this.ws.send(JSON.stringify({id: this.hubid, name: this.peername, action: 'say', data: msg, target: tgt}));
+			}
+			return this;
 		};
 		_proto.attachvp = function(vp) {
 			if (Object.getPrototypeOf(vp) === g.VisualPad.prototype) {
@@ -660,20 +713,55 @@ var Gatherhub = Gatherhub || {};
 			}
 			return this.ps;
 		};
+		_proto.undoall = function() {
+			while ($('.' + this.peername).length) this.undo();
+			return this;
+		};
 		_proto.undo = function() {
-			if (this.pathholder.children().length > 0) this.pathholder.children().last().appendTo(this.redocache);
-			if (this.vpad) {
-				this.vpad.fitcontent();
-				this.zoom(this.zrate);
+			var path = $('.' + this.peername).length ? $('.' + this.peername).last() : null;
+			if (path && path.attr('id').indexOf(this.peername) == 0) {
+				path.appendTo(this.redocache);
+				if (this.wsready) {
+					this.ws.send(
+						JSON.stringify(
+							{
+								id: this.hubid,
+								name: this.peername,
+								action: 'path',
+								pid: path.attr('id'),
+								ops: 'undo'
+							}
+						)
+					);
+				}
+				flush(this);
 			}
 			return this;
 		};
+		_proto.redoall = function() {
+			while (this.redocache.children().length) this.redo();
+			return this;
+		};
 		_proto.redo = function() {
-			if (this.redocache.children().length > 0) this.redocache.children().last().appendTo(this.pathholder);
-			if (this.vpad) {
-				this.vpad.fitcontent();
-				this.zoom(this.zrate);
+			if (this.redocache.children().length) var path = this.redocache.children().last().appendTo(this.pathholder);
+			if (path && this.wsready) {
+				this.ws.send(
+					JSON.stringify(
+						{
+							id: this.hubid,
+							name: this.peername,
+							action: 'path',
+							pid: path.attr('id'),
+							stroke: path.attr('stroke'),
+							strokeWidth: path.attr('stroke-width'),
+							strokeLinecap: path.attr('stroke-linecap'),
+							fill: path.attr('fill'),
+							d: path.attr('d')
+						}
+					)
+				);
 			}
+			flush(this);
 			return this;
 		};
 		_proto.clearcanvas = function() {

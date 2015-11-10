@@ -1,6 +1,8 @@
+var msp; // for debug use
+
 $(function(){
-	var sp = new Gatherhub.SketchPad();
-	sp.floating('absolute').appendto('#layer2');
+	var sp = msp = new Gatherhub.SketchPad();
+	sp.floating('absolute').pencolor(sp.repcolor).appendto('#layer2');
 	sp.canvas.css('opacity', 0.75);	
 	//sp.calibration();
 	$('<h5/>').css({width: '40%', margin: '0 auto', backgroundColor: '#FF8', textAlign: 'center', 'border-bottom-left-radius': '5px', 'border-bottom-right-radius': '5px', 'font-weight': 'bold', 'border-color': '#AAA', 'border-style': 'solid', 'border-width': '1px'}).appendTo('#layer1').html('Hub: 98141');
@@ -13,7 +15,8 @@ $(function(){
 
 	sp.attachvp(vp);
 	sp.hubid = 1000;
-	sp.connect('192.168.11.123', 55688);
+	sp.altsvr = '192.168.11.123';
+	sp.connect('minichat.gatherhub.com', 55688);
 	
 	window.onresize = function(){
 		vp.defsize(sp.width()/4, sp.height()/4).minimize();
@@ -21,6 +24,7 @@ $(function(){
 	};
 
 	var penList = [
+		{btn: {icon: svgicon.pen, iconcolor: sp.repcolor, tip: 'User Pen'}, act: function(){sp.dragmode = false;sp.pencolor(sp.repcolor);}},
 		{btn: {icon: svgicon.pen, tip: 'Black Pen'}, act: function(){sp.dragmode = false;sp.pencolor('black');}},
 		{btn: {icon: svgicon.pen, iconcolor: 'red', tip: 'Red Pen'}, act: function(){sp.dragmode = false;sp.pencolor('red');}},
 		{btn: {icon: svgicon.pen, iconcolor: 'green', tip: 'Green Pen'}, act: function(){sp.dragmode = false;sp.pencolor('green');}},
@@ -40,7 +44,7 @@ $(function(){
 		{btn: {icon: svgicon.zoomin, tip: 'Zoom In'}, act: function(){sp.zoom(sp.zrate * 1.1);}}
 	];
 	var settingList = [
-		{btn: {icon: svgicon.clear, tip: 'Clear Canvas'}, act: function(){sp.clearcanvas();}},
+		{btn: {icon: svgicon.clear, tip: 'Clear Canvas'}, act: function(){sp.undoall();}},
 		{btn: {icon: svgicon.redo, tip: 'Redo'}, act: function(){sp.redo();}},
 		{btn: {icon: svgicon.undo, tip: 'Undo'}, act: function(){sp.undo();}}
 	];	
