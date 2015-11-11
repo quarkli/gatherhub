@@ -5,8 +5,8 @@ $(function(){
 	sp.floating('absolute').pencolor(sp.repcolor).appendto('#layer2');
 	sp.canvas.css('opacity', 0.75);	
 	//sp.calibration();
-	$('<h5/>').css({width: '40%', margin: '0 auto', backgroundColor: '#FF8', textAlign: 'center', 'border-bottom-left-radius': '5px', 'border-bottom-right-radius': '5px', 'font-weight': 'bold', 'border-color': '#AAA', 'border-style': 'solid', 'border-width': '1px'}).appendTo('#layer1').html('Hub: 98141');
-	$('<span/>').html('<h4>Show information and pop up at this layer</h4>').css({color: 'grey', textAlign: 'right'}).appendTo('#layer1');
+	//$('<h5/>').css({width: '40%', margin: '0 auto', backgroundColor: '#FF8', textAlign: 'center', 'border-bottom-left-radius': '5px', 'border-bottom-right-radius': '5px', 'font-weight': 'bold', 'border-color': '#AAA', 'border-style': 'solid', 'border-width': '1px'}).appendTo('#layer1').html('Hub: 98141');
+	//$('<span/>').html('<h4>Show information and pop up at this layer</h4>').css({color: 'grey', textAlign: 'right'}).appendTo('#layer1');
 
 	var vp = new Gatherhub.VisualPad();
 	vp.draggable = true;
@@ -29,7 +29,7 @@ $(function(){
 		{btn: {icon: svgicon.pen, iconcolor: 'red', tip: 'Red Pen'}, act: function(){sp.dragmode = false;sp.pencolor('red');}},
 		{btn: {icon: svgicon.pen, iconcolor: 'green', tip: 'Green Pen'}, act: function(){sp.dragmode = false;sp.pencolor('green');}},
 		{btn: {icon: svgicon.pen, iconcolor: 'blue', tip: 'Blue Pen'}, act: function(){sp.dragmode = false;sp.pencolor('blue');}},
-		{btn: {icon: svgicon.eraser, tip: 'Eraser'}, act: function(){sp.dragmode = false;sp.pencolor('white');}},
+		{btn: {icon: svgicon.eraser, tip: 'Eraser'}, act: function(){sp.dragmode = false;sp.deletion = true;sp.pencolor(sp.bgcolor());}},
 		{btn: {icon: svgicon.move, tip: 'Move Canvas'}, act: function(){sp.dragmode = true;}}
 	];
 	var sizeList = [

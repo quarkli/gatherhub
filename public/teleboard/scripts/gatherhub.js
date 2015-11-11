@@ -66,6 +66,7 @@ var Gatherhub = Gatherhub || {};
 			this.resizable = true;
 			this.defaultWidth = w || $(window).width();
 			this.defaultHeight = h || $(window).height();
+			this.bgcolor('white');
 			
 			// DO NOT REMOVE, must set the width and height to set initial values 
 			this.maximize();
@@ -433,7 +434,8 @@ var Gatherhub = Gatherhub || {};
 			path.attr('fill', 'none');
 			path.attr('d', 'M' + x + ',' + y);
 			path.on('click touchstart', function(){
-				if (self.selrevert) $(this).appendTo(self.redocache);
+				if (self.deletion) 
+					$(this).clone().attr('stroke', self.bgcolor()).attr('stroke-width', 1 + $(this).attr('stroke-width') * 1).appendTo(self.pathholder);
 			});
 
 			this.pathholder.append(path);
@@ -631,7 +633,7 @@ var Gatherhub = Gatherhub || {};
 		_proto.vpad = null;
 		_proto.pathholder = null;
 		_proto.redocache = null;
-		_proto.selrevert = false;
+		_proto.deletion = false;
 		_proto.seq = 0;
 		_proto.pc = 'black';
 		_proto.pw = 5;
