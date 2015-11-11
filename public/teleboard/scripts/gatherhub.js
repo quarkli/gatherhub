@@ -421,15 +421,20 @@ var Gatherhub = Gatherhub || {};
 			var point = vboxxy.call(this, canvasxy.call(this, screenxy(x, y)));
 			x = point.x;
 			y = point.y;
-
+			
+			var self = this;
+			var pw = this.pc == 'white' ?  this.pw / this.zrate : this.pw;
 			var path =  $(document.createElementNS('http://www.w3.org/2000/svg', 'path'));
 			path.attr('id', this.peername + '-' + this.seq++);
 			path.attr('class', this.peername);
-			path.attr('stroke-width', this.pw);
+			path.attr('stroke-width', pw);
 			path.attr('stroke-linecap', this.ps);
 			path.attr('stroke', this.pc);
 			path.attr('fill', 'none');
 			path.attr('d', 'M' + x + ',' + y);
+			path.on('click touchstart', function(){
+				if (self.selrevert) $(this).appendTo(self.redocache);
+			});
 
 			this.pathholder.append(path);
 			//clearPathsCache();
@@ -626,6 +631,7 @@ var Gatherhub = Gatherhub || {};
 		_proto.vpad = null;
 		_proto.pathholder = null;
 		_proto.redocache = null;
+		_proto.selrevert = false;
 		_proto.seq = 0;
 		_proto.pc = 'black';
 		_proto.pw = 5;
