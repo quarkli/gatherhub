@@ -57,7 +57,7 @@ var Gatherhub = Gatherhub || {};
 		
 		// Constructor
 		function SvgPad(w, h) {
-			this.pad = $('<div/>');
+			this.pad = $('<div/>').css('font-size', 0);
 			this.canvas = $(document.createElementNS('http://www.w3.org/2000/svg', 'svg')).appendTo(this.pad);
 			this.zrate = 1;
 			this.zcenter = {x: 0.5, y: 0.5};
@@ -191,7 +191,7 @@ var Gatherhub = Gatherhub || {};
 			if (this.canvasvbox.w == 0) this.canvasvbox.w = this.width();
 			if (this.canvasvbox.h == 0) this.canvasvbox.h = this.height();
 
-			z = $.isNumeric(z) ? (z > 1000 ? 1000 : z < 0.001 ? 0.001 : precision(z, 3)) : this.zrate;
+			z = $.isNumeric(z) ? (z > 100 ? 100 : z < 0.01 ? 0.01 : precision(z, 3)) : this.zrate;
 			this.zrate = z;
 			var x = this.zcenter.x * this.canvasvbox.w + this.canvasvbox.x;
 			var y = this.zcenter.y * this.canvasvbox.h + this.canvasvbox.y;
@@ -329,7 +329,8 @@ var Gatherhub = Gatherhub || {};
 		_proto.pinchSensitivity = 3;
 		_proto.src = function(srcid) {
 			this.source = (srcid && srcid[0] == '#' ? $(srcid) : $('#' + srcid));
-			if (this.source.length)	this.canvas.html('<use xlink:href="#' + this.source.attr('id') +'"/>');
+			// this is a workaround method to resolve <svg> namespace issue that could not be display properly in some browser
+			this.canvas.append($('<svg><use xlink:href="#' + this.source.attr('id') + '"/></svg>').children().eq(0));
 			return this;
 		};
 		_proto.defsize = function(w, h) {
@@ -406,6 +407,13 @@ var Gatherhub = Gatherhub || {};
 			return {x: precision(canvasxy.x / this.zrate + this.canvasvbox.x, 3),
 					y: precision(canvasxy.y / this.zrate + this.canvasvbox.y, 3)};
 		}
+		function vbox2scn(vboxxy) {
+			var x = (vboxxy.x - this.canvasvbox.x) * this.zrate;
+			x = x < 0 ? 0 : x > this.width() ? this.width() : x;
+			var y = (vboxxy.y - this.canvasvbox.y) * this.zrate;
+			y = y < 0 ? 0 : y > this.height() ? this.height() : y;
+			return {x: x, y: y};
+		}
 		function drawStart(x, y){
 			//trace(L4, this.constructor.name + '.drawStart' +
 			//	'(' + Array.prototype.slice.call(arguments) + ')');
@@ -413,66 +421,103 @@ var Gatherhub = Gatherhub || {};
 			var point = vboxxy.call(this, canvasxy.call(this, screenxy(x, y)));
 			x = point.x;
 			y = point.y;
+			
+			var self = this;
+			var pw = this.pc == 'white' ?  this.pw / this.zrate : this.pw;
+			var path =  $(document.createElementNS('http://www.w3.org/2000/svg', 'path'));
+			path.attr('id', this.peername + '-' + this.seq++);
+			path.attr('class', this.peername);
+			path.attr('stroke-width', pw);
+			path.attr('stroke-linecap', this.ps);
+			path.attr('stroke', this.pc);
+			path.attr('fill', 'none');
+			path.attr('d', 'M' + x + ',' + y);
+			path.on('click touchstart', function(){
+				if (self.selrevert) $(this).appendTo(self.redocache);
+			});
 
-			var $node =  $(document.createElementNS('http://www.w3.org/2000/svg', 'path'));
-			$node.attr('stroke-width', this.pw);
-			$node.attr('stroke-linecap', this.ps);
-			$node.attr('stroke', this.pc);
-			$node.attr('fill', 'none');
-			$node.attr('d', 'M' + x + ',' + y);
-
-			this.pathholder.append($node);
+			this.pathholder.append(path);
 			//clearPathsCache();
-			this.activepath = this.pathholder.children('path').length - 1;
+			this.activepath = path;
 			falseTouch = true;
 			setTimeout(function(){falseTouch=false;}, 5);
+			if (this.wsready) {
+				this.ws.send(
+					JSON.stringify(
+						{
+							id: this.hubid,
+							name: this.peername,
+							action: 'path',
+							pid: path.attr('id'),
+							ops: 'start',
+							x: point.x,
+							y: point.y,
+							c: this.repcolor
+						}
+					)
+				);
+			}
 		}
 		function drawPath(x, y){
 			//trace(L4, this.constructor.name + '.drawPath' +
 			//	'(' + Array.prototype.slice.call(arguments) + ')');
-			if (this.activepath >= 0) {
+			if (this.activepath) {
 				var point = vboxxy.call(this, canvasxy.call(this, screenxy(x, y)));
 				x = point.x;
 				y = point.y;
-				this.pathholder.children('path').eq(this.activepath).attr('d', this.pathholder.children('path').eq(this.activepath).attr('d') + 'L' + x + ',' + y);
+				this.activepath.attr('d', this.activepath.attr('d') + 'L' + x + ',' + y);
 			}
 		}
 		function drawEnd(){
 			//trace(L4, this.constructor.name + '.drawEnd' +
 			//	'(' + Array.prototype.slice.call(arguments) + ')');
-			if (this.activepath >= 0) {
-				var $node = this.pathholder.children('path').eq(this.activepath);
-				var move = $node.attr('d').split('L').length;
-				this.activepath = -1;
+			if (this.activepath) {
+				var path = this.activepath;
+				var move = path.attr('d').split('L').length;
+				this.activepath = null;
 				
 				if (move < 2 || (falseTouch && move < 3)) {
-					this.pathholder.children('path').eq(this.activepath).remove();
+					path.remove();
 					return;
 				}
-				
-				if (this.vpad) {
-					this.vpad.fitcontent();
-					this.zoom(this.zrate);
-				}
-				
-				if (this.bWsReady) {
-					ws.send(
+				this.redocache.empty();
+				flush(this);
+
+				if (this.wsready) {
+					this.ws.send(
 						JSON.stringify(
 							{
-								id: hubid,
-								name: peername,
+								id: this.hubid,
+								name: this.peername,
 								action: 'path',
-								stroke: $node.attr('stroke'),
-								strokeWidth: $node.attr('stroke-width'),
-								strokeLinecap: $node.attr('stroke-linecap'),
-								fill: $node.attr('fill'),
-								d: $node.attr('d')
+								pid: path.attr('id'),
+								stroke: path.attr('stroke'),
+								strokeWidth: path.attr('stroke-width'),
+								strokeLinecap: path.attr('stroke-linecap'),
+								fill: path.attr('fill'),
+								d: path.attr('d')
 							}
 						)
 					);
 				}
 			}
-		}	
+		}
+		function flush(sp) {
+			if (sp) {
+				sp.vpad.fitcontent();
+				sp.zoom(sp.zrate);
+			}			
+		}
+		function randcolor() {
+			var c = '#', m = 0 | Math.random() * 255;
+			while (c.length < 7) {
+				var n = 0 | Math.random() * 255;
+				while (Math.abs(n - m) < 16) n = 0 | Math.random() * 255;
+				m = n;
+				c += n < 16 ? '0' + n.toString(16) : n.toString(16);
+			}
+			return c.toUpperCase();
+		}
 		
 		// Gatherhub.SketchPad
 		g.SketchPad = SketchPad;
@@ -483,6 +528,8 @@ var Gatherhub = Gatherhub || {};
 			this.pathholder = $(document.createElementNS('http://www.w3.org/2000/svg', 'g')).attr('id', 'g' + (0 | Math.random() * 1000)).appendTo(this.canvas);
 			this.redocache = $(document.createElementNS('http://www.w3.org/2000/svg', 'g'));
 			this.nocontext();
+			this.peername = 'Peer' + (0 | Math.random() * 1000);
+			this.repcolor = randcolor();
 
 			this.pad.on('mousedown touchstart', function(evt){
 				var e = evt.originalEvent;
@@ -571,16 +618,119 @@ var Gatherhub = Gatherhub || {};
 		// Prototypes
 		var _proto = SketchPad.prototype = extend(g.SvgPad);	// Inheritance
 		_proto.constructor = SketchPad;							// Overload constructor
+		_proto.svr = null;
+		_proto.altsvr = null;
+		_proto.port = null;
+		_proto.altport = null;
+		_proto.ws = null;
+		_proto.wsready = false;
+		_proto.hubid = 0;
+		_proto.peername = null;
+		_proto.repcolor = '#FFF';
+		_proto.pulse = null;
 		_proto.vpad = null;
 		_proto.pathholder = null;
 		_proto.redocache = null;
+		_proto.selrevert = false;
+		_proto.seq = 0;
 		_proto.pc = 'black';
 		_proto.pw = 5;
 		_proto.ps = 'round';
-		_proto.activepath = -1;
+		_proto.activepath = null;
 		_proto.pinchSensitivity = 7;
 		_proto.dragging = false;
-		_proto.bWsReady = false;
+		_proto.dragmode = false;
+		_proto.connect = function(svr, port) {
+			var self = this;
+			svr = svr || this.svr || '127.0.0.1';
+			if (this.svr == null) this.svr = svr;
+			port = port || this.port || 0;
+			if (this.port == null) this.port = port;
+			var ws = this.ws = new WebSocket('ws://' + svr + ':' + port);
+			ws.onerror = function(){
+				if (svr == self.svr) {
+					svr = self.altsvr || svr;
+					port = self.altport || port;
+				}
+				else {
+					svr = self.svr || svr;
+					port = self.port || port;
+				}
+				self.connect(svr, port);
+			};
+			ws.onopen = function(){
+				ws.send(JSON.stringify({id: self.hubid, name: self.peername, action: 'connect'}));
+				self.wsready = true;
+				if (self.wsready) {
+					self.pulse = setInterval(function(){if (self.wsready) ws.send('');}, 30000);
+				}
+			};
+			ws.onmessage = function(msg){
+				if (msg.data.match('path')){
+					var ctx = JSON.parse(msg.data);
+					if (ctx.id == self.hubid && ctx.name != self.peername){
+						if (ctx.ops) {
+							switch (ctx.ops) {
+								case 'undo':
+									$('#' + ctx.pid).remove();
+									flush(self);
+									break;
+								case 'redo':
+									break;
+								case 'clear':
+									self.clearcanvas();
+									flush(self);
+									break;
+								case 'start':
+									var point = {x: ctx.x, y: ctx.y};
+									var scnxy = vbox2scn.call(self, point);
+									var left = scnxy.x == 0 ? 1 : (scnxy.x / self.width() > 0.5) ? scnxy.x - self.width() : scnxy.x;
+									var top = scnxy.y == 0 ? 1 : (scnxy.y / self.height() > 0.5) ? scnxy.y - self.height() : scnxy.y;
+									var i = ctx.pid.split('-', 1);
+									var r = $('<span/>').attr('id', i).html(i).appendTo('body');
+									r.css({'position': 'absolute', 'color': ctx.c, 'border-width': 1, 'border-style': 'solid'});
+									if (left > 0) r.css('left', left);
+									else r.css('right', -left);
+									if (top > 0) r.css('top', top );
+									else r.css('bottom', -top);
+									setTimeout(function(){$('#' + i).remove();}, 2000);
+									break;
+							}
+						}
+						else if (ctx.d) {
+							var path = $(document.createElementNS('http://www.w3.org/2000/svg', 'path'));
+							path.attr('id', ctx.pid);
+							path.attr('stroke-width', ctx.strokeWidth);
+							path.attr('stroke', ctx.stroke);
+							path.attr('stroke-linecap', ctx.strokeLinecap);
+							path.attr('fill', ctx.fill);
+							path.attr('d', ctx.d);
+							path.appendTo(self.pathholder);
+							flush(self);
+							$('#' + ctx.pid.split('-', 1)).remove();
+						}
+					}
+				}
+				else {
+					console.log(msg.data);
+					if (msg.data.indexOf(this.peername) < 0 && msg.data.indexOf('has entered')) {
+						self.undoall();
+						self.redoall();
+					}
+				}
+			};
+			ws.onclose = function(){
+				clearInterval(self.pulse);
+				self.wsready = false;
+			};
+			return this;
+		};
+		_proto.sendmsg = function(msg, tgt) {
+			if (this.wsready) {
+				this.ws.send(JSON.stringify({id: this.hubid, name: this.peername, action: 'say', data: msg, target: tgt}));
+			}
+			return this;
+		};
 		_proto.attachvp = function(vp) {
 			if (Object.getPrototypeOf(vp) === g.VisualPad.prototype) {
 				vp.src(this.pathholder.attr('id'));
@@ -610,21 +760,87 @@ var Gatherhub = Gatherhub || {};
 			}
 			return this.ps;
 		};
+		_proto.clearall = function() {
+			if (this.wsready) {
+				this.ws.send(
+					JSON.stringify(
+						{
+							id: this.hubid,
+							name: this.peername,
+							action: 'path',
+							ops: 'clear'
+						}
+					)
+				);
+			}
+			this.clearcanvas();
+			this.redocache.empty();
+			flush(this);
+			return this;
+		};
+		_proto.undoall = function() {
+			while ($('.' + this.peername).length) this.undo();
+			return this;
+		};
 		_proto.undo = function() {
-			if (this.pathholder.children().length > 0) this.pathholder.children().last().appendTo(this.redocache);
+			var path = $('.' + this.peername).length ? $('.' + this.peername).last() : null;
+			if (path && path.attr('id').indexOf(this.peername) == 0) {
+				path.appendTo(this.redocache);
+				if (this.wsready) {
+					this.ws.send(
+						JSON.stringify(
+							{
+								id: this.hubid,
+								name: this.peername,
+								action: 'path',
+								pid: path.attr('id'),
+								ops: 'undo'
+							}
+						)
+					);
+				}
+				flush(this);
+			}
+			return this;
+		};
+		_proto.redoall = function() {
+			while (this.redocache.children().length) this.redo();
 			return this;
 		};
 		_proto.redo = function() {
-			if (this.redocache.children().length > 0) this.redocache.children().last().appendTo(this.pathholder);
+			if (this.redocache.children().length) var path = this.redocache.children().last().appendTo(this.pathholder);
+			if (path && this.wsready) {
+				this.ws.send(
+					JSON.stringify(
+						{
+							id: this.hubid,
+							name: this.peername,
+							action: 'path',
+							pid: path.attr('id'),
+							stroke: path.attr('stroke'),
+							strokeWidth: path.attr('stroke-width'),
+							strokeLinecap: path.attr('stroke-linecap'),
+							fill: path.attr('fill'),
+							d: path.attr('d')
+						}
+					)
+				);
+			}
+			flush(this);
 			return this;
 		};
 		_proto.clearcanvas = function() {
 			this.pathholder.empty();
+			this.redocache.empty();
 			return this;
 		};
 		_proto.mousedownHdl = function(x, y) {
 			//trace(L4, this.constructor.name + '.mousedownHdl' +
 			//	'(' + Array.prototype.slice.call(arguments) + ')');
+			if (this.dragmode) {
+				this.dragging = true;
+				return;
+			}
 			drawStart.call(this, x, y);
 			//trace(L4, 'window=' + $(window).width() + 'x' + $(window).height());
 			//trace(L4, 'cavasvbox=' + this.canvasvbox.x + ' ' + this.canvasvbox.y + ' ' + this.canvasvbox.w + ' ' + this.canvasvbox.h);
@@ -673,6 +889,7 @@ var Gatherhub = Gatherhub || {};
 			if (opt === undefined) opt = {};
 			this.defaultWidth = opt.w || 50;
 			this.defaultHeight = opt.h || 50;
+			this.tip = opt.tip || '';
 			this.resize = opt.resize || .8;
 			this.minimize();
 			this.bgcolor(opt.bgcolor || 'white');
@@ -681,6 +898,7 @@ var Gatherhub = Gatherhub || {};
 			this.borderradius(opt.borderradius || .25);
 			this.iconcolor(opt.iconcolor || 'black');
 			this.icon(opt.icon || '');
+			this.pad.attr('title', opt.tip || '');
 			this.resizable = false;
 			
 			this.pad.off('mouseleave');
@@ -689,13 +907,9 @@ var Gatherhub = Gatherhub || {};
 		// Prototypes
 		var _proto = SvgButton.prototype = extend(g.VisualPad);	// Inheritance
 		_proto.constructor = SvgButton;							// Overload constructor
-		_proto.tips = '';
-		_proto.text = '';
-		_proto.padding = 0;
-		_proto.rcorner = 0.2; 	// rcorner = 0 (rectangle) ~ 1.0 (circle/oval)
 		_proto.onclick = function(){};
 		_proto.icon = function(svg) {
-			this.canvas.html(svg);
+			$('<svg>'+svg+'</svg>').children().eq(0).appendTo(this.canvas);
 		};
 		_proto.iconcolor = function(c) {
 			this.canvas.css('fill', c);
@@ -719,4 +933,98 @@ var Gatherhub = Gatherhub || {};
 		};
 	})();
 	
+	// Object Prototype: BtnMenu
+	(function(){
+		// Private
+		function togglesub(){
+			var w = $(this).width();
+			var sub = $('#' + $(this).children().last().attr('class'));
+			if (sub.length == 0) sub = $('.' + $(this).attr('id'));
+			var top = $(this).parent().position().top + $(this).index() * w;
+			var left = $(this).parent().position().left;
+			
+			if (sub.children().last().css('float') == 'left') {
+				left += w;
+				if (left + w * sub.children().length > $(window).width()){
+					left -= w * (sub.children().length + 1);
+					for (var i = 0; i < sub.children().length; i++) {
+						sub.children().eq(sub.children().length - i -1).appendTo(sub);
+					}								
+				}
+			}
+			else {
+				if (left + w * 2 > $(window).width())	left -= w;
+				else left += w;
+				if (sub.children().length * w + top > $(window).height())
+					top -= w * (sub.children().length - 1);
+			}
+			sub.css({'top': top, 'left': left});
+			if (sub.is(':hidden')) sub.show();
+			else sub.hide();
+		}
+		
+		function createMenu(list) {
+			var m = $('<div/>').css('font-size', 0).appendTo('body');
+			m.attr('id', 0 | (Math.random() * 10000));
+			
+			list.forEach(function(e){
+				var id = e.id = 0 | (Math.random() * 10000);
+				var slist = e.sublist;
+
+				if (slist) {
+					slist = createMenu(slist);
+					if (e.direction == 'horizontal') slist.children().css('float', 'left');
+					slist.css('position', 'absolute').attr('class', id).appendTo('body').hide();
+					slist.children().addClass(slist.attr('id'));
+				}
+
+				if (e.btn) {
+					e.btn = new Gatherhub.SvgButton(e.btn).appendto(m).pad.attr('id', id);	
+					if (e.act) {
+						e.btn.on('click touchstart', function(){
+							e.act();
+							var btngrp = $('.' + $(this).attr('class'));
+							if ($(this).parent().attr('id') == $(this).attr('class')) {
+								for (var i = 0; i < btngrp.length; i++) {
+									if ($(btngrp[i]).parent().attr('id') != $(this).attr('class')) {
+										$(this).appendTo($(btngrp[i]).parent());
+										$(btngrp[i]).appendTo($('#' + $(this).attr('class')));
+										break;
+									}
+								}
+							}
+						});
+					}
+				}
+				else {
+					e.btn = $('<div/>').css('font-size', 0).attr('id', id).appendTo(m);
+					if (slist.children().length > 0) slist.children().first().show().appendTo(e.btn);
+				}
+				
+				if (slist) {
+					e.btn.on('click touchstart', togglesub);
+				}
+			});
+			return m;
+		}
+
+		// Gatherhub.BtnMenu
+		g.BtnMenu = BtnMenu;
+		
+		// Constructor
+		function BtnMenu(list) {
+			var l = list.rootlist;
+			if (l.length > 0) {
+				var root = this.root = createMenu(l);
+				var children = root.children();
+				if (list.direction == 'horizontal') children.css('float', 'left');
+				list.id = root.attr('id');
+				children.addClass(list.id);
+			}
+		}
+
+		// Prototypes
+		var _proto = BtnMenu.prototype;
+		_proto.constructor = BtnMenu;
+	})();
 })();
