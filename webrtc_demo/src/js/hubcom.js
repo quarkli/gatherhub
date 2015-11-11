@@ -1,9 +1,13 @@
 'use strict';
 var PeerConn = require('./peerconn');
 var webrtc = require('./webrtcsupport');
+var getScreenMedia = require('./getscreenmedia');
 
 
 /////////////class HubMedia
+function muteStrm(s){
+	if(s)s.getTracks().forEach(function(t){t.stop()});
+}
 var hubMedia;
 (function(){
 	var _proto;
@@ -16,28 +20,22 @@ var hubMedia;
 	//prototype apis
 	_proto = HubMedia.prototype;
 	_proto.mute = function(){
-		if(this.localStream){
-	 		this.localStream.getTracks().forEach(function(track) {
-	      track.stop();
-	    });
-		}
-	};
+		muteStrm(this.localStream);
+	} 
 	_proto.start = function (){
 		var constraints = {audio: true};
 		var self = this;
-		function hdlMedia(stream){
-			self.onAddLStrm(stream);
-			self.localStream = stream;
-		}
-		function hdlMediaError(){
-			self.onLsError();
-			self.status = 0;
-		}
 			
 		/*stop previous local medias*/
 		this.status = 1;
 		this.mute();
-		getUserMedia(constraints, hdlMedia, hdlMediaError);
+		getUserMedia(constraints, function(s){
+			self.onAddLStrm(s);
+			self.localStream = s;
+		}, function(){
+			self.onLsError();
+			self.status = 0;
+		});
 	};
 
 	_proto.stop = function (){
@@ -130,22 +128,22 @@ var hubCom;
 			return -1;
 		}
 		//register callback functions for peerconnections
-		function regPconnEvtCb(pconn){
-			pconn.onSend = function(h,c){
+		function regPconnEvtCb(pc){
+			pc.onSend = function(h,c){
 				self.socket.emit(h,c);
 			};
-			pconn.onDcRecv = function (from,data){
+			pc.onDcRecv = function (from,data){
 				var usr = self.usrList[from];
 				self.onDataRecv(usr,data);
 			};
-			pconn.onAddRStrm = 	function (s){
+			pc.onAddRStrm = 	function (s){
 				self.onRStreamAdd(s);
 			};
-			pconn.onRmRStrm = function(s){
+			pc.onRmRStrm = function(s){
 				console.log('rStreamDel',s);
 				self.onRStreamDel(s)
 			};
-			pconn.onConError = function(id){
+			pc.onConError = function(id){
 				console.log('peer ',id+'connect error');
 				createExPr('calling',id);
 				removePeer(id);
@@ -155,47 +153,50 @@ var hubCom;
 		function createPeer(type,id,sdp){
 			var index = getSockIdx(id);
 		  	// console.log('get index:', index);
-			var pconn = self.peers[index];
-			if(!pconn){
+			var pc = self.peers[index];
+			if(!pc){
 				var opts = self.opts;
 				opts.id = id;
 				opts.type = type;
-				pconn = new PeerConn(opts);
-				self.peers[self.peers.length] = pconn;
-				regPconnEvtCb(pconn);
+				pc = new PeerConn(opts);
+				self.peers[self.peers.length] = pc;
+				regPconnEvtCb(pc);
 			}
 
 			//udpate call type
 
 			if(type == 'calling'){
 				if(self.localStream){
-					pconn.addStream(self.localStream);
+					pc.addStream(self.localStream);
+				}
+				if(self.scnStrm){
+					pc.addStream(self.scnStrm);
 				}
 				//create offer
-				pconn.makeOffer();
+				pc.makeOffer();
 			}else{
 				//recieve offer part is called
-				pconn.callType(type);
-				pconn.negoState(true);
+				pc.callType(type);
+				pc.negoState(true);
 				if(self.twoway == true){
 					//check whether sdp contain audio on/off information
 					if(isSdpWithAudio(sdp.sdp)){
 						console.log('offer with audio sdp');
 						if(self.media.status==0){
 							self.media.start();
-					  		pconn.setRmtDesc(sdp);
+					  		pc.setRmtDesc(sdp);
 					}else{
-						  	pconn.setRmtDesc(sdp);
-					  		pconn.makeAnswer();
+						  	pc.setRmtDesc(sdp);
+					  		pc.makeAnswer();
 						}
 					}else{
 						console.log('offer without audio!');
 						if(self.media.status==1){
 							self.media.stop();
-					  		pconn.setRmtDesc(sdp);
+					  		pc.setRmtDesc(sdp);
 					}else{
-						  	pconn.setRmtDesc(sdp);
-					  		pconn.makeAnswer();
+						  	pc.setRmtDesc(sdp);
+					  		pc.makeAnswer();
 						}
 					}
 
@@ -204,8 +205,8 @@ var hubCom;
 					if(self.localStream){
 						self.media.stop();
 					}
-				  	pconn.setRmtDesc(sdp);
-			  		pconn.makeAnswer();
+				  	pc.setRmtDesc(sdp);
+			  		pc.makeAnswer();
 				}
 			}
 	
@@ -276,27 +277,27 @@ var hubCom;
 				//console.log('usrList is ',self.usrList);
 			}
 
-			var pconn = self.peers[index];
+			var pc = self.peers[index];
 			console.log('Received msg:', msg);
 			if (msg.sdp.type === 'offer') {
 				//get invite from other side
 				createPeer('called',id,msg.sdp);
 				
 			} else if (msg.sdp.type === 'answer' ) {
-				if(!pconn){
+				if(!pc){
 					console.log("wrong answer id from "+id);
 					return;
 				}
-			  pconn.setRmtDesc(msg.sdp);
+			  pc.setRmtDesc(msg.sdp);
 				
 			} else if (msg.sdp.type === 'candidate') {
-				if(!pconn){
+				if(!pc){
 					console.log("wrong candidate id from "+id);
 					return;
 				}
 			  var candidate = new RTCIceCandidate({sdpMLineIndex:msg.sdp.label,
 			    candidate:msg.sdp.candidate});
-			  pconn.addIceCandidate(candidate);
+			  pc.addIceCandidate(candidate);
 			} else if (msg.sdp.type === 'exoffer'){
 				createExPr('called',id);
 				removePeer(id);
@@ -421,8 +422,8 @@ var hubCom;
 
 	_proto.sendData = function(data){
 		var self = this;
-		this.peers.forEach(function(pconn){
-			pconn.sendData(data);
+		this.peers.forEach(function(pc){
+			pc.sendData(data);
 		});
 		this.exPeers.forEach(function(id){
 			self.socket.emit('dat',{
@@ -476,6 +477,36 @@ var hubCom;
 		return rd;
 	};
 
+	_proto.startScnShare = function(onSuc,onErr){
+		var self = this;
+		var ss = this.scnStrm;
+		if(ss)muteStrm(ss);
+		getScreenMedia(function(err,s){
+			if(!err){
+				self.scnStrm = s;
+				self.peers.forEach(function(pc){
+					pc.addStream(s);
+					pc.makeOffer();
+				});
+				self.scnState =  true;
+				if(onSuc)onSuc(s);
+			}else{
+				console.log('getScn failed ',err.name);
+				if(onErr)onErr(err);
+			}
+		});
+
+	};
+
+	_proto.stopScnShare = function(){
+		var s = this.scnStrm;
+		if(s)muteStrm(s);
+		this.peers.forEach(function(pc){
+			pc.removeStream(s);
+			pc.makeOffer();
+		});
+	}
+
 
 
 	/*some callback fuctions*/
@@ -497,12 +528,12 @@ var hubCom;
 		// }
 		this.onLMedAdd(s);
 		this.localStream = s;
-		this.peers.forEach(function(pconn){
-			pconn.addStream(s);
-			if(pconn.negoState()){
-				pconn.makeAnswer();
+		this.peers.forEach(function(pc){
+			pc.addStream(s);
+			if(pc.negoState()){
+				pc.makeAnswer();
 			}else{
-				pconn.makeOffer();
+				pc.makeOffer();
 			}
 
 
@@ -510,12 +541,12 @@ var hubCom;
 	};
 	_proto.rmLocMedia = function(){
 		var s = this.localStream;
-		this.peers.forEach(function(pconn){
-			pconn.removeStream(s);
-			if(pconn.negoState()){
-				pconn.makeAnswer();
+		this.peers.forEach(function(pc){
+			pc.removeStream(s);
+			if(pc.negoState()){
+				pc.makeAnswer();
 			}else{
-				pconn.makeOffer();
+				pc.makeOffer();
 			}
 		});
 		this.localStream = undefined;
@@ -527,7 +558,10 @@ var hubCom;
 	};
 
 	_proto.onRStreamAdd = function(s){
-		this.onRMedAdd(s);
+		var m = {};
+		m.video = (s.getVideoTracks().length>0)?true:false;
+		m.stream =  s;
+		this.onRMedAdd(m);
 	};
 
 	_proto.onRStreamDel = function(s){

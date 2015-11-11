@@ -6,15 +6,13 @@ var mediaButton = document.getElementById("mediaButton");
 
 var localAudio = document.querySelector('#localAudio');
 // var remoteAudio = document.querySelector('#remoteAudio');
-
-
-
+var ssAct = 'idle'; //screen share active mark
 
 var options = {};
 /*pass local and remote audio element to hubcom*/
 // options.locAudio = localAudio;
 // options.remAudio = remoteAudio;
-options.twoway = true;
+options.twoway = false;
 
 /*get userName*/
 var user = prompt("Please enter your name","");
@@ -96,15 +94,21 @@ function hdlLMedAdd(s){
 
 function hdlRMedAdd(s){
     //<audio id='localAudio' autoplay muted></audio>
-    var mNode,au;
+    var mNode,m;
     mNode = {};
-    mNode.id = 'rAudio'+medList.length;
-    mNode.ln = "<audio id="+mNode.id+" autoplay></audio>"
-    mNode.s = s;
+    if(s.video){
+        mNode.id = 'rVideo'+medList.length;
+        mNode.ln = "<video id="+mNode.id+" autoplay></video>"
+
+    }else{
+        mNode.id = 'rAudio'+medList.length;
+        mNode.ln = "<audio id="+mNode.id+" autoplay></audio>"
+    }
+    mNode.s = s.stream;
     medList[medList.length] = mNode;
     $('.rStrmList').append(mNode.ln);
-    au = document.querySelector('#'+mNode.id);
-    attachMediaStream(au,s);
+    m = document.querySelector('#'+mNode.id);
+    attachMediaStream(m,s.stream);
 }
 
 function hdlRMedDel(s){
@@ -159,4 +163,16 @@ function showWarnMsg(msg){
     console.log('warn msg ',msg);
     $('.warn-msg').html('<strong>Warning: </strong>' + msg);
 }
-
+$('#scnButton').click(function(event) {
+    if(ssAct == 'idle'){
+        hubCom.startScnShare(function(){
+            ssAct = 'active';
+        },function(){
+            ssAct = 'idle';
+        });
+    }else{
+        hubCom.stopScnShare();
+        ssAct = 'idle';
+    }
+    event.preventDefault();
+});

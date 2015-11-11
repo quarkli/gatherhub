@@ -1,10 +1,224 @@
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
+// getScreenMedia helper by @HenrikJoreteg
+// modified by phenix
+// var getUserMedia = require('getusermedia');
+
+'use strict';
+
+// cache for constraints and callback
+var cache = {};
+var getUMedia = function(constraints,cb){
+    getUserMedia(constraints, function (stream) {
+            cb(null, stream);
+        }, function (err) {
+            var error;
+            // coerce into an error object since FF gives us a string
+            // there are only two valid names according to the spec
+            // we coerce all non-denied to "constraint not satisfied".
+            console.log('getUserMedia','error'+err.name);
+            if (typeof err === 'string') {
+                error = new Error('MediaStreamError');
+                if (err === denied || err === altDenied) {
+                    error.name = denied;
+                } else {
+                    error.name = notSatisfied;
+                }
+            } else {
+                // if we get an error object make sure '.name' property is set
+                // according to spec: http://dev.w3.org/2011/webrtc/editor/getusermedia.html#navigatorusermediaerror-and-navigatorusermediaerrorcallback
+                error = err;
+                if (!error.name) {
+                    // this is likely chrome which
+                    // sets a property called "ERROR_DENIED" on the error object
+                    // if so we make sure to set a name
+                    if (error[denied]) {
+                        err.name = denied;
+                    } else {
+                        err.name = notSatisfied;
+                    }
+                }
+            }
+            cb(error);
+        });    
+};
+
+
+module.exports = function (constraints, cb) {
+    var hasConstraints = arguments.length === 2;
+    var callback = hasConstraints ? cb : constraints;
+    var error;
+
+    if (typeof window === 'undefined' || window.location.protocol === 'http:') {
+        error = new Error('NavigatorUserMediaError');
+        error.name = 'HTTPS_REQUIRED';
+        return callback(error);
+    }
+
+    if (window.navigator.userAgent.match('Chrome')) {
+        var chromever = parseInt(window.navigator.userAgent.match(/Chrome\/(.*) /)[1], 10);
+        var maxver = 33;
+        var isCef = !window.chrome.webstore;
+        // "known" crash in chrome 34 and 35 on linux
+        if (window.navigator.userAgent.match('Linux')) maxver = 35;
+
+        // check that the extension is installed by looking for a
+        // sessionStorage variable that contains the extension id
+        // this has to be set after installation unless the contest
+        // script does that
+        if (sessionStorage.getScreenMediaJSExtensionId) {
+            chrome.runtime.sendMessage(sessionStorage.getScreenMediaJSExtensionId,
+                {type:'getScreen', id: 1}, null,
+                function (data) {
+                    if (!data || data.sourceId === '') { // user canceled
+                        var error = new Error('NavigatorUserMediaError');
+                        error.name = 'PERMISSION_DENIED';
+                        callback(error);
+                    } else {
+                        constraints = (hasConstraints && constraints) || {audio: false, video: {
+                            mandatory: {
+                                chromeMediaSource: 'desktop',
+                                maxWidth: window.screen.width,
+                                maxHeight: window.screen.height,
+                                maxFrameRate: 3
+                            },
+                            optional: [
+                                {googLeakyBucket: true},
+                                {googTemporalLayeredScreencast: true}
+                            ]
+                        }};
+                        constraints.video.mandatory.chromeMediaSourceId = data.sourceId;
+                        getUMedia(constraints, callback);
+                    }
+                }
+            );
+        } else if (window.cefGetScreenMedia) {
+            //window.cefGetScreenMedia is experimental - may be removed without notice
+            window.cefGetScreenMedia(function(sourceId) {
+                if (!sourceId) {
+                    var error = new Error('cefGetScreenMediaError');
+                    error.name = 'CEF_GETSCREENMEDIA_CANCELED';
+                    callback(error);
+                } else {
+                    constraints = (hasConstraints && constraints) || {audio: false, video: {
+                        mandatory: {
+                            chromeMediaSource: 'desktop',
+                            maxWidth: window.screen.width,
+                            maxHeight: window.screen.height,
+                            maxFrameRate: 3
+                        },
+                        optional: [
+                            {googLeakyBucket: true},
+                            {googTemporalLayeredScreencast: true}
+                        ]
+                    }};
+                    constraints.video.mandatory.chromeMediaSourceId = sourceId;
+                    getUMedia(constraints, callback);
+                }
+            });
+        } else if (isCef || (chromever >= 26 && chromever <= maxver)) {
+            // chrome 26 - chrome 33 way to do it -- requires bad chrome://flags
+            // note: this is basically in maintenance mode and will go away soon
+            constraints = (hasConstraints && constraints) || {
+                video: {
+                    mandatory: {
+                        googLeakyBucket: true,
+                        maxWidth: window.screen.width,
+                        maxHeight: window.screen.height,
+                        maxFrameRate: 3,
+                        chromeMediaSource: 'screen'
+                    }
+                }
+            };
+            getUMedia(constraints, callback);
+        } else {
+            // chrome 34+ way requiring an extension
+            var pending = window.setTimeout(function () {
+                error = new Error('NavigatorUserMediaError');
+                error.name = 'EXTENSION_UNAVAILABLE';
+                return callback(error);
+            }, 1000);
+            cache[pending] = [callback, hasConstraints ? constraint : null];
+            window.postMessage({ type: 'getScreen', id: pending }, '*');
+        }
+    } else if (window.navigator.userAgent.match('Firefox')) {
+        var ffver = parseInt(window.navigator.userAgent.match(/Firefox\/(.*)/)[1], 10);
+        if (ffver >= 33) {
+            constraints = (hasConstraints && constraints) || {
+                video: {
+                    mozMediaSource: 'window',
+                    mediaSource: 'window'
+                }
+            }
+            getUMedia(constraints, function (err, stream) {
+                callback(err, stream);
+                // workaround for https://bugzilla.mozilla.org/show_bug.cgi?id=1045810
+                if (!err) {
+                    var lastTime = stream.currentTime;
+                    var polly = window.setInterval(function () {
+                        if (!stream) window.clearInterval(polly);
+                        if (stream.currentTime == lastTime) {
+                            window.clearInterval(polly);
+                            if (stream.onended) {
+                                stream.onended();
+                            }
+                        }
+                        lastTime = stream.currentTime;
+                    }, 500);
+                }
+            });
+        } else {
+            error = new Error('NavigatorUserMediaError');
+            error.name = 'EXTENSION_UNAVAILABLE'; // does not make much sense but...
+        }
+    }
+};
+
+window.addEventListener('message', function (event) {
+    if (event.origin != window.location.origin) {
+        return;
+    }
+    if (event.data.type == 'gotScreen' && cache[event.data.id]) {
+        var data = cache[event.data.id];
+        var constraints = data[1];
+        var callback = data[0];
+        delete cache[event.data.id];
+
+        if (event.data.sourceId === '') { // user canceled
+            var error = new Error('NavigatorUserMediaError');
+            error.name = 'PERMISSION_DENIED';
+            callback(error);
+        } else {
+            constraints = constraints || {audio: false, video: {
+                mandatory: {
+                    chromeMediaSource: 'desktop',
+                    maxWidth: window.screen.width,
+                    maxHeight: window.screen.height,
+                    maxFrameRate: 3
+                },
+                optional: [
+                    {googLeakyBucket: true},
+                    {googTemporalLayeredScreencast: true}
+                ]
+            }};
+            constraints.video.mandatory.chromeMediaSourceId = event.data.sourceId;
+            getUMedia(constraints, callback);
+        }
+    } else if (event.data.type == 'getScreenPending') {
+        window.clearTimeout(event.data.id);
+    }
+});
+
+},{}],2:[function(require,module,exports){
 'use strict';
 var PeerConn = require('./peerconn');
 var webrtc = require('./webrtcsupport');
+var getScreenMedia = require('./getscreenmedia');
 
 
 /////////////class HubMedia
+function muteStrm(s){
+	if(s)s.getTracks().forEach(function(t){t.stop()});
+}
 var hubMedia;
 (function(){
 	var _proto;
@@ -17,28 +231,22 @@ var hubMedia;
 	//prototype apis
 	_proto = HubMedia.prototype;
 	_proto.mute = function(){
-		if(this.localStream){
-	 		this.localStream.getTracks().forEach(function(track) {
-	      track.stop();
-	    });
-		}
-	};
+		muteStrm(this.localStream);
+	} 
 	_proto.start = function (){
 		var constraints = {audio: true};
 		var self = this;
-		function hdlMedia(stream){
-			self.onAddLStrm(stream);
-			self.localStream = stream;
-		}
-		function hdlMediaError(){
-			self.onLsError();
-			self.status = 0;
-		}
 			
 		/*stop previous local medias*/
 		this.status = 1;
 		this.mute();
-		getUserMedia(constraints, hdlMedia, hdlMediaError);
+		getUserMedia(constraints, function(s){
+			self.onAddLStrm(s);
+			self.localStream = s;
+		}, function(){
+			self.onLsError();
+			self.status = 0;
+		});
 	};
 
 	_proto.stop = function (){
@@ -131,22 +339,22 @@ var hubCom;
 			return -1;
 		}
 		//register callback functions for peerconnections
-		function regPconnEvtCb(pconn){
-			pconn.onSend = function(h,c){
+		function regPconnEvtCb(pc){
+			pc.onSend = function(h,c){
 				self.socket.emit(h,c);
 			};
-			pconn.onDcRecv = function (from,data){
+			pc.onDcRecv = function (from,data){
 				var usr = self.usrList[from];
 				self.onDataRecv(usr,data);
 			};
-			pconn.onAddRStrm = 	function (s){
+			pc.onAddRStrm = 	function (s){
 				self.onRStreamAdd(s);
 			};
-			pconn.onRmRStrm = function(s){
+			pc.onRmRStrm = function(s){
 				console.log('rStreamDel',s);
 				self.onRStreamDel(s)
 			};
-			pconn.onConError = function(id){
+			pc.onConError = function(id){
 				console.log('peer ',id+'connect error');
 				createExPr('calling',id);
 				removePeer(id);
@@ -156,47 +364,50 @@ var hubCom;
 		function createPeer(type,id,sdp){
 			var index = getSockIdx(id);
 		  	// console.log('get index:', index);
-			var pconn = self.peers[index];
-			if(!pconn){
+			var pc = self.peers[index];
+			if(!pc){
 				var opts = self.opts;
 				opts.id = id;
 				opts.type = type;
-				pconn = new PeerConn(opts);
-				self.peers[self.peers.length] = pconn;
-				regPconnEvtCb(pconn);
+				pc = new PeerConn(opts);
+				self.peers[self.peers.length] = pc;
+				regPconnEvtCb(pc);
 			}
 
 			//udpate call type
 
 			if(type == 'calling'){
 				if(self.localStream){
-					pconn.addStream(self.localStream);
+					pc.addStream(self.localStream);
+				}
+				if(self.scnStrm){
+					pc.addStream(self.scnStrm);
 				}
 				//create offer
-				pconn.makeOffer();
+				pc.makeOffer();
 			}else{
 				//recieve offer part is called
-				pconn.callType(type);
-				pconn.negoState(true);
+				pc.callType(type);
+				pc.negoState(true);
 				if(self.twoway == true){
 					//check whether sdp contain audio on/off information
 					if(isSdpWithAudio(sdp.sdp)){
 						console.log('offer with audio sdp');
 						if(self.media.status==0){
 							self.media.start();
-					  		pconn.setRmtDesc(sdp);
+					  		pc.setRmtDesc(sdp);
 					}else{
-						  	pconn.setRmtDesc(sdp);
-					  		pconn.makeAnswer();
+						  	pc.setRmtDesc(sdp);
+					  		pc.makeAnswer();
 						}
 					}else{
 						console.log('offer without audio!');
 						if(self.media.status==1){
 							self.media.stop();
-					  		pconn.setRmtDesc(sdp);
+					  		pc.setRmtDesc(sdp);
 					}else{
-						  	pconn.setRmtDesc(sdp);
-					  		pconn.makeAnswer();
+						  	pc.setRmtDesc(sdp);
+					  		pc.makeAnswer();
 						}
 					}
 
@@ -205,8 +416,8 @@ var hubCom;
 					if(self.localStream){
 						self.media.stop();
 					}
-				  	pconn.setRmtDesc(sdp);
-			  		pconn.makeAnswer();
+				  	pc.setRmtDesc(sdp);
+			  		pc.makeAnswer();
 				}
 			}
 	
@@ -277,27 +488,27 @@ var hubCom;
 				//console.log('usrList is ',self.usrList);
 			}
 
-			var pconn = self.peers[index];
+			var pc = self.peers[index];
 			console.log('Received msg:', msg);
 			if (msg.sdp.type === 'offer') {
 				//get invite from other side
 				createPeer('called',id,msg.sdp);
 				
 			} else if (msg.sdp.type === 'answer' ) {
-				if(!pconn){
+				if(!pc){
 					console.log("wrong answer id from "+id);
 					return;
 				}
-			  pconn.setRmtDesc(msg.sdp);
+			  pc.setRmtDesc(msg.sdp);
 				
 			} else if (msg.sdp.type === 'candidate') {
-				if(!pconn){
+				if(!pc){
 					console.log("wrong candidate id from "+id);
 					return;
 				}
 			  var candidate = new RTCIceCandidate({sdpMLineIndex:msg.sdp.label,
 			    candidate:msg.sdp.candidate});
-			  pconn.addIceCandidate(candidate);
+			  pc.addIceCandidate(candidate);
 			} else if (msg.sdp.type === 'exoffer'){
 				createExPr('called',id);
 				removePeer(id);
@@ -422,8 +633,8 @@ var hubCom;
 
 	_proto.sendData = function(data){
 		var self = this;
-		this.peers.forEach(function(pconn){
-			pconn.sendData(data);
+		this.peers.forEach(function(pc){
+			pc.sendData(data);
 		});
 		this.exPeers.forEach(function(id){
 			self.socket.emit('dat',{
@@ -477,6 +688,36 @@ var hubCom;
 		return rd;
 	};
 
+	_proto.startScnShare = function(onSuc,onErr){
+		var self = this;
+		var ss = this.scnStrm;
+		if(ss)muteStrm(ss);
+		getScreenMedia(function(err,s){
+			if(!err){
+				self.scnStrm = s;
+				self.peers.forEach(function(pc){
+					pc.addStream(s);
+					pc.makeOffer();
+				});
+				self.scnState =  true;
+				if(onSuc)onSuc(s);
+			}else{
+				console.log('getScn failed ',err.name);
+				if(onErr)onErr(err);
+			}
+		});
+
+	};
+
+	_proto.stopScnShare = function(){
+		var s = this.scnStrm;
+		if(s)muteStrm(s);
+		this.peers.forEach(function(pc){
+			pc.removeStream(s);
+			pc.makeOffer();
+		});
+	}
+
 
 
 	/*some callback fuctions*/
@@ -498,12 +739,12 @@ var hubCom;
 		// }
 		this.onLMedAdd(s);
 		this.localStream = s;
-		this.peers.forEach(function(pconn){
-			pconn.addStream(s);
-			if(pconn.negoState()){
-				pconn.makeAnswer();
+		this.peers.forEach(function(pc){
+			pc.addStream(s);
+			if(pc.negoState()){
+				pc.makeAnswer();
 			}else{
-				pconn.makeOffer();
+				pc.makeOffer();
 			}
 
 
@@ -511,12 +752,12 @@ var hubCom;
 	};
 	_proto.rmLocMedia = function(){
 		var s = this.localStream;
-		this.peers.forEach(function(pconn){
-			pconn.removeStream(s);
-			if(pconn.negoState()){
-				pconn.makeAnswer();
+		this.peers.forEach(function(pc){
+			pc.removeStream(s);
+			if(pc.negoState()){
+				pc.makeAnswer();
 			}else{
-				pconn.makeOffer();
+				pc.makeOffer();
 			}
 		});
 		this.localStream = undefined;
@@ -528,7 +769,10 @@ var hubCom;
 	};
 
 	_proto.onRStreamAdd = function(s){
-		this.onRMedAdd(s);
+		var m = {};
+		m.video = (s.getVideoTracks().length>0)?true:false;
+		m.stream =  s;
+		this.onRMedAdd(m);
 	};
 
 	_proto.onRStreamDel = function(s){
@@ -542,7 +786,7 @@ var hubCom;
 module.exports = hubCom;
 
 
-},{"./peerconn":3,"./webrtcsupport":4}],2:[function(require,module,exports){
+},{"./getscreenmedia":1,"./peerconn":4,"./webrtcsupport":5}],3:[function(require,module,exports){
 'use strict';
 var HubCom = require('./hubcom');
 
@@ -551,15 +795,13 @@ var mediaButton = document.getElementById("mediaButton");
 
 var localAudio = document.querySelector('#localAudio');
 // var remoteAudio = document.querySelector('#remoteAudio');
-
-
-
+var ssAct = 'idle'; //screen share active mark
 
 var options = {};
 /*pass local and remote audio element to hubcom*/
 // options.locAudio = localAudio;
 // options.remAudio = remoteAudio;
-options.twoway = true;
+options.twoway = false;
 
 /*get userName*/
 var user = prompt("Please enter your name","");
@@ -641,15 +883,21 @@ function hdlLMedAdd(s){
 
 function hdlRMedAdd(s){
     //<audio id='localAudio' autoplay muted></audio>
-    var mNode,au;
+    var mNode,m;
     mNode = {};
-    mNode.id = 'rAudio'+medList.length;
-    mNode.ln = "<audio id="+mNode.id+" autoplay></audio>"
-    mNode.s = s;
+    if(s.video){
+        mNode.id = 'rVideo'+medList.length;
+        mNode.ln = "<video id="+mNode.id+" autoplay></video>"
+
+    }else{
+        mNode.id = 'rAudio'+medList.length;
+        mNode.ln = "<audio id="+mNode.id+" autoplay></audio>"
+    }
+    mNode.s = s.stream;
     medList[medList.length] = mNode;
     $('.rStrmList').append(mNode.ln);
-    au = document.querySelector('#'+mNode.id);
-    attachMediaStream(au,s);
+    m = document.querySelector('#'+mNode.id);
+    attachMediaStream(m,s.stream);
 }
 
 function hdlRMedDel(s){
@@ -704,9 +952,20 @@ function showWarnMsg(msg){
     console.log('warn msg ',msg);
     $('.warn-msg').html('<strong>Warning: </strong>' + msg);
 }
-
-
-},{"./hubcom":1}],3:[function(require,module,exports){
+$('#scnButton').click(function(event) {
+    if(ssAct == 'idle'){
+        hubCom.startScnShare(function(){
+            ssAct = 'active';
+        },function(){
+            ssAct = 'idle';
+        });
+    }else{
+        hubCom.stopScnShare();
+        ssAct = 'idle';
+    }
+    event.preventDefault();
+});
+},{"./hubcom":2}],4:[function(require,module,exports){
 'use strict';
 
 var peerConn;
@@ -877,7 +1136,7 @@ var peerConn;
 
 module.exports = peerConn;
 
-},{}],4:[function(require,module,exports){
+},{}],5:[function(require,module,exports){
 // created by @HenrikJoreteg
 var webrtcsupport;
 (function(){
@@ -933,4 +1192,4 @@ var webrtcsupport;
 
 module.exports = webrtcsupport;
 
-},{}]},{},[2]);
+},{}]},{},[3]);

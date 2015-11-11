@@ -70,10 +70,12 @@ function parseAudioReq(message,socket){
 	var audCon = audsMan[currentRoom];
 	if(!audCon){
 		console.log('audsMan:','invalid room'+currentRoom);
+		return;
 	}
 	var room = rooms[currentRoom];
 	if(!room){
 		console.log('room:','invalid room'+currentRoom);
+		return;
 	}
 	var id = getIdBySocket(room, socket);
 	var cmd = message.cmd;
