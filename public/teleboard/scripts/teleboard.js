@@ -23,38 +23,48 @@ $(function(){
 		sp.width(sp.width()).height(sp.width()).maximize().zoom(sp.zoom());
 	};
 
+	var w = h = $(window).height() / 12;
+	var rootdir = 'v0';
+	var subdir = 'h0';
+	if ($(window).height() / $(window).width() > 1) {
+		rootdir = 'h0';
+		subdir = 'v0';
+		w = h = $(window).width() / 12;
+	}
+	if (w < 40) w = h = 40;
+	
 	var penList = [
-		{btn: {icon: svgicon.pen, iconcolor: sp.repcolor, tip: 'User Pen'}, act: function(){sp.dragmode = false;sp.pencolor(sp.repcolor);}},
-		{btn: {icon: svgicon.pen, tip: 'Black Pen'}, act: function(){sp.dragmode = false;sp.pencolor('black');}},
-		{btn: {icon: svgicon.pen, iconcolor: 'red', tip: 'Red Pen'}, act: function(){sp.dragmode = false;sp.pencolor('red');}},
-		{btn: {icon: svgicon.pen, iconcolor: 'green', tip: 'Green Pen'}, act: function(){sp.dragmode = false;sp.pencolor('green');}},
-		{btn: {icon: svgicon.pen, iconcolor: 'blue', tip: 'Blue Pen'}, act: function(){sp.dragmode = false;sp.pencolor('blue');}},
-		{btn: {icon: svgicon.eraser, tip: 'Eraser'}, act: function(){sp.dragmode = false;sp.deletion = true;sp.pencolor(sp.bgcolor());}},
-		{btn: {icon: svgicon.move, tip: 'Move Canvas'}, act: function(){sp.dragmode = true;}}
+		{btn: {w: w, h: h, icon: svgicon.pen, iconcolor: sp.repcolor, tip: 'User Pen'}, act: function(){sp.dragmode = false;sp.pencolor(sp.repcolor);}},
+		{btn: {w: w, h: h, icon: svgicon.pen, tip: 'Black Pen'}, act: function(){sp.dragmode = false;sp.pencolor('black');}},
+		{btn: {w: w, h: h, icon: svgicon.pen, iconcolor: 'red', tip: 'Red Pen'}, act: function(){sp.dragmode = false;sp.pencolor('red');}},
+		{btn: {w: w, h: h, icon: svgicon.pen, iconcolor: 'green', tip: 'Green Pen'}, act: function(){sp.dragmode = false;sp.pencolor('green');}},
+		{btn: {w: w, h: h, icon: svgicon.pen, iconcolor: 'blue', tip: 'Blue Pen'}, act: function(){sp.dragmode = false;sp.pencolor('blue');}},
+		{btn: {w: w, h: h, icon: svgicon.eraser, tip: 'Eraser'}, act: function(){sp.dragmode = false;;sp.pencolor(sp.bgcolor());}},
+		{btn: {w: w, h: h, icon: svgicon.move, tip: 'Move Canvas'}, act: function(){sp.dragmode = true;}}
 	];
 	var sizeList = [
-		{btn: {icon: svgicon.circle, resize: 0.15, tip: 'Small (5px)'},	act: function(){sp.penwidth(5)}},
-		{btn: {icon: svgicon.circle, resize: 0.05, tip: 'Tiny (1px)'}, act: function(){sp.penwidth(1)}},
-		{btn: {icon: svgicon.circle, resize: 0.35, tip: 'Midium (11px)'}, act: function(){sp.penwidth(11)}},
-		{btn: {icon: svgicon.circle, resize: 0.65, tip: 'Large (21px)'}, act: function(){sp.penwidth(21)}}	
+		{btn: {w: w, h: h, icon: svgicon.circle, resize: 0.15, tip: 'Small (5px)'},	act: function(){sp.penwidth(5)}},
+		{btn: {w: w, h: h, icon: svgicon.circle, resize: 0.05, tip: 'Tiny (1px)'}, act: function(){sp.penwidth(1)}},
+		{btn: {w: w, h: h, icon: svgicon.circle, resize: 0.35, tip: 'Midium (11px)'}, act: function(){sp.penwidth(11)}},
+		{btn: {w: w, h: h, icon: svgicon.circle, resize: 0.65, tip: 'Large (21px)'}, act: function(){sp.penwidth(21)}}	
 	];
 	var zoomList = [
-		{btn: {icon: svgicon.zoomout, tip: 'Zoom Out'},	act: function(){sp.zoom(sp.zrate / 1.1);}},
-		{btn: {icon: svgicon.fit, tip: 'Fit Content'}, act: function(){sp.fitcontent();}},
-		{btn: {icon: svgicon.zoomin, tip: 'Zoom In'}, act: function(){sp.zoom(sp.zrate * 1.1);}}
+		{btn: {w: w, h: h, icon: svgicon.zoomout, tip: 'Zoom Out'},	act: function(){sp.zoom(sp.zrate / 1.1);}},
+		{btn: {w: w, h: h, icon: svgicon.fit, tip: 'Fit Content'}, act: function(){sp.fitcontent();}},
+		{btn: {w: w, h: h, icon: svgicon.zoomin, tip: 'Zoom In'}, act: function(){sp.zoom(sp.zrate * 1.1);}}
 	];
 	var settingList = [
-		{btn: {icon: svgicon.clear, tip: 'Clear Canvas'}, act: function(){sp.undoall();}},
-		{btn: {icon: svgicon.redo, tip: 'Redo'}, act: function(){sp.redo();}},
-		{btn: {icon: svgicon.undo, tip: 'Undo'}, act: function(){sp.undo();}}
+		{btn: {w: w, h: h, icon: svgicon.clear, tip: 'Clear Canvas'}, act: function(){sp.undoall();}},
+		{btn: {w: w, h: h, icon: svgicon.redo, tip: 'Redo'}, act: function(){sp.redo();}},
+		{btn: {w: w, h: h, icon: svgicon.undo, tip: 'Undo'}, act: function(){sp.undo();}}
 	];	
 	var mainBtn = [
-		{sublist: penList, direction: 'horizontal'},
-		{sublist: sizeList, direction: 'horizontal'},
-		{btn: {icon: svgicon.zoom, tip: 'Zoom'}, sublist: zoomList, direction: 'horizontal'},
-		{btn: {icon: svgicon.setting, tip: 'Settings'},	sublist: settingList, direction: 'horizontal'}
+		{sublist: penList, direction: subdir},
+		{sublist: sizeList, direction: subdir},
+		{btn: {w: w, h: h, icon: svgicon.zoom, tip: 'Zoom'}, sublist: zoomList, direction: subdir},
+		{btn: {w: w, h: h, icon: svgicon.setting, tip: 'Settings'},	sublist: settingList, direction: subdir}
 	];
-	var rootList = {rootlist: mainBtn, direction: 'vertical'};
+	var rootList = {rootlist: mainBtn, direction: rootdir};
 	
 	var toolBar = new Gatherhub.BtnMenu(rootList);
 	toolBar.root.css({'position': 'absolute', 'bottom': 7, 'right': 6});
