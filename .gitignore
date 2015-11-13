@@ -1,4 +1,4 @@
 /tmp
 .project
-webrtc_demo/node_modules
+node_modules
 .svn
