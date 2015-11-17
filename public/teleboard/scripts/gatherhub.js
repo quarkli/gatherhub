@@ -947,8 +947,6 @@ var Gatherhub = Gatherhub || {};
 				top = $(this).parent().position().top;
 				left = $(this).parent().position().left + $(this).index() * w;
 			}
-			console.log($(this).parent());
-			console.log(left, top);
 			
 			if (sub.attr('dir') == 'h0' || sub.attr('dir') == 'h1') {
 				if (sub.attr('dir') == 'h1') {

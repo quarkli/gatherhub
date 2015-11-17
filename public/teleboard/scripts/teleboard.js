@@ -1,9 +1,21 @@
 var msp; // for debug use
 
 $(function(){
+	var hub = null;
+	var peer = null;
+	var urlparam = location.search.split('?');
+	if (urlparam.length == 2) {
+		var params = urlparam[1].split('&');
+		for (var i=0; i < params.length; i++) {
+			if (!hub) hub = params[i].split('hub=')[1] || null;
+			if (!peer) peer = params[i].split('peer=')[1] || null;
+		}
+	}
+
 	var sp = msp = new Gatherhub.SketchPad();
 	sp.floating('absolute').pencolor(sp.repcolor).appendto('#layer2');
 	sp.canvas.css('opacity', 0.75);	
+	sp.pad.on('mouseenter', function(){$(this).css('cursor', 'crosshair');});
 	//sp.calibration();
 	//$('<h5/>').css({width: '40%', margin: '0 auto', backgroundColor: '#FF8', textAlign: 'center', 'border-bottom-left-radius': '5px', 'border-bottom-right-radius': '5px', 'font-weight': 'bold', 'border-color': '#AAA', 'border-style': 'solid', 'border-width': '1px'}).appendTo('#layer1').html('Hub: 98141');
 	//$('<span/>').html('<h4>Show information and pop up at this layer</h4>').css({color: 'grey', textAlign: 'right'}).appendTo('#layer1');
@@ -14,7 +26,8 @@ $(function(){
 	vp.defsize(sp.width()/4, sp.height()/4).minimize().appendto('body');
 
 	sp.attachvp(vp);
-	sp.hubid = 1000;
+	sp.hubid = hub || 1000;
+	if (peer) sp.peername = peer;
 	sp.altsvr = '192.168.11.123';
 	sp.connect('minichat.gatherhub.com', 55688);
 	
