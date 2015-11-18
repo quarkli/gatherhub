@@ -1,7 +1,7 @@
 /* 
 * @Author: Phenix Cai
 * @Date:   2015-11-13 19:14:00
-* @Last Modified time: 2015-11-18 11:14:44
+* @Last Modified time: 2015-11-18 21:11:59
 */
 
 'use strict';
@@ -303,7 +303,6 @@ var webRtc;
     _proto.onRMedDel = function(){};
     _proto.onCpErro = function(){};
     _proto.onUsrList = function(){};
-    /*some other functions*/
 
 })();
 

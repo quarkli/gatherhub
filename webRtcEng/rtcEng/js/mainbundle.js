@@ -512,7 +512,8 @@ var peerConn;
         this.peer.onaddstream = onRStrmAdd;
         this.peer.onremovestream = onRStrmRm;
         this.ctyp = this.config.type;
-        this.streams = [];
+        this.rmtStrms = [];
+        this.locStrms = [];
 
         //internal methods
         function onIce(event){
@@ -550,13 +551,13 @@ var peerConn;
         function onRStrmAdd(event){
             var s = event.stream;
             self.onAddRStrm(s);
-            self.streams.push(s);
+            self.rmtStrms.push(s);
         }
 
         function onRStrmRm(event){
             var s =event.stream;
             self.onRmRStrm(s);
-            self.streams.splice(self.streams.indexOf(s),1);
+            self.rmtStrms.splice(self.rmtStrms.indexOf(s),1);
         }
         function onDcState(){
             var s ;
@@ -594,16 +595,18 @@ var peerConn;
     _proto.onConnReady = function(){};
     _proto.onConError = function(){};
 
+ 
+
     //api method
 
-    _proto.makeOffer = function(cb){
+    _proto.makeOffer = function(){
         var self = this;
         //in each negoiation, the party who make offer should be calling 
         this.ctyp = "calling";
         this.peer.createOffer(function(desc){
             /*it is very strange that createoffer would generate sendonly media when local stream is mute
             from my mind, it should be a=recevonly */
-            var sdp = desc.sdp.replace(/a=sendonly/g,'a=recvonly');
+            var sdp = self.prePrcsSdp(desc.sdp);
             desc.sdp = sdp;
             console.log('makeOffer ',desc);
             self.peer.setLocalDescription(desc);
@@ -616,6 +619,8 @@ var peerConn;
         //this.peer.setRemoteDescription(this.rmtSdp);
         this.ctyp = "called";
         this.peer.createAnswer(function(desc){
+            var sdp = self.prePrcsSdp(desc.sdp);
+            desc.sdp = sdp;
             console.log('makeAnswer ',desc);
             self.peer.setLocalDescription(desc);
             self.onSend('msg',{room:self.config.room, to:self.config.id, sdp:desc});
@@ -624,10 +629,12 @@ var peerConn;
 
     _proto.addStream =  function(stream){
         this.peer.addStream(stream);
+        this.locStrms.push(stream);
     };
 
     _proto.removeStream = function(stream){
         this.peer.removeStream(stream);
+        this.locStrms.splice(this.locStrms.indexOf(stream),1);
     };
 
     _proto.setRmtDesc = function(desc){
@@ -664,13 +671,42 @@ var peerConn;
 
     _proto.isRmtAudOn = function(){
         var rc = false;
-        this.streams.forEach(function(s){
+        this.rmtStrms.forEach(function(s){
             if(s.getAudioTracks().length > 0){
                 rc =true;
             }
         });
         return rc;
     };
+
+    /*some other functions*/
+    _proto.prePrcsSdp = function(sdp){
+        var auOn, scOn, sdps, nwSdp, cnt;
+        auOn = false, scOn =false;
+        this.locStrms.forEach(function(s){
+            if(s.getAudioTracks().length > 0)auOn = true;
+            if(s.getVideoTracks().length > 0)scOn = true;
+        });
+        nwSdp = '';
+        sdps = sdp.split('m=');
+        cnt = 0;
+        console.log('parse sdp ','audio = '+auOn+' video = '+scOn);
+        sdps.forEach(function(d){
+            var ss;
+            ss = (cnt > 0)? 'm=' + d : d;
+            cnt ++;
+            if(auOn == false && ss.search('m=audio')>=0){
+                ss = ss.replace(/a=sendonly/g,'a=recvonly');
+            }
+            if(scOn == false && ss.search('m=video')>=0){
+                ss = ss.replace(/a=sendonly/g,'a=recvonly');
+            }
+            nwSdp += ss;
+        });
+        return nwSdp;
+    };
+
+
 
 
 })();
@@ -707,7 +743,7 @@ module.exports = sockConnection;
 /* 
 * @Author: Phenix Cai
 * @Date:   2015-11-13 19:14:00
-* @Last Modified time: 2015-11-18 11:14:44
+* @Last Modified time: 2015-11-18 21:11:59
 */
 
 'use strict';
@@ -1009,7 +1045,6 @@ var webRtc;
     _proto.onRMedDel = function(){};
     _proto.onCpErro = function(){};
     _proto.onUsrList = function(){};
-    /*some other functions*/
 
 })();
 
