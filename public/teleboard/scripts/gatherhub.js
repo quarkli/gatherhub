@@ -66,6 +66,7 @@ var Gatherhub = Gatherhub || {};
 			this.resizable = true;
 			this.defaultWidth = w || $(window).width();
 			this.defaultHeight = h || $(window).height();
+			this.bgcolor('white');
 			
 			// DO NOT REMOVE, must set the width and height to set initial values 
 			this.maximize();
@@ -433,7 +434,8 @@ var Gatherhub = Gatherhub || {};
 			path.attr('fill', 'none');
 			path.attr('d', 'M' + x + ',' + y);
 			path.on('click touchstart', function(){
-				if (self.selrevert) $(this).appendTo(self.redocache);
+				if (self.pc == self.bgcolor()) 
+					$(this).clone().attr('stroke', self.bgcolor()).attr('stroke-width', 1 + $(this).attr('stroke-width') * 1).appendTo(self.pathholder);
 			});
 
 			this.pathholder.append(path);
@@ -631,7 +633,6 @@ var Gatherhub = Gatherhub || {};
 		_proto.vpad = null;
 		_proto.pathholder = null;
 		_proto.redocache = null;
-		_proto.selrevert = false;
 		_proto.seq = 0;
 		_proto.pc = 'black';
 		_proto.pw = 5;
@@ -942,21 +943,36 @@ var Gatherhub = Gatherhub || {};
 			if (sub.length == 0) sub = $('.' + $(this).attr('id'));
 			var top = $(this).parent().position().top + $(this).index() * w;
 			var left = $(this).parent().position().left;
+			if ($(this).parent().attr('dir') == 'h0' || $(this).parent().attr('dir') == 'h1') {
+				top = $(this).parent().position().top;
+				left = $(this).parent().position().left + $(this).index() * w;
+			}
 			
-			if (sub.children().last().css('float') == 'left') {
-				left += w;
+			if (sub.attr('dir') == 'h0' || sub.attr('dir') == 'h1') {
+				if (sub.attr('dir') == 'h1') {
+					top += w;
+					if (top + w > $(window).height()) top -= 2 * w;
+				}
+				else {
+					left += w;
+				}
 				if (left + w * sub.children().length > $(window).width()){
 					left -= w * (sub.children().length + 1);
-					for (var i = 0; i < sub.children().length; i++) {
-						sub.children().eq(sub.children().length - i -1).appendTo(sub);
-					}								
+					if (sub.attr('dir') == 'h1') left += w * 2;
 				}
 			}
 			else {
-				if (left + w * 2 > $(window).width())	left -= w;
-				else left += w;
-				if (sub.children().length * w + top > $(window).height())
+				if (sub.attr('dir') == 'v1') {
+					left += w;
+					if (left + w > $(window).width()) left -= 2 * w;
+				}
+				else {
+					top += w;
+				}
+				if (sub.children().length * w + top > $(window).height()) {
 					top -= w * (sub.children().length - 1);
+					if (sub.attr('dir') == 'v0') top -= w * 2;
+				}
 			}
 			sub.css({'top': top, 'left': left});
 			if (sub.is(':hidden')) sub.show();
@@ -973,7 +989,8 @@ var Gatherhub = Gatherhub || {};
 
 				if (slist) {
 					slist = createMenu(slist);
-					if (e.direction == 'horizontal') slist.children().css('float', 'left');
+					slist.attr('dir', e.direction);
+					if (e.direction == 'h0' || e.direction == 'h1') slist.children().css('float', 'left');
 					slist.css('position', 'absolute').attr('class', id).appendTo('body').hide();
 					slist.children().addClass(slist.attr('id'));
 				}
@@ -1017,7 +1034,8 @@ var Gatherhub = Gatherhub || {};
 			if (l.length > 0) {
 				var root = this.root = createMenu(l);
 				var children = root.children();
-				if (list.direction == 'horizontal') children.css('float', 'left');
+				root.attr('dir', list.direction);
+				if (list.direction == 'h0' || list.direction == 'h1') children.css('float', 'left');
 				list.id = root.attr('id');
 				children.addClass(list.id);
 			}
