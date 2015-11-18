@@ -61,7 +61,7 @@ function getIdBySocket(room,socket){
 function informAudioEvt(room,audCon){
   room.forEach(function (obj) {
 		//console.log('informAudioEvt');
-    obj.s.emit('media', {cmd: 'update', control: audCon });
+    if(obj)obj.s.emit('media', {cmd: 'update', control: audCon });
   });
 }
 

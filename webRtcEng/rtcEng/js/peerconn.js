@@ -1,41 +1,49 @@
 'use strict';
-
+var adapter = require('webrtc-adapter-test');
 var peerConn;
 
 (function(){
     var _proto;
 
     //constructors
-    function PeerConn(options){
-        var self;
-        self = this;
-        this.room = options.room;
-        this.id = options.id;
-        this.peer =  RTCPeerConnection(options.config, options.constraints);
-       
-        if(options.type=='calling'){
-            this.dc = this.peer.createDataChannel("sendDataChannel",{reliable: false});
-            console.log('sendDataChannel created!',this.dc);
-            this.dc.onmessage = onRecv;
-            this.dc.onopen = onDcState;
-            this.dc.onclose = onDcState;
-        }else{
-            this.peer.ondatachannel = onDcSetup;
+    function PeerConn(opts){
+        var self, options, item;
+        options = opts || {};
+        this.config = {
+            ice : {
+                iceServers : [{'url': 'stun:chi2-tftp2.starnetusa.net'}]
+            },
+            peerConstrs : {
+                optional : [
+                    {'DtlsSrtpKeyAgreement': false},
+                    {'RtpDataChannels': true}
+                ]
+            },
+            room: 'default',
+            type: '',
+            id: 0
+        };
+
+        for(item in options){
+            this.config[item] = options[item];
         }
+
+        self = this;
+        this.peer =  RTCPeerConnection(this.config.ice, this.config.peerConstrs);
 
         this.peer.onicecandidate = onIce;
         this.peer.onaddstream = onRStrmAdd;
         this.peer.onremovestream = onRStrmRm;
-        this.ctyp = options.type;
-        this.negostate = false;
+        this.ctyp = this.config.type;
+        this.streams = [];
 
         //internal methods
         function onIce(event){
           console.log('onIce: ', event);
           if (event.candidate) {
             self.onSend('msg',{
-                    room: self.room,
-                    to: self.id,
+                    room: self.config.room,
+                    to: self.config.id,
                     sdp: {
                   type: 'candidate',
                   label: event.candidate.sdpMLineIndex,
@@ -45,7 +53,7 @@ var peerConn;
           } else {
             console.log('End of candidates.','dc channel state is '+self.dc.readyState);
             if(self.ctyp == 'calling' && self.dc.readyState != 'open'){
-                self.onConError(self.id);
+                self.onConError(self.config.id);
             }
           }
         }
@@ -60,18 +68,38 @@ var peerConn;
 
         function onRecv(event){
           console.log('onRecv: ', event.data);
-            self.onDcRecv(self.id,event.data);
+            self.onDcRecv(self.config.id,event.data);
         }
         function onRStrmAdd(event){
-            self.onAddRStrm(event.stream);
+            var s = event.stream;
+            self.onAddRStrm(s);
+            self.streams.push(s);
         }
 
         function onRStrmRm(event){
-            self.onRmRStrm(event.stream);
+            var s =event.stream;
+            self.onRmRStrm(s);
+            self.streams.splice(self.streams.indexOf(s),1);
         }
         function onDcState(){
+            var s ;
             console.log('info ','datachannel state is '+self.dc.readyState);
+            s = (self.dc.readyState == 'open');
+            self.onConnReady(s);
+
+
         }
+
+        if(this.config.type=='calling'){
+            this.dc = this.peer.createDataChannel("sendDataChannel",{reliable: false});
+            console.log('sendDataChannel created!',this.dc);
+            this.dc.onmessage = onRecv;
+            this.dc.onopen = onDcState;
+            this.dc.onclose = onDcState;
+        }else{
+            this.peer.ondatachannel = onDcSetup;
+        }
+
 
     }
 
@@ -86,30 +114,35 @@ var peerConn;
     _proto.onDcRecv = function(){};
     _proto.onAddRStrm = function(){};
     _proto.onRmRStrm = function(){};
+    _proto.onConnReady = function(){};
     _proto.onConError = function(){};
 
     //api method
-    _proto.makeOffer = function(){
+
+    _proto.makeOffer = function(cb){
         var self = this;
         //in each negoiation, the party who make offer should be calling 
         this.ctyp = "calling";
         this.peer.createOffer(function(desc){
-            console.log('makeOffer',desc);
+            /*it is very strange that createoffer would generate sendonly media when local stream is mute
+            from my mind, it should be a=recevonly */
+            var sdp = desc.sdp.replace(/a=sendonly/g,'a=recvonly');
+            desc.sdp = sdp;
+            console.log('makeOffer ',desc);
             self.peer.setLocalDescription(desc);
-            self.onSend('msg',{room:self.room, to:self.id, sdp:desc});
+            self.onSend('msg',{room:self.config.room, to:self.config.id, sdp:desc});
         }, null, null);
     };
 
     _proto.makeAnswer = function(){
         var self = this;
         //this.peer.setRemoteDescription(this.rmtSdp);
+        this.ctyp = "called";
         this.peer.createAnswer(function(desc){
-            console.log('makeAnswer');
+            console.log('makeAnswer ',desc);
             self.peer.setLocalDescription(desc);
-            self.onSend('msg',{room:self.room, to:self.id, sdp:desc});
+            self.onSend('msg',{room:self.config.room, to:self.config.id, sdp:desc});
         },null);
-        this.negostate = false;
-
     };
 
     _proto.addStream =  function(stream){
@@ -123,9 +156,6 @@ var peerConn;
     _proto.setRmtDesc = function(desc){
         var sdp = new RTCSessionDescription(desc);
         this.peer.setRemoteDescription(sdp);
-        // if(this.negostate == false){
-        //     this.peer.setRemoteDescription(sdp);
-        // }
         console.log('setRemoteDescription ',sdp);
     };
 
@@ -135,12 +165,12 @@ var peerConn;
     };
 
     _proto.close = function(){
-        console.log('peerConnection close ',this.id);
+        console.log('peerConnection close ',this.config.id);
         this.peer.close();
     };
 
     _proto.getId = function(){
-        return this.id;
+        return this.config.id;
     };
 
     _proto.sendData = function(data){
@@ -155,12 +185,14 @@ var peerConn;
         return this.dc.readyState == 'open';
     };
 
-    _proto.callType = function(v){
-        return (v == undefined)?this.ctyp : this.ctype = v; 
-    };
-
-    _proto.negoState = function(v){
-        return (v == undefined)?this.negostate : this.negostate = v; 
+    _proto.isRmtAudOn = function(){
+        var rc = false;
+        this.streams.forEach(function(s){
+            if(s.getAudioTracks().length > 0){
+                rc =true;
+            }
+        });
+        return rc;
     };
 
 

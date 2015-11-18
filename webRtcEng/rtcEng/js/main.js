@@ -1,18 +1,16 @@
 'use strict';
 var HubCom = require('./hubcom');
 
-
 var mediaButton = document.getElementById("mediaButton");
 
 var localAudio = document.querySelector('#localAudio');
 // var remoteAudio = document.querySelector('#remoteAudio');
 var ssAct = 'idle'; //screen share active mark
 
-var options = {};
+var options = {room:'foo'};
 /*pass local and remote audio element to hubcom*/
 // options.locAudio = localAudio;
 // options.remAudio = remoteAudio;
-options.twoway = false;
 
 /*get userName*/
 var user = prompt("Please enter your name","");
@@ -21,7 +19,9 @@ if(!user){
 	user = 'demo'+Math.ceil(Math.random()*1000);
 }
 
-options.usrName = user;
+options.user = user;
+
+var mediaActive = 'idle';
 
 var hubCom = new HubCom(options);
 
@@ -35,6 +35,8 @@ hubCom.onLMedAdd = hdlLMedAdd;
 hubCom.onRMedAdd = hdlRMedAdd;
 hubCom.onRMedDel = hdlRMedDel;
 mediaButton.onclick = invokeMedia;
+
+hubCom.login();
 
 
 $('.message-input').keydown(function(e) {
@@ -88,15 +90,25 @@ function updateUsrList(list){
 }
 var medList = [];
 
+// Attach a media stream to an element.
+function attachMediaStream (element, stream) {
+  element.srcObject = stream;
+}
+
 function hdlLMedAdd(s){
     attachMediaStream(localAudio,s);
 }
+
+/*                var m = {};
+                m.video = (s.getVideoTracks().length>0)?true:false;
+                m.stream =  s;
+*/
 
 function hdlRMedAdd(s){
     //<audio id='localAudio' autoplay muted></audio>
     var mNode,m;
     mNode = {};
-    if(s.video){
+    if(s.getVideoTracks().length>0){
         mNode.id = 'rVideo'+medList.length;
         mNode.ln = "<video id="+mNode.id+" autoplay></video>"
 
@@ -104,11 +116,11 @@ function hdlRMedAdd(s){
         mNode.id = 'rAudio'+medList.length;
         mNode.ln = "<audio id="+mNode.id+" autoplay></audio>"
     }
-    mNode.s = s.stream;
+    mNode.s = s;
     medList[medList.length] = mNode;
     $('.rStrmList').append(mNode.ln);
     m = document.querySelector('#'+mNode.id);
-    attachMediaStream(m,s.stream);
+    attachMediaStream(m,s);
 }
 
 function hdlRMedDel(s){
