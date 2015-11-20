@@ -1,7 +1,7 @@
 /* 
 * @Author: Phenix Cai
 * @Date:   2015-11-13 19:14:00
-* @Last Modified time: 2015-11-20 10:47:33
+* @Last Modified time: 2015-11-20 14:20:55
 */
 
 'use strict';
@@ -281,19 +281,6 @@ var webRtc;
         });
     }
 
-    _proto.isRtcReady =  function(){
-        var rc =  false;
-        this.peers.forEach(function(p){
-            if(p&&p.getDcState()){
-                rc = true;
-            }
-        });
-        if(rc == false){
-            console.log('webrtc connected failed');
-        }
-        return rc;
-    };
-
     _proto.isRmtAudOn = function(){
         var rc = false;
         this.peers.forEach(function(p){
@@ -309,6 +296,12 @@ var webRtc;
     _proto.onRMedDel = function(){};
     _proto.onCpErro = function(){};
     _proto.onUsrList = function(){};
+
+    _proto.tstDc = function(){
+        this.peers.forEach(function(p){
+            p.getDataChannel('hello');
+        });
+    };
 
 })();
 

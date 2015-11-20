@@ -16,11 +16,13 @@ var peerConn;
             peerConstrs : {
                 optional : [
                     {'DtlsSrtpKeyAgreement': true}
-                    // {'RtpDataChannels': true}
                 ]
             },
             recvMedia :{
-                mandatory: {OfferToReceiveVideo:true, OfferToReceiveAudio:true}
+                mandatory: {
+                    OfferToReceiveVideo:false, 
+                    OfferToReceiveAudio:false
+                }
             },
             room: 'default',
             type: '',
@@ -120,19 +122,11 @@ var peerConn;
     _proto.onConnReady = function(){};
     _proto.onConError = function(){};
 
- 
-    var mediaConstraints = {
-            mandatory: {
-                OfferToReceiveAudio: true,
-                OfferToReceiveVideo: false
-            }
-        };        
-
     //api method
 
-    _proto.makeOffer = function(){
+    _proto.makeOffer = function(opts){
         var self = this;
-        //in each negoiation, the party who make offer should be calling 
+        var constrains = opts || this.config.recvMedia;
         this.ctyp = "calling";
         this.peer.createOffer(function(desc){
             /*it is very strange that createoffer would generate sendonly media when local stream is mute
@@ -144,12 +138,12 @@ var peerConn;
             self.onSend('msg',{room:self.config.room, to:self.config.id, sdp:desc});
         }, function(err){
             console.log('offer Error',err);
-        }, mediaConstraints);
+        }, constrains);
     };
 
-    _proto.makeAnswer = function(){
+    _proto.makeAnswer = function(opts){
         var self = this;
-        //this.peer.setRemoteDescription(this.rmtSdp);
+        var constrains = opts || this.config.recvMedia;
         this.ctyp = "called";
         this.peer.createAnswer(function(desc){
             // var sdp = self.prePrcsSdp(desc.sdp);
@@ -159,7 +153,7 @@ var peerConn;
             self.onSend('msg',{room:self.config.room, to:self.config.id, sdp:desc});
         },function(err){
             console.log('answer Error',err);
-        },mediaConstraints);
+        },constrains);
     };
 
     _proto.addStream =  function(stream){
@@ -200,10 +194,6 @@ var peerConn;
         }
     };
 
-    _proto.getDcState =  function(){
-        return this.dc.readyState == 'open';
-    };
-
     _proto.isRmtAudOn = function(){
         var rc = false;
         this.rmtStrms.forEach(function(s){
@@ -241,7 +231,14 @@ var peerConn;
         return nwSdp;
     };
 
-
+    _proto.getDataChannel =  function (name){
+        var self = this;
+        var ch = this.peer.createDataChannel(name,{});
+        this.tstCh = ch;
+        ch.onopen =  function(){
+            self.tstCh.send('message from tst chan');
+        }
+    }
 
 
 })();

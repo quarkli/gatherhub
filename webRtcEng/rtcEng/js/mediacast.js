@@ -1,7 +1,7 @@
 /* 
 * @Author: phenix cai
 * @Date:   2015-11-19 10:08:39
-* @Last Modified time: 2015-11-19 18:11:22
+* @Last Modified time: 2015-11-20 14:20:52
 */
 var webRtc = require('./webrtc');
 var medCast;
@@ -58,10 +58,6 @@ var medCast;
 
         cn.on('media', function (message){
             var cmd = message.cmd;
-            if(!self.isRtcReady()){
-                console.log('warning ','could not support media casting!');
-                return;
-            }
             if(cmd == 'ans'){
                 startMediaJob();
             }else if(cmd == 'update'){
@@ -86,10 +82,6 @@ var medCast;
         cn = this.connt;
         cfg = this.config;
 
-        if(!this.isRtcReady()){
-            console.log('Error','webrtc channel is not ready');
-            return;
-        }
         if(cfg.oneway){
             cn.emit('media',{room:cfg.room,cmd:'req'});
             this.setMediaAct('pending');

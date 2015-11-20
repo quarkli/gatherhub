@@ -357,11 +357,12 @@ $('#scnButton').click(function(event) {
     event.preventDefault();
 });
 
+
 },{"./hubcom":1}],4:[function(require,module,exports){
 /* 
 * @Author: phenix cai
 * @Date:   2015-11-19 10:08:39
-* @Last Modified time: 2015-11-19 18:11:22
+* @Last Modified time: 2015-11-20 14:20:52
 */
 var webRtc = require('./webrtc');
 var medCast;
@@ -418,10 +419,6 @@ var medCast;
 
         cn.on('media', function (message){
             var cmd = message.cmd;
-            if(!self.isRtcReady()){
-                console.log('warning ','could not support media casting!');
-                return;
-            }
             if(cmd == 'ans'){
                 startMediaJob();
             }else if(cmd == 'update'){
@@ -446,10 +443,6 @@ var medCast;
         cn = this.connt;
         cfg = this.config;
 
-        if(!this.isRtcReady()){
-            console.log('Error','webrtc channel is not ready');
-            return;
-        }
         if(cfg.oneway){
             cn.emit('media',{room:cfg.room,cmd:'req'});
             this.setMediaAct('pending');
@@ -510,11 +503,13 @@ var peerConn;
             peerConstrs : {
                 optional : [
                     {'DtlsSrtpKeyAgreement': true}
-                    // {'RtpDataChannels': true}
                 ]
             },
             recvMedia :{
-                mandatory: {OfferToReceiveVideo:true, OfferToReceiveAudio:true}
+                mandatory: {
+                    OfferToReceiveVideo:false, 
+                    OfferToReceiveAudio:false
+                }
             },
             room: 'default',
             type: '',
@@ -614,19 +609,11 @@ var peerConn;
     _proto.onConnReady = function(){};
     _proto.onConError = function(){};
 
- 
-    var mediaConstraints = {
-            mandatory: {
-                OfferToReceiveAudio: true,
-                OfferToReceiveVideo: false
-            }
-        };        
-
     //api method
 
-    _proto.makeOffer = function(){
+    _proto.makeOffer = function(opts){
         var self = this;
-        //in each negoiation, the party who make offer should be calling 
+        var constrains = opts || this.config.recvMedia;
         this.ctyp = "calling";
         this.peer.createOffer(function(desc){
             /*it is very strange that createoffer would generate sendonly media when local stream is mute
@@ -638,12 +625,12 @@ var peerConn;
             self.onSend('msg',{room:self.config.room, to:self.config.id, sdp:desc});
         }, function(err){
             console.log('offer Error',err);
-        }, mediaConstraints);
+        }, constrains);
     };
 
-    _proto.makeAnswer = function(){
+    _proto.makeAnswer = function(opts){
         var self = this;
-        //this.peer.setRemoteDescription(this.rmtSdp);
+        var constrains = opts || this.config.recvMedia;
         this.ctyp = "called";
         this.peer.createAnswer(function(desc){
             // var sdp = self.prePrcsSdp(desc.sdp);
@@ -653,7 +640,7 @@ var peerConn;
             self.onSend('msg',{room:self.config.room, to:self.config.id, sdp:desc});
         },function(err){
             console.log('answer Error',err);
-        },mediaConstraints);
+        },constrains);
     };
 
     _proto.addStream =  function(stream){
@@ -694,10 +681,6 @@ var peerConn;
         }
     };
 
-    _proto.getDcState =  function(){
-        return this.dc.readyState == 'open';
-    };
-
     _proto.isRmtAudOn = function(){
         var rc = false;
         this.rmtStrms.forEach(function(s){
@@ -735,7 +718,14 @@ var peerConn;
         return nwSdp;
     };
 
-
+    _proto.getDataChannel =  function (name){
+        var self = this;
+        var ch = this.peer.createDataChannel(name,{});
+        this.tstCh = ch;
+        ch.onopen =  function(){
+            self.tstCh.send('message from tst chan');
+        }
+    }
 
 
 })();
@@ -772,7 +762,7 @@ module.exports = sockConnection;
 /* 
 * @Author: Phenix Cai
 * @Date:   2015-11-13 19:14:00
-* @Last Modified time: 2015-11-20 10:47:33
+* @Last Modified time: 2015-11-20 14:20:55
 */
 
 'use strict';
@@ -1052,19 +1042,6 @@ var webRtc;
         });
     }
 
-    _proto.isRtcReady =  function(){
-        var rc =  false;
-        this.peers.forEach(function(p){
-            if(p&&p.getDcState()){
-                rc = true;
-            }
-        });
-        if(rc == false){
-            console.log('webrtc connected failed');
-        }
-        return rc;
-    };
-
     _proto.isRmtAudOn = function(){
         var rc = false;
         this.peers.forEach(function(p){
@@ -1080,6 +1057,12 @@ var webRtc;
     _proto.onRMedDel = function(){};
     _proto.onCpErro = function(){};
     _proto.onUsrList = function(){};
+
+    _proto.tstDc = function(){
+        this.peers.forEach(function(p){
+            p.getDataChannel('hello');
+        });
+    };
 
 })();
 
