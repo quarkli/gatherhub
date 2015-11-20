@@ -15,9 +15,12 @@ var peerConn;
             },
             peerConstrs : {
                 optional : [
-                    {'DtlsSrtpKeyAgreement': false},
-                    {'RtpDataChannels': true}
+                    {'DtlsSrtpKeyAgreement': true}
+                    // {'RtpDataChannels': true}
                 ]
+            },
+            recvMedia :{
+                mandatory: {OfferToReceiveVideo:true, OfferToReceiveAudio:true}
             },
             room: 'default',
             type: '',
@@ -52,10 +55,10 @@ var peerConn;
                   candidate: event.candidate.candidate},
                     });
           } else {
-            console.log('End of candidates.','dc channel state is '+self.dc.readyState);
-            if(self.ctyp == 'calling' && self.dc.readyState != 'open'){
-                self.onConError(self.config.id);
-            }
+            console.log('End of candidates.');
+            // if(self.ctyp == 'calling' && self.dc &&self.dc.readyState != 'open'){
+            //     self.onConError(self.config.id);
+            // }
           }
         }
 
@@ -67,10 +70,6 @@ var peerConn;
             self.dc.onclose = onDcState;
         }
 
-        function onRecv(event){
-          console.log('onRecv: ', event.data);
-            self.onDcRecv(self.config.id,event.data);
-        }
         function onRStrmAdd(event){
             var s = event.stream;
             self.onAddRStrm(s);
@@ -87,12 +86,15 @@ var peerConn;
             console.log('info ','datachannel state is '+self.dc.readyState);
             s = (self.dc.readyState == 'open');
             self.onConnReady(s);
-
-
+        }
+        function onRecv(event){
+          console.log('onRecv: ', event.data);
+            self.onDcRecv(self.config.id,event.data);
         }
 
+
         if(this.config.type=='calling'){
-            this.dc = this.peer.createDataChannel("sendDataChannel",{reliable: false});
+            this.dc = this.peer.createDataChannel("data",{});
             console.log('sendDataChannel created!',this.dc);
             this.dc.onmessage = onRecv;
             this.dc.onopen = onDcState;
@@ -119,6 +121,12 @@ var peerConn;
     _proto.onConError = function(){};
 
  
+    var mediaConstraints = {
+            mandatory: {
+                OfferToReceiveAudio: true,
+                OfferToReceiveVideo: false
+            }
+        };        
 
     //api method
 
@@ -129,12 +137,14 @@ var peerConn;
         this.peer.createOffer(function(desc){
             /*it is very strange that createoffer would generate sendonly media when local stream is mute
             from my mind, it should be a=recevonly */
-            var sdp = self.prePrcsSdp(desc.sdp);
-            desc.sdp = sdp;
+            // var sdp = self.prePrcsSdp(desc.sdp);
+            // desc.sdp = sdp;
             console.log('makeOffer ',desc);
             self.peer.setLocalDescription(desc);
             self.onSend('msg',{room:self.config.room, to:self.config.id, sdp:desc});
-        }, null, null);
+        }, function(err){
+            console.log('offer Error',err);
+        }, mediaConstraints);
     };
 
     _proto.makeAnswer = function(){
@@ -142,12 +152,14 @@ var peerConn;
         //this.peer.setRemoteDescription(this.rmtSdp);
         this.ctyp = "called";
         this.peer.createAnswer(function(desc){
-            var sdp = self.prePrcsSdp(desc.sdp);
-            desc.sdp = sdp;
+            // var sdp = self.prePrcsSdp(desc.sdp);
+            // desc.sdp = sdp;
             console.log('makeAnswer ',desc);
             self.peer.setLocalDescription(desc);
             self.onSend('msg',{room:self.config.room, to:self.config.id, sdp:desc});
-        },null);
+        },function(err){
+            console.log('answer Error',err);
+        },mediaConstraints);
     };
 
     _proto.addStream =  function(stream){

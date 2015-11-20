@@ -1,7 +1,7 @@
 /* 
 * @Author: Phenix Cai
 * @Date:   2015-11-13 19:14:00
-* @Last Modified time: 2015-11-18 21:11:59
+* @Last Modified time: 2015-11-20 10:47:33
 */
 
 'use strict';
@@ -74,11 +74,11 @@ var webRtc;
             };
             pc.onConError = function(id){
                 var config = self.config;
-                console.log('peer ',id+'connect error');
-                removePeer(id);
-                config.type = 'calling';
-                config.id = id;
-                self.onCpErro(config);
+                console.log('peer',id+' connect error');
+                // removePeer(id);
+                // config.type = 'calling';
+                // config.id = id;
+                // self.onCpErro(config);
             };
         }
 
@@ -203,6 +203,11 @@ var webRtc;
                 self.onUsrList(self.usrList);
                 removePeer(id);
             });
+            /////////////// log from server
+            cn.on('log', function (array){
+              console.log.apply(console, array);
+            });
+
         }
         regSigCallback();
 
@@ -296,6 +301,7 @@ var webRtc;
         });
         return rc;
     }
+
     /*some callback fuctions*/
     _proto.onDataRecv = function(){};
     _proto.onLMedAdd = function(){};

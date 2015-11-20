@@ -99,10 +99,6 @@ function hdlLMedAdd(s){
     attachMediaStream(localAudio,s);
 }
 
-/*                var m = {};
-                m.video = (s.getVideoTracks().length>0)?true:false;
-                m.stream =  s;
-*/
 
 function hdlRMedAdd(s){
     //<audio id='localAudio' autoplay muted></audio>
