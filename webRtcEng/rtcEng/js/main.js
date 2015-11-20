@@ -64,7 +64,7 @@ function addMsgHistory(data,type){
 function sendData() {
   var data = $('.message-input').val();
 	if(data&&data!=''){
-		hubCom.sendData(data);	
+		hubCom.sendTxt2All(data);	
 		addMsgHistory(user+': '+data,1);
     $('.message-input').val(''); 
 	}

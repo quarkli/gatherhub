@@ -74,12 +74,3 @@ var hubCom;
 
 module.exports = hubCom;
 
-var a = 0;
-function delay(){
-	console.log('enter delay ',a);
-	a++;
-	if(a < 10){
-		setTimeout(delay,1000);
-	}else return;
-	console.log('leave delay ',a)
-}

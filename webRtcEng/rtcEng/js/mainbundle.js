@@ -75,15 +75,7 @@ var hubCom;
 
 module.exports = hubCom;
 
-var a = 0;
-function delay(){
-	console.log('enter delay ',a);
-	a++;
-	if(a < 10){
-		setTimeout(delay,1000);
-	}else return;
-	console.log('leave delay ',a)
-}
+
 },{"./mediacast":4}],2:[function(require,module,exports){
 /* 
 * @Author: Phenix Cai
@@ -236,7 +228,7 @@ function addMsgHistory(data,type){
 function sendData() {
   var data = $('.message-input').val();
 	if(data&&data!=''){
-		hubCom.sendData(data);	
+		hubCom.sendTxt2All(data);	
 		addMsgHistory(user+': '+data,1);
     $('.message-input').val(''); 
 	}
@@ -508,7 +500,7 @@ var peerConn;
             recvMedia :{
                 mandatory: {
                     OfferToReceiveVideo:false, 
-                    OfferToReceiveAudio:false
+                    OfferToReceiveAudio:true
                 }
             },
             room: 'default',
@@ -526,9 +518,11 @@ var peerConn;
         this.peer.onicecandidate = onIce;
         this.peer.onaddstream = onRStrmAdd;
         this.peer.onremovestream = onRStrmRm;
+        this.peer.ondatachannel =  this.hdlDatChanAdd.bind(this);
         this.ctyp = this.config.type;
         this.rmtStrms = [];
         this.locStrms = [];
+        this.datChans = {};
 
         //internal methods
         function onIce(event){
@@ -545,18 +539,7 @@ var peerConn;
                     });
           } else {
             console.log('End of candidates.');
-            // if(self.ctyp == 'calling' && self.dc &&self.dc.readyState != 'open'){
-            //     self.onConError(self.config.id);
-            // }
           }
-        }
-
-        function onDcSetup(event){
-            console.log('Receive Channel:',event.channel);
-            self.dc = event.channel;
-            self.dc.onmessage = onRecv;
-            self.dc.onopen = onDcState;
-            self.dc.onclose = onDcState;
         }
 
         function onRStrmAdd(event){
@@ -570,28 +553,6 @@ var peerConn;
             self.onRmRStrm(s);
             self.rmtStrms.splice(self.rmtStrms.indexOf(s),1);
         }
-        function onDcState(){
-            var s ;
-            console.log('info ','datachannel state is '+self.dc.readyState);
-            s = (self.dc.readyState == 'open');
-            self.onConnReady(s);
-        }
-        function onRecv(event){
-          console.log('onRecv: ', event.data);
-            self.onDcRecv(self.config.id,event.data);
-        }
-
-
-        if(this.config.type=='calling'){
-            this.dc = this.peer.createDataChannel("data",{});
-            console.log('sendDataChannel created!',this.dc);
-            this.dc.onmessage = onRecv;
-            this.dc.onopen = onDcState;
-            this.dc.onclose = onDcState;
-        }else{
-            this.peer.ondatachannel = onDcSetup;
-        }
-
 
     }
 
@@ -610,7 +571,6 @@ var peerConn;
     _proto.onConError = function(){};
 
     //api method
-
     _proto.makeOffer = function(opts){
         var self = this;
         var constrains = opts || this.config.recvMedia;
@@ -618,8 +578,8 @@ var peerConn;
         this.peer.createOffer(function(desc){
             /*it is very strange that createoffer would generate sendonly media when local stream is mute
             from my mind, it should be a=recevonly */
-            // var sdp = self.prePrcsSdp(desc.sdp);
-            // desc.sdp = sdp;
+            var sdp = self.prePrcsSdp(desc.sdp);
+            desc.sdp = sdp;
             console.log('makeOffer ',desc);
             self.peer.setLocalDescription(desc);
             self.onSend('msg',{room:self.config.room, to:self.config.id, sdp:desc});
@@ -633,8 +593,8 @@ var peerConn;
         var constrains = opts || this.config.recvMedia;
         this.ctyp = "called";
         this.peer.createAnswer(function(desc){
-            // var sdp = self.prePrcsSdp(desc.sdp);
-            // desc.sdp = sdp;
+            var sdp = self.prePrcsSdp(desc.sdp);
+            desc.sdp = sdp;
             console.log('makeAnswer ',desc);
             self.peer.setLocalDescription(desc);
             self.onSend('msg',{room:self.config.room, to:self.config.id, sdp:desc});
@@ -673,11 +633,41 @@ var peerConn;
         return this.config.id;
     };
 
-    _proto.sendData = function(data){
-        if(this.dc.readyState != 'open'){
+    _proto._obsrvDatChan = function(ch){
+        var self = this;
+        ch.onclose = function(){
+            console.log('dc chan close ',ch);
+        };
+        ch.onerror = function(){
+            console.log('dc chan erro ',ch);
+        }
+        ch.onopen =  function(){
+            console.log('dc chan open ',ch);
+        }
+        ch.onmessage = function(ev){
+            self.onDcRecv(ch.label,self.config.id,event.data);
+        }
+    };
+    _proto.getDatChan = function(name,opts){
+        var chan = this.datChans[name];
+        if(!opts) opts = {};
+        if(chan) return chan;
+        chan = this.datChans[name] = this.peer.createDataChannel(name,opts);
+        this._obsrvDatChan(chan);
+        return chan;
+    };
+    _proto.hdlDatChanAdd = function(ev){
+        var ch = ev.channel;
+        this.datChans[ch.label] = ch;
+        this._obsrvDatChan(ch);
+    };
+
+    _proto.sendData = function(chan,data){
+        var dc = this.getDatChan(chan);
+        if(!dc || (dc.readyState != 'open')){
             console.log('Error','datachannel is not ready, could not send');
         }else{
-            this.dc.send(data);
+            dc.send(data);
         }
     };
 
@@ -718,14 +708,6 @@ var peerConn;
         return nwSdp;
     };
 
-    _proto.getDataChannel =  function (name){
-        var self = this;
-        var ch = this.peer.createDataChannel(name,{});
-        this.tstCh = ch;
-        ch.onopen =  function(){
-            self.tstCh.send('message from tst chan');
-        }
-    }
 
 
 })();
@@ -762,7 +744,7 @@ module.exports = sockConnection;
 /* 
 * @Author: Phenix Cai
 * @Date:   2015-11-13 19:14:00
-* @Last Modified time: 2015-11-20 14:20:55
+* @Last Modified time: 2015-11-20 15:47:08
 */
 
 'use strict';
@@ -822,9 +804,13 @@ var webRtc;
             pc.onSend = function(){
                 self.connt.emit.apply(self.connt,arguments);
             };
-            pc.onDcRecv = function (from,data){
+            pc.onDcRecv = function (chan,from,data){
                 var usr = self.usrList[from];
-                self.onDataRecv(usr,data);
+                switch(chan){
+                    case 'textMsg':
+                    self.onDataRecv(usr,data);
+                    break;
+                }
             };
             pc.onAddRStrm = function (s){
                 self.onRMedAdd(s);
@@ -862,6 +848,7 @@ var webRtc;
                 self.media.getStrms().forEach(function(s){
                     if(s)pc.addStream(s);
                 });
+                pc.getDatChan('textMsg');
                 pc.makeOffer();
             }else{
                 // received offer 
@@ -988,9 +975,9 @@ var webRtc;
             this.connt.emit('bye',{room:this.config.room});
         }
     };
-    _proto.sendData = function(data){
+    _proto.sendData = function(chan,data){
         this.peers.forEach(function(pc){
-            if(pc)pc.sendData(data);
+            if(pc)pc.sendData(chan, data);
         });
     };
     _proto.startMedia =  function(onSuc,onErr){
@@ -1040,7 +1027,7 @@ var webRtc;
                 pc.makeOffer();
             });
         });
-    }
+    };
 
     _proto.isRmtAudOn = function(){
         var rc = false;
@@ -1048,7 +1035,11 @@ var webRtc;
             if(p.isRmtAudOn()) rc = true;
         });
         return rc;
-    }
+    };
+
+    _proto.sendTxt2All = function(data){
+        this.sendData('textMsg',data);
+    }; 
 
     /*some callback fuctions*/
     _proto.onDataRecv = function(){};
@@ -1058,11 +1049,6 @@ var webRtc;
     _proto.onCpErro = function(){};
     _proto.onUsrList = function(){};
 
-    _proto.tstDc = function(){
-        this.peers.forEach(function(p){
-            p.getDataChannel('hello');
-        });
-    };
 
 })();
 

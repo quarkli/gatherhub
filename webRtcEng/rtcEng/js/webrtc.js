@@ -1,7 +1,7 @@
 /* 
 * @Author: Phenix Cai
 * @Date:   2015-11-13 19:14:00
-* @Last Modified time: 2015-11-20 14:20:55
+* @Last Modified time: 2015-11-20 15:47:08
 */
 
 'use strict';
@@ -61,9 +61,13 @@ var webRtc;
             pc.onSend = function(){
                 self.connt.emit.apply(self.connt,arguments);
             };
-            pc.onDcRecv = function (from,data){
+            pc.onDcRecv = function (chan,from,data){
                 var usr = self.usrList[from];
-                self.onDataRecv(usr,data);
+                switch(chan){
+                    case 'textMsg':
+                    self.onDataRecv(usr,data);
+                    break;
+                }
             };
             pc.onAddRStrm = function (s){
                 self.onRMedAdd(s);
@@ -101,6 +105,7 @@ var webRtc;
                 self.media.getStrms().forEach(function(s){
                     if(s)pc.addStream(s);
                 });
+                pc.getDatChan('textMsg');
                 pc.makeOffer();
             }else{
                 // received offer 
@@ -227,9 +232,9 @@ var webRtc;
             this.connt.emit('bye',{room:this.config.room});
         }
     };
-    _proto.sendData = function(data){
+    _proto.sendData = function(chan,data){
         this.peers.forEach(function(pc){
-            if(pc)pc.sendData(data);
+            if(pc)pc.sendData(chan, data);
         });
     };
     _proto.startMedia =  function(onSuc,onErr){
@@ -279,7 +284,7 @@ var webRtc;
                 pc.makeOffer();
             });
         });
-    }
+    };
 
     _proto.isRmtAudOn = function(){
         var rc = false;
@@ -287,7 +292,11 @@ var webRtc;
             if(p.isRmtAudOn()) rc = true;
         });
         return rc;
-    }
+    };
+
+    _proto.sendTxt2All = function(data){
+        this.sendData('textMsg',data);
+    }; 
 
     /*some callback fuctions*/
     _proto.onDataRecv = function(){};
@@ -297,11 +306,6 @@ var webRtc;
     _proto.onCpErro = function(){};
     _proto.onUsrList = function(){};
 
-    _proto.tstDc = function(){
-        this.peers.forEach(function(p){
-            p.getDataChannel('hello');
-        });
-    };
 
 })();
 
