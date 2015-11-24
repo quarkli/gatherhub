@@ -1,12 +1,33 @@
 var msp; // for debug use
+var mvp;
+var mbmenu;
 
 $(function(){
+	$('#userlist').niceScroll();
+	$('#chatbox').niceScroll();
+	
+	var btnUser = new Gatherhub.SvgButton({icon: svgicon.user, w: 40, h: 40, borderradius: .1, bgcolor: '#CCC'});
+	btnUser.floating();
+	btnUser.pad.css('float', 'left');
+	btnUser.pad.attr({'id': 'btnUser', 'data-toggle': 'collapse', 'data-parent': 'cpanel', 'href': '#userlist'});
+	btnUser.appendto('#menu');
+	var btnMsg = new Gatherhub.SvgButton({icon: svgicon.chat, w: 40, h: 40, borderradius: .1, bgcolor: '#CCC'});
+	btnMsg.floating();
+	btnMsg.pad.css('float', 'left');
+	btnMsg.pad.attr({'id': 'btnMsg', 'data-toggle': 'collapse', 'data-parent': 'cpanel', 'href': '#chatbox'});
+	btnMsg.appendto('#menu');
+	var btnSpk = new Gatherhub.SvgButton({icon: svgicon.mic, w: 40, h: 40, borderradius: .1, bgcolor: '#CCC'});
+	btnSpk.floating();
+	btnSpk.pad.css('float', 'left');
+	btnSpk.pad.attr({'id': 'btnSpk', 'data-toggle': 'collapse', 'data-parent': 'cpanel', 'href': '#spkrlist'});
+	btnSpk.appendto('#menu');
+	
 	var sp = msp = new Gatherhub.SketchPad();
 	sp.floating('absolute').pencolor(sp.repcolor).appendto('body');
 	sp.canvas.css('opacity', 0.75);	
 	sp.pad.on('mouseenter', function(){$(this).css('cursor', 'crosshair');});
 
-	var vp = new Gatherhub.VisualPad();
+	var vp = mvp = new Gatherhub.VisualPad().moveto('left', 9999);
 	vp.draggable = true;
 	vp.floating('absolute').bgcolor('#FFF').bordercolor('#888').borderwidth(3);
 	vp.defsize(sp.width()/4, sp.height()/4).minimize().appendto('body');
@@ -71,8 +92,8 @@ $(function(){
 	];
 	var rootList = {rootlist: mainBtn, direction: rootdir};
 	
-	var toolBar = new Gatherhub.BtnMenu(rootList);
-	toolBar.root.css({'position': 'absolute', 'bottom': 7, 'right': 6});
+	var toolBar = mbmenu = new Gatherhub.BtnMenu(rootList);
+	toolBar.root.css({'position': 'absolute', 'bottom': 0, 'right': 0});
 
 	window.onresize = function(){
 		vp.defsize(sp.width()/4, sp.height()/4).minimize();

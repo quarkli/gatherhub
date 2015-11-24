@@ -108,11 +108,17 @@ Author: quarkli@gmail.com
 		border-bottom-right-radius:5px;
 		background-color: #00C;
 	}
-	#board {
-		float: left;
-		height: 100%;
+	#eboard {
+		position: absolute;
+		top: 50px;
+		right: 50px;
+		width: 640px;
+		height: 480px;
 		overflow: hidden;
 		background-color: #C00;
+	}
+	body {
+		overflow: hidden;
 	}
 	</style>
   </head>
