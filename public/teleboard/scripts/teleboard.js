@@ -1,48 +1,61 @@
 var msp; // for debug use
+var mvp;
+var mbmenu;
 
 $(function(){
-	var hub = null;
-	var peer = null;
-	var urlparam = location.search.split('?');
-	if (urlparam.length == 2) {
-		var params = urlparam[1].split('&');
-		for (var i=0; i < params.length; i++) {
-			if (!hub) hub = params[i].split('hub=')[1] || null;
-			if (!peer) peer = params[i].split('peer=')[1] || null;
-		}
-	}
-
+	$('#userlist').niceScroll();
+	$('#chatbox').niceScroll();
+	
+	var btnUser = new Gatherhub.SvgButton({icon: svgicon.user, w: 40, h: 40, borderradius: .1, bgcolor: '#CCC'});
+	btnUser.floating();
+	btnUser.pad.css('float', 'left');
+	btnUser.pad.attr({'id': 'btnUser', 'data-toggle': 'collapse', 'data-parent': 'cpanel', 'href': '#userlist'});
+	btnUser.appendto('#menu');
+	var btnMsg = new Gatherhub.SvgButton({icon: svgicon.chat, w: 40, h: 40, borderradius: .1, bgcolor: '#CCC'});
+	btnMsg.floating();
+	btnMsg.pad.css('float', 'left');
+	btnMsg.pad.attr({'id': 'btnMsg', 'data-toggle': 'collapse', 'data-parent': 'cpanel', 'href': '#chatbox'});
+	btnMsg.appendto('#menu');
+	var btnSpk = new Gatherhub.SvgButton({icon: svgicon.mic, w: 40, h: 40, borderradius: .1, bgcolor: '#CCC'});
+	btnSpk.floating();
+	btnSpk.pad.css('float', 'left');
+	btnSpk.pad.attr({'id': 'btnSpk', 'data-toggle': 'collapse', 'data-parent': 'cpanel', 'href': '#spkrlist'});
+	btnSpk.appendto('#menu');
+	
 	var sp = msp = new Gatherhub.SketchPad();
-	sp.floating('absolute').pencolor(sp.repcolor).appendto('#layer2');
+	sp.floating('absolute').pencolor(sp.repcolor).appendto('body');
 	sp.canvas.css('opacity', 0.75);	
 	sp.pad.on('mouseenter', function(){$(this).css('cursor', 'crosshair');});
-	//sp.calibration();
-	//$('<h5/>').css({width: '40%', margin: '0 auto', backgroundColor: '#FF8', textAlign: 'center', 'border-bottom-left-radius': '5px', 'border-bottom-right-radius': '5px', 'font-weight': 'bold', 'border-color': '#AAA', 'border-style': 'solid', 'border-width': '1px'}).appendTo('#layer1').html('Hub: 98141');
-	//$('<span/>').html('<h4>Show information and pop up at this layer</h4>').css({color: 'grey', textAlign: 'right'}).appendTo('#layer1');
 
-	var vp = new Gatherhub.VisualPad();
+	var vp = mvp = new Gatherhub.VisualPad().moveto('left', 9999);
 	vp.draggable = true;
 	vp.floating('absolute').bgcolor('#FFF').bordercolor('#888').borderwidth(3);
 	vp.defsize(sp.width()/4, sp.height()/4).minimize().appendto('body');
 
 	sp.attachvp(vp);
-	sp.hubid = hub || 1000;
-	if (peer) sp.peername = peer;
 	sp.altsvr = '192.168.11.123';
-	sp.connect('minichat.gatherhub.com', 55688);
-	
-	window.onresize = function(){
-		vp.defsize(sp.width()/4, sp.height()/4).minimize();
-		sp.width(sp.width()).height(sp.width()).maximize().zoom(sp.zoom());
-	};
 
-	var w = h = $(window).height() / 12;
+	if (hub.length > 0) sp.hubid = hub;
+
+	if (peer.length == 0) {
+		if (getCookie('peer') && getCookie('peer').length > 0) {
+			$('#peer').val(getCookie('peer'));
+			$('#cacheOn').attr('checked', true);
+		}
+		$('#joinhub').modal('toggle');
+	}
+	else {
+		sp.peername = peer;
+		sp.connect('minichat.gatherhub.com', 55688);
+	}
+	
+	var w = h = parseInt($(window).height() / 24) * 2;
 	var rootdir = 'v0';
 	var subdir = 'h0';
 	if ($(window).height() / $(window).width() > 1) {
 		rootdir = 'h0';
 		subdir = 'v0';
-		w = h = $(window).width() / 12;
+		w = h = parseInt($(window).width() / 24) * 2;
 	}
 	if (w < 40) w = h = 40;
 	
@@ -79,6 +92,40 @@ $(function(){
 	];
 	var rootList = {rootlist: mainBtn, direction: rootdir};
 	
-	var toolBar = new Gatherhub.BtnMenu(rootList);
-	toolBar.root.css({'position': 'absolute', 'bottom': 7, 'right': 6});
+	var toolBar = mbmenu = new Gatherhub.BtnMenu(rootList);
+	toolBar.root.css({'position': 'absolute', 'bottom': 0, 'right': 0});
+
+	window.onresize = function(){
+		vp.defsize(sp.width()/4, sp.height()/4).minimize();
+		sp.width(sp.width()).height(sp.width()).maximize().zoom(sp.zoom());
+		toolBar.collapseall();
+	};
 });
+
+function setCookie(key, value) {
+	var expires = new Date();
+	expires.setTime(expires.getTime() + (180 * 24 * 60 * 60 * 1000));
+	document.cookie = key + '=' + value + ';expires=' + expires.toUTCString();
+}
+
+function getCookie(key) {
+	var keyValue = document.cookie.match('(^|;) ?' + key + '=([^;]*)(;|$)');
+	return keyValue ? keyValue[2] : null;
+}
+
+function validateInput(){
+	if ($('#peer').val().trim().length == 0) {
+		alert('Please enter your name!');
+		return false;
+	}
+
+	if ($('#cacheOn').is(':checked')) setCookie('peer', $('#peer').val());
+	else setCookie('peer', '');
+
+	peer = $('#peer').val();
+	msp.peername = peer;
+	msp.connect('minichat.gatherhub.com', 55688);
+	$('#joinhub').modal('toggle');
+	
+	return true;
+}

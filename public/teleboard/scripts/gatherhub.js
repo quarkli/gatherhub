@@ -101,9 +101,9 @@ var Gatherhub = Gatherhub || {};
 			return $.isNumeric(parseInt(this.canvas[0].style['border-width'])) ? parseInt(this.canvas[0].style['border-width']) : 0;
 		};
 		_proto.borderradius = function(r) {
-			if (r > 0 && r <= 1) {
+			if (r >= 0 && r <= 1) {
 				var s = this.width() < this.height ? this.width() : this.height();
-				this.canvas[0].style['border-radius'] = (s * r / 2) + 'px';
+				this.canvas[0].style['border-radius'] = (s * r / 8) + 'px';
 			}
 			return this;
 		};
@@ -123,7 +123,7 @@ var Gatherhub = Gatherhub || {};
 				this.movable = true;
 			}
 			else {
-				this.pad[0].style['position'] = 'auto';
+				this.pad[0].style['position'] = 'static';
 				this.movable = false;
 			} 
 			return this;
@@ -132,10 +132,12 @@ var Gatherhub = Gatherhub || {};
 			if (this.movable) {
 				var b;
 				if (axis == 'left') {
-					b = $(window).width() - this.width() - this.borderpadding() / 2 - 6;
+					b = (this.parent && this.parent.width()) ? this.parent.width() : $(window).width();
+					b = b - this.width() - this.borderpadding() / 2;
 				} 
 				else if (axis == 'top') {
-					b = $(window).height() - this.height() - this.borderpadding() / 2 - 7;
+					b = (this.parent && this.parent.height()) ? this.parent.height() : $(window).height();
+					b = b - this.height() - this.borderpadding() / 2;
 				}
 				else {
 					return this;
@@ -149,20 +151,22 @@ var Gatherhub = Gatherhub || {};
 		_proto.width = function(w) {
 			if (w === undefined) return this.canvas.attr('width');
 			if (this.resizable && $.isNumeric(w)) {
-				if (w > $(window).width() - 6) w = $(window).width() - 6;
+				var max = (this.parent && this.parent.width()) ? this.parent.width() : $(window).width();
+				if (w > max) w = max;
 				this.canvas.attr('width', w);
 				this.canvasvbox.w = precision((this.canvas.attr('width') - this.borderpadding()) / this.zrate, 3);
-				if (this.pad.position().left + this.canvas.attr('width') * 1 + this.borderpadding() / 2 + 6 > $(window).width()) this.moveto('left', 9999);
+				if (this.pad.position().left + this.canvas.attr('width') * 1 + this.borderpadding() / 2 > max) this.moveto('left', 9999);
 			}
 			return this;
 		};
 		_proto.height = function(h) {
 			if (h === undefined) return this.canvas.attr('height');
 			if (this.resizable && $.isNumeric(h)) {
-				if (h > $(window).height() - 7) h = $(window).height() - 7;
+				var max = (this.parent && this.parent.height()) ? this.parent.height() : $(window).height();
+				if (h > max) h = max;
 				this.canvas.attr('height', h);
 				this.canvasvbox.h = precision((this.canvas.attr('height') - this.borderpadding()) / this.zrate, 3);
-				if (this.pad.position().top + this.canvas.attr('height') * 1 + this.borderpadding() / 2 + 7 > $(window).height()) this.moveto('top', 9999);
+				if (this.pad.position().top + this.canvas.attr('height') * 1 + this.borderpadding() / 2 > max) this.moveto('top', 9999);
 			}
 			return this;
 		};
@@ -220,6 +224,12 @@ var Gatherhub = Gatherhub || {};
 		};
 		_proto.appendto = function(obj) {
 			if ($(obj).length) this.pad.appendTo($(obj));
+			this.parent = this.pad.parent();
+			if (this.parent.width() && this.width() > this.parent.width()) this.width(this.parent.width());
+			if (this.parent.height() && this.height() > this.parent.height()) this.height(this.parent.height());
+			this.refreshvbox();
+			this.moveto('left', this.pad.position().left);
+			this.moveto('top', this.pad.position().top);
 			return this;
 		};
 		_proto.calibration = function() {
@@ -257,6 +267,7 @@ var Gatherhub = Gatherhub || {};
 			g.SvgPad.call(this);
 			this.source = null;
 			this.size = 1;
+			this.psize = -1;
 			this.dragging = false;
 			this.resolution = false;
 			this.defaultWidth = w || $(window).width() / 4;
@@ -341,13 +352,18 @@ var Gatherhub = Gatherhub || {};
 		};
 		_proto.mousedownHdl = function(x, y) {
 			if ($.now() - logtime < 400) {
-				if (this.width() == this.defaultWidth) {
-					this.size = precision($(window).width() / this.width(), 1);
+				if (this.psize == -1) {
+					this.top = this.pad.position().top;
+					this.left = this.pad.position().left;
+					this.pwidth = this.width();
+					this.pheight = this.height();
 					this.maximize().fitcontent();
+					this.psize = this.size = this.width() / this.defaultWidth;
 				}
 				else {
-					this.size = 1;
-					this.minimize().fitcontent();
+					this.width(this.pwidth).height(this.pheight).moveto('left', this.left).moveto('top', this.top);
+					this.size = this.width() / this.defaultWidth;
+					this.psize = -1;
 				}
 			}
 			else {
@@ -371,24 +387,18 @@ var Gatherhub = Gatherhub || {};
 			}			
 		};
 		_proto.mousewheelHdl = function(delta) {
-			var r = 0.1;
-			var s = this.size;
-			var x = this.pad.position().top;
-			var y = this.pad.position().left;
-
-			if (delta > 0) {
-				s += r;
+			var r = -0.1;
+			if (delta > 0) r *= -1;
+			this.size += r;
+			if (this.size >= 1) {
+				var w = this.defaultWidth * this.size;
+				var h = this.defaultHeight * this.size;
+				var x = this.pad.position().left - this.defaultWidth * r / 2;
+				var y = this.pad.position().top - this.defaultHeight * r / 2;
+				this.width(w).height(h).moveto('left', x).moveto('top', y);
 			}
-			else if (s - r >= 1){
-				s -= r;
-			}
-			var w = this.defaultWidth * s;
-			var h = this.defaultHeight * s;
-			if (w <= $(window).width() && h <= $(window).height() ) {
-				if (this.pad.position().top + h > $(window).height()) this.moveto('top',  $(window).height() - h);	
-				if (this.pad.position().left + w > $(window).width()) this.moveto('left',  $(window).width() - w);
-				this.width(w).height(h);
-				this.size = precision(s, 1);
+			else {
+				this.size = 1;
 			}
 		};
 	})();
@@ -538,6 +548,8 @@ var Gatherhub = Gatherhub || {};
 				var t = e.touches ? e.touches : null;
 				var x = t ? t[0].pageX : e.pageX;
 				var y = t ? t[0].pageY : e.pageY;
+				x -= self.pad.parent().position().left;
+				y -= self.pad.parent().position().top;
 				e.preventDefault();
 
 				mouseX = x;
@@ -581,10 +593,12 @@ var Gatherhub = Gatherhub || {};
 				var t = e.touches ? e.touches : null;
 				var x = t ? t[0].pageX : e.pageX;
 				var y = t ? t[0].pageY : e.pageY;
+				x -= self.pad.parent().position().left;
+				y -= self.pad.parent().position().top;
 				e.preventDefault();
 				if (bBtnMiddle || (bBtnLeft && bBtnRight)) {
-					self.offsetcanvas('x', precision(e.pageX, 3) - mouseX);
-					self.offsetcanvas('y', precision(e.pageY, 3) - mouseY);
+					self.offsetcanvas('x', x - mouseX);
+					self.offsetcanvas('y', y - mouseY);
 				}
 				if (t) {
 					if (t.length == 2) {
@@ -610,6 +624,8 @@ var Gatherhub = Gatherhub || {};
 				var t = e.touches ? e.touches : null;
 				var x = t ? t[0].pageX : e.pageX;
 				var y = t ? t[0].pageY : e.pageY;
+				x -= self.pad.parent().position().left;
+				y -= self.pad.parent().position().top;
 				e.preventDefault();
 				self.zcenter.x = x / self.width();
 				self.zcenter.y = y / self.height();
@@ -887,19 +903,23 @@ var Gatherhub = Gatherhub || {};
 			trace(L1, this.constructor.name + '.SvgButton' +
 				'(' + Array.prototype.slice.call(arguments) + ')');
 			g.VisualPad.call(this);
-			if (opt === undefined) opt = {};
-			this.defaultWidth = opt.w || 50;
-			this.defaultHeight = opt.h || 50;
-			this.tip = opt.tip || '';
-			this.resize = opt.resize || .8;
-			this.minimize();
+			this.defaultWidth = 50;
+			this.defaultHeight = 50;
+			this.resize = .8;
+			this.borderwidth(1);
+			this.borderradius(.25);
 			this.bgcolor(opt.bgcolor || 'white');
 			this.bordercolor(opt.bordercolor || 'black');
-			this.borderwidth(opt.borderwidth || 1);
-			this.borderradius(opt.borderradius || .25);
 			this.iconcolor(opt.iconcolor || 'black');
 			this.icon(opt.icon || '');
 			this.pad.attr('title', opt.tip || '');
+			if (opt === undefined) opt = {};
+			if ($.isNumeric(opt.w)) this.defaultWidth = opt.w;
+			if ($.isNumeric(opt.h)) this.defaultHeight = opt.h;
+			if ($.isNumeric(opt.resize)) this.resize = opt.resize;
+			if ($.isNumeric(opt.borderwidth)) this.borderwidth(opt.borderwidth);
+			if ($.isNumeric(opt.borderradius)) this.borderradius(opt.borderradius);
+			this.minimize();
 			this.resizable = false;
 			
 			this.pad.off('mouseleave');
@@ -937,93 +957,6 @@ var Gatherhub = Gatherhub || {};
 	// Object Prototype: BtnMenu
 	(function(){
 		// Private
-		function togglesub(){
-			var w = $(this).width();
-			var sub = $('#' + $(this).children().last().attr('class'));
-			if (sub.length == 0) sub = $('.' + $(this).attr('id'));
-			var top = $(this).parent().position().top + $(this).index() * w;
-			var left = $(this).parent().position().left;
-			if ($(this).parent().attr('dir') == 'h0' || $(this).parent().attr('dir') == 'h1') {
-				top = $(this).parent().position().top;
-				left = $(this).parent().position().left + $(this).index() * w;
-			}
-			
-			if (sub.attr('dir') == 'h0' || sub.attr('dir') == 'h1') {
-				if (sub.attr('dir') == 'h1') {
-					top += w;
-					if (top + w > $(window).height()) top -= 2 * w;
-				}
-				else {
-					left += w;
-				}
-				if (left + w * sub.children().length > $(window).width()){
-					left -= w * (sub.children().length + 1);
-					if (sub.attr('dir') == 'h1') left += w * 2;
-				}
-			}
-			else {
-				if (sub.attr('dir') == 'v1') {
-					left += w;
-					if (left + w > $(window).width()) left -= 2 * w;
-				}
-				else {
-					top += w;
-				}
-				if (sub.children().length * w + top > $(window).height()) {
-					top -= w * (sub.children().length - 1);
-					if (sub.attr('dir') == 'v0') top -= w * 2;
-				}
-			}
-			sub.css({'top': top, 'left': left});
-			if (sub.is(':hidden')) sub.show();
-			else sub.hide();
-		}
-		
-		function createMenu(list) {
-			var m = $('<div/>').css('font-size', 0).appendTo('body');
-			m.attr('id', 0 | (Math.random() * 10000));
-			
-			list.forEach(function(e){
-				var id = e.id = 0 | (Math.random() * 10000);
-				var slist = e.sublist;
-
-				if (slist) {
-					slist = createMenu(slist);
-					slist.attr('dir', e.direction);
-					if (e.direction == 'h0' || e.direction == 'h1') slist.children().css('float', 'left');
-					slist.css('position', 'absolute').attr('class', id).appendTo('body').hide();
-					slist.children().addClass(slist.attr('id'));
-				}
-
-				if (e.btn) {
-					e.btn = new Gatherhub.SvgButton(e.btn).appendto(m).pad.attr('id', id);	
-					if (e.act) {
-						e.btn.on('click touchstart', function(){
-							e.act();
-							var btngrp = $('.' + $(this).attr('class'));
-							if ($(this).parent().attr('id') == $(this).attr('class')) {
-								for (var i = 0; i < btngrp.length; i++) {
-									if ($(btngrp[i]).parent().attr('id') != $(this).attr('class')) {
-										$(this).appendTo($(btngrp[i]).parent());
-										$(btngrp[i]).appendTo($('#' + $(this).attr('class')));
-										break;
-									}
-								}
-							}
-						});
-					}
-				}
-				else {
-					e.btn = $('<div/>').css('font-size', 0).attr('id', id).appendTo(m);
-					if (slist.children().length > 0) slist.children().first().show().appendTo(e.btn);
-				}
-				
-				if (slist) {
-					e.btn.on('click touchstart', togglesub);
-				}
-			});
-			return m;
-		}
 
 		// Gatherhub.BtnMenu
 		g.BtnMenu = BtnMenu;
@@ -1039,10 +972,110 @@ var Gatherhub = Gatherhub || {};
 				list.id = root.attr('id');
 				children.addClass(list.id);
 			}
+			
+			var self = this;
+
+			function togglesub(){	
+				var w = $(this).width();
+				var sub = $('#' + $(this).children().last().attr('class'));
+				if (sub.length == 0) sub = $('.' + $(this).attr('id'));
+				var top = $(this).parent().position().top + $(this).index() * w;
+				var left = $(this).parent().position().left;
+				if ($(this).parent().attr('dir') == 'h0' || $(this).parent().attr('dir') == 'h1') {
+					top = $(this).parent().position().top;
+					left = $(this).parent().position().left + $(this).index() * w;
+				}
+				
+				if (sub.attr('dir') == 'h0' || sub.attr('dir') == 'h1') {
+					if (sub.attr('dir') == 'h1') {
+						top += w;
+						if (top + w > $(window).height()) top -= 2 * w;
+					}
+					else {
+						left += w;
+					}
+					if (left + w * sub.children().length > $(window).width()){
+						left -= w * (sub.children().length + 1);
+						if (sub.attr('dir') == 'h1') left += w * 2;
+					}
+				}
+				else {
+					if (sub.attr('dir') == 'v1') {
+						left += w;
+						if (left + w > $(window).width()) left -= 2 * w;
+					}
+					else {
+						top += w;
+					}
+					if (sub.children().length * w + top > $(window).height()) {
+						top -= w * (sub.children().length - 1);
+						if (sub.attr('dir') == 'v0') top -= w * 2;
+					}
+				}
+				sub.css({'top': top, 'left': left});
+				if (sub.is(':hidden')) {
+					self.collapseall();
+					sub.show();
+				}
+				else {sub.hide();}
+			}
+			
+			function createMenu(list) {
+				var m = $('<div/>').css('font-size', 0).appendTo('body');
+				m.attr('id', 0 | (Math.random() * 10000));
+				
+				list.forEach(function(e){
+					var id = e.id = 0 | (Math.random() * 10000);
+					var slist = e.sublist;
+
+					if (slist) {
+						slist = createMenu(slist);
+						slist.attr('dir', e.direction);
+						if (e.direction == 'h0' || e.direction == 'h1') slist.children().css('float', 'left');
+						slist.css('position', 'absolute').attr('class', id).appendTo('body').hide();
+						slist.children().addClass(slist.attr('id'));
+					}
+
+					if (e.btn) {
+						e.btn = new Gatherhub.SvgButton(e.btn).appendto(m).pad.attr('id', id);	
+						if (e.act) {
+							e.btn.on('click touchstart', function(){
+								e.act();
+								var btngrp = $('.' + $(this).attr('class'));
+								if ($(this).parent().attr('id') == $(this).attr('class')) {
+									for (var i = 0; i < btngrp.length; i++) {
+										if ($(btngrp[i]).parent().attr('id') != $(this).attr('class')) {
+											$(this).appendTo($(btngrp[i]).parent());
+											$(btngrp[i]).appendTo($('#' + $(this).attr('class')));
+											break;
+										}
+									}
+								}
+							});
+						}
+					}
+					else {
+						e.btn = $('<div/>').css('font-size', 0).attr('id', id).appendTo(m);
+						if (slist.children().length > 0) slist.children().first().show().appendTo(e.btn);
+					}
+					
+					if (slist) {
+						e.btn.on('click touchstart', togglesub);
+					}
+				});
+				return m;
+			}
 		}
 
 		// Prototypes
 		var _proto = BtnMenu.prototype;
 		_proto.constructor = BtnMenu;
+		_proto.collapseall = function() {
+			this.root.children().each(function(e,k) {
+				var sub = $('#' + $(this).children().last().attr('class'));
+				if (sub.length == 0) sub = $('.' + $(this).attr('id'));
+				if (!sub.is(':hidden')) sub.hide();
+			});
+		};
 	})();
 })();
