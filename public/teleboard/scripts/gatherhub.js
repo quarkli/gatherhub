@@ -457,14 +457,15 @@ var Gatherhub = Gatherhub || {};
 				this.ws.send(
 					JSON.stringify(
 						{
-							id: this.hubid,
-							name: this.peername,
-							action: 'path',
-							pid: path.attr('id'),
-							ops: 'start',
-							x: point.x,
-							y: point.y,
-							c: this.repcolor
+							hub: this.hubid,
+							peer: this.peername,
+							action: 'drawing',
+							data: {
+								pid: path.attr('id'),
+								x: point.x,
+								y: point.y,
+								c: this.repcolor
+							}
 						}
 					)
 				);
@@ -499,15 +500,17 @@ var Gatherhub = Gatherhub || {};
 					this.ws.send(
 						JSON.stringify(
 							{
-								id: this.hubid,
-								name: this.peername,
-								action: 'path',
-								pid: path.attr('id'),
-								stroke: path.attr('stroke'),
-								strokeWidth: path.attr('stroke-width'),
-								strokeLinecap: path.attr('stroke-linecap'),
-								fill: path.attr('fill'),
-								d: path.attr('d')
+								hub: this.hubid,
+								peer: this.peername,
+								action: 'graph',
+								data: {
+									pid: path.attr('id'),
+									stroke: path.attr('stroke'),
+									strokeWidth: path.attr('stroke-width'),
+									strokeLinecap: path.attr('stroke-linecap'),
+									fill: path.attr('fill'),
+									d: path.attr('d')									
+								}
 							}
 						)
 					);
@@ -665,6 +668,7 @@ var Gatherhub = Gatherhub || {};
 			if (this.port == null) this.port = port;
 			var ws = this.ws = new WebSocket('ws://' + svr + ':' + port);
 			ws.onerror = function(){
+				console.log("Message Router Connecting Error!");
 				if (svr == self.svr) {
 					svr = self.altsvr || svr;
 					port = self.altport || port;
@@ -676,64 +680,68 @@ var Gatherhub = Gatherhub || {};
 				self.connect(svr, port);
 			};
 			ws.onopen = function(){
-				ws.send(JSON.stringify({id: self.hubid, name: self.peername, action: 'connect'}));
+				console.log("Message Router Connected.");
+				ws.send(JSON.stringify({hub: self.hubid, peer: self.peername, action: 'hello'}));
 				self.wsready = true;
-				if (self.wsready) {
-					self.pulse = setInterval(function(){if (self.wsready) ws.send('');}, 30000);
-				}
+				self.pulse = setInterval(function(){
+					if (self.wsready) ws.send('');
+					else self.connect();
+				}, 30000);
 			};
 			ws.onmessage = function(msg){
-				if (msg.data.match('path')){
-					var ctx = JSON.parse(msg.data);
-					if (ctx.id == self.hubid && ctx.name != self.peername){
-						if (ctx.ops) {
-							switch (ctx.ops) {
-								case 'undo':
-									$('#' + ctx.pid).remove();
-									flush(self);
-									break;
-								case 'redo':
-									break;
-								case 'clear':
-									self.clearcanvas();
-									flush(self);
-									break;
-								case 'start':
-									var point = {x: ctx.x, y: ctx.y};
-									var scnxy = vbox2scn.call(self, point);
-									var left = scnxy.x == 0 ? 1 : (scnxy.x / self.width() > 0.5) ? scnxy.x - self.width() : scnxy.x;
-									var top = scnxy.y == 0 ? 1 : (scnxy.y / self.height() > 0.5) ? scnxy.y - self.height() : scnxy.y;
-									var i = ctx.pid.split('-', 1);
-									var r = $('<span/>').attr('id', i).html(i).appendTo('body');
-									r.css({'position': 'absolute', 'color': ctx.c, 'border-width': 1, 'border-style': 'solid'});
-									if (left > 0) r.css('left', left);
-									else r.css('right', -left);
-									if (top > 0) r.css('top', top );
-									else r.css('bottom', -top);
-									setTimeout(function(){$('#' + i).remove();}, 2000);
-									break;
-							}
-						}
-						else if (ctx.d) {
-							var path = $(document.createElementNS('http://www.w3.org/2000/svg', 'path'));
-							path.attr('id', ctx.pid);
-							path.attr('stroke-width', ctx.strokeWidth);
-							path.attr('stroke', ctx.stroke);
-							path.attr('stroke-linecap', ctx.strokeLinecap);
-							path.attr('fill', ctx.fill);
-							path.attr('d', ctx.d);
-							path.appendTo(self.pathholder);
-							flush(self);
-							$('#' + ctx.pid.split('-', 1)).remove();
-						}
-					}
-				}
-				else {
-					console.log(msg.data);
-					if (msg.data.indexOf(this.peername) < 0 && msg.data.indexOf('has entered')) {
+				var ctx = JSON.parse(msg.data);
+				var data = ctx.data;
+				
+				switch (ctx.action) {
+					case 'hello':
+						console.log(ctx.peer + ': hello!');
+						ws.send(JSON.stringify({hub: self.hubid, peer: self.peername, action: 'welcome', dst: ctx.peer}));
 						self.undoall();
 						self.redoall();
-					}
+						break;
+					case 'welcome':
+						console.log(ctx.peer + ': welcome!');
+						break;
+					case 'bye':
+						console.log(ctx.peer + ': bye!');
+						break;
+					case 'messsage':
+						console.log(ctx.peer + ': ' + data);
+						break;
+					case 'undo':
+						$('#' + data.pid).remove();
+						flush(self);
+						break;
+					case 'clear':
+						self.clearcanvas();
+						flush(self);
+						break;
+					case 'drawing':
+						var point = {x: data.x, y: data.y};
+						var scnxy = vbox2scn.call(self, point);
+						var left = scnxy.x == 0 ? 1 : (scnxy.x / self.width() > 0.5) ? scnxy.x - self.width() : scnxy.x;
+						var top = scnxy.y == 0 ? 1 : (scnxy.y / self.height() > 0.5) ? scnxy.y - self.height() : scnxy.y;
+						var i = data.pid.split('-', 1);
+						var r = $('<span/>').attr('id', i).html(i).appendTo('body');
+						r.css({'position': 'absolute', 'color': data.c, 'border-width': 1, 'border-style': 'solid'});
+						if (left > 0) r.css('left', left);
+						else r.css('right', -left);
+						if (top > 0) r.css('top', top );
+						else r.css('bottom', -top);
+						setTimeout(function(){$('#' + i).remove();}, 2000);
+						break;
+					case 'graph':
+						var path = $(document.createElementNS('http://www.w3.org/2000/svg', 'path'));
+						path.attr('id', data.pid);
+						path.attr('stroke-width', data.strokeWidth);
+						path.attr('stroke', data.stroke);
+						path.attr('stroke-linecap', data.strokeLinecap);
+						path.attr('fill', data.fill);
+						path.attr('d', data.d);
+						path.appendTo(self.pathholder);
+						flush(self);
+						$('#' + data.pid.split('-', 1)).remove();
+						break;
 				}
 			};
 			ws.onclose = function(){
@@ -742,9 +750,9 @@ var Gatherhub = Gatherhub || {};
 			};
 			return this;
 		};
-		_proto.sendmsg = function(msg, tgt) {
+		_proto.sendmsg = function(msg, dest) {
 			if (this.wsready) {
-				this.ws.send(JSON.stringify({id: this.hubid, name: this.peername, action: 'say', data: msg, target: tgt}));
+				this.ws.send(JSON.stringify({hub: this.hubid, peer: this.peername, action: 'messsage', data: msg, dst: dest}));
 			}
 			return this;
 		};
@@ -782,10 +790,9 @@ var Gatherhub = Gatherhub || {};
 				this.ws.send(
 					JSON.stringify(
 						{
-							id: this.hubid,
-							name: this.peername,
-							action: 'path',
-							ops: 'clear'
+							hub: this.hubid,
+							peer: this.peername,
+							action: 'clear'
 						}
 					)
 				);
@@ -807,11 +814,12 @@ var Gatherhub = Gatherhub || {};
 					this.ws.send(
 						JSON.stringify(
 							{
-								id: this.hubid,
-								name: this.peername,
-								action: 'path',
-								pid: path.attr('id'),
-								ops: 'undo'
+								hub: this.hubid,
+								peer: this.peername,
+								action: 'undo',
+								data: {
+									pid: path.attr('id')
+								}
 							}
 						)
 					);
@@ -830,15 +838,17 @@ var Gatherhub = Gatherhub || {};
 				this.ws.send(
 					JSON.stringify(
 						{
-							id: this.hubid,
-							name: this.peername,
-							action: 'path',
-							pid: path.attr('id'),
-							stroke: path.attr('stroke'),
-							strokeWidth: path.attr('stroke-width'),
-							strokeLinecap: path.attr('stroke-linecap'),
-							fill: path.attr('fill'),
-							d: path.attr('d')
+							hub: this.hubid,
+							peer: this.peername,
+							action: 'graph',
+							data: {
+								pid: path.attr('id'),
+								stroke: path.attr('stroke'),
+								strokeWidth: path.attr('stroke-width'),
+								strokeLinecap: path.attr('stroke-linecap'),
+								fill: path.attr('fill'),
+								d: path.attr('d')
+							}
 						}
 					)
 				);
