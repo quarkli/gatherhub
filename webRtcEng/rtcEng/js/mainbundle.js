@@ -1,4 +1,212 @@
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
+/* 
+* @Author: Phenix Cai
+* @Date:   2015-11-22 10:02:34
+* @Last Modified time: 2015-11-26 19:09:35
+*/
+
+
+
+var castCtrl;
+
+
+(function(){
+    var _proto, t1, t2, t3, _dbgFlag;
+    // constant
+    t1 = 150;
+    t2 = 250;
+    t3 = (t1+t2)*2;
+    _dbgFlag = true;
+    function _infLog(){
+        if(_dbgFlag){
+            console.log.apply(console, arguments);
+        }
+    }
+
+    function objSetTimeout(obj,func,time){
+        var t;
+        t = setTimeout(function(){
+            func.call(obj);
+        },time);
+        return t;
+    }
+
+    function CastCtrl(id){
+        this.castList  = [];
+        this.pendList = []; 
+        this.id = id;
+        this.reqTimer;
+        this.reqCnt = 0;
+        this.reqWait = 0;
+
+    }
+
+    _proto = CastCtrl.prototype;
+    castCtrl = CastCtrl;
+    // callback functions
+    _proto.onSend = function(){};
+    _proto.onCastList = function(){};
+
+
+    // api functions
+    _proto.login = function(){
+        this.onSend({from:this.id, to:'All',cmd:'hello'});
+    };
+
+    _proto.bye = function(id){
+        this.recvMsg({from:id, to:this.id, cmd:'rls'});
+    };
+
+    _proto.start = function(cb){
+        this._startCb = cb;
+        this._startCastReq();
+    };
+
+    _proto.stop = function(cb){
+        this._stopCb  = cb;
+        this._stopCastReq();
+    };
+
+    _proto.hdlMsg =  function (msg){
+        var myself, rid, delay, idx;
+        myself = this.id;
+        rid = msg.from;
+        _infLog(this.id +' hdlMsg ',msg);
+        switch(msg.cmd)
+        {
+            case 'req':
+                if(this.castList[0] == myself){
+                    this.castList.push(rid);
+                    this._infCastList();
+                }else{
+                    this.pendList.push(rid);
+                }
+            break;
+            case 'rls':
+                if(this.castList[0] == myself){
+                    idx = this.castList.indexOf(rid);
+                    if(idx >= 0){
+                        this.castList.splice(idx,1);
+                        this._infCastList();
+                    }else{
+                        idx = this.pendList.indexOf(rid);
+                        if(idx >=0 )this.pendList.splice(idx,1);
+                    }
+                }
+            break;
+            case 'list':
+                this.pendList = [];
+                this.castList = msg.list;
+                this.onCastList(this.castList);
+                _infLog('cmp ',this.castList[0] + ' vs ',+myself);
+
+                if(this.castList[0] == myself){
+                    if(this._startCb)this._startCb();
+                }else{
+                    if(this.reqCnt > 0){
+                        _infLog(this.id+' stop timer');
+                        clearTimeout(this.reqTimer);
+                        this.reqCnt = 0;
+                    }
+                    if(this.reqWait == 1){
+                        this._startCastReq();
+                        this.reqWait = 0;
+                    }
+                }
+            break;
+            case 'hello':
+                if(this.castList[0] == myself){
+                    this._infCastList();
+                }
+            break;
+        }
+
+    };
+
+
+    //internal functions
+
+    // _proto._startCb = function(){};
+    // _proto._stopCb  = function(){};
+
+    _proto._infCastList =  function(){
+        var list, from, to;
+        from = this.id;
+        list = this.castList;
+        to = 'All';
+        this.onSend({from:from, to:to, cmd:'list',list:list});
+        this.onCastList(list);
+    };
+
+    _proto._sendCastReq = function(){
+        var from, to;
+        from = this.id;
+        to = 'All';
+        this.onSend({from:from, to:to, cmd:'req'});
+    };
+
+    _proto._cancelCastReq = function(){
+        var from, to;
+        from = this.id;
+        to = 'All';
+        this.onSend({from:from, to:to, cmd:'rls'});
+    };
+
+    _proto._reqTimerHdl = function(){
+        _infLog(this.id + ' _reqTimerHdl', this.reqCnt);
+        this.reqCnt --;
+        if(this.reqCnt > 0){
+            this._sendCastReq();
+            this.reqTimer = objSetTimeout(this,this._reqTimerHdl, t2);
+        }else if (this.reqCnt == 0){
+            if(this.pendList.length > 0){
+                _infLog('collision occurs');
+                delay = t1 + Math.ceil(Math.random()*t3);
+                this.reqTimer = objSetTimeout(this,this._startCastReq, delay);
+                this.pendList = [];
+                return;
+            }
+            if(this.castList.length > 0)this.castList.shift();
+            this.castList.push(this.id);
+            this._infCastList();
+            if(this.castList[0] == this.id){
+                if(this._startCb)this._startCb();
+            }
+        }
+
+
+    };
+
+
+    _proto._startCastReq = function(){
+        var self = this;
+
+        if(this.pendList.length > 0){
+            _infLog(this.id + ' warn: there is some un-handled reqs here. ',this.pendList);
+            this.reqWait = 1; 
+            return;
+        }
+        this.reqCnt = 2; 
+        this._sendCastReq();
+        this.reqTimer = objSetTimeout(this,this._reqTimerHdl, t1);
+    };
+
+    _proto._stopCastReq = function(){
+        if(this.castList[0] == this.id){
+            if(this._stopCb )this._stopCb();
+            this.castList.shift();
+            this._infCastList();
+        }else{
+            this._cancelCastReq();
+            clearTimeout(this.reqTimer);
+            this.reqCnt = 0;
+        }
+    };
+
+})();
+
+module.exports = castCtrl;
+},{}],2:[function(require,module,exports){
 'use strict';
 
 var medCast = require('./mediacast');
@@ -76,7 +284,7 @@ var hubCom;
 module.exports = hubCom;
 
 
-},{"./mediacast":4}],2:[function(require,module,exports){
+},{"./mediacast":5}],3:[function(require,module,exports){
 /* 
 * @Author: Phenix Cai
 * @Date:   2015-11-13 14:44:49
@@ -161,7 +369,7 @@ var localMedia;
     localMedia = LocalMedia;
 })();
 module.exports = localMedia;
-},{"getscreenmedia":8,"getusermedia":11}],3:[function(require,module,exports){
+},{"getscreenmedia":9,"getusermedia":12}],4:[function(require,module,exports){
 'use strict';
 var HubCom = require('./hubcom');
 
@@ -190,7 +398,7 @@ var mediaActive = 'idle';
 var hubCom = new HubCom(options);
 
 
-hubCom.onDataRecv = hdlDataRecv;
+hubCom.onTextRecv = hdlTextMsg;
 hubCom.onMediaAct =  hdlMedAct;
 hubCom.onCastList = updateCastList;
 hubCom.onUsrList = updateUsrList;
@@ -235,7 +443,7 @@ function sendData() {
 }
 
 
-function hdlDataRecv(from, data) {
+function hdlTextMsg(from, data) {
   console.log('Received message from ' + from + ' msg is: ' + data);
 	addMsgHistory(from+': '+data,0);
 
@@ -311,9 +519,9 @@ function hdlMedAct(state){
 
 function invokeMedia(){
 	if(hubCom.mediaActive == 'idle'){
-		hubCom.startAudioCast();
+		hubCom.startSpeaking();
 	}else{
-		hubCom.stopAudioCast();
+		hubCom.stopSpeaking();
 	}
 }
 
@@ -350,13 +558,14 @@ $('#scnButton').click(function(event) {
 });
 
 
-},{"./hubcom":1}],4:[function(require,module,exports){
+},{"./hubcom":2}],5:[function(require,module,exports){
 /* 
 * @Author: phenix cai
 * @Date:   2015-11-19 10:08:39
-* @Last Modified time: 2015-11-20 14:20:52
+* @Last Modified time: 2015-11-26 19:09:32
 */
 var webRtc = require('./webrtc');
+var castCtrl = require('./castctrl');
 var medCast;
 (function(){
     var _proto;
@@ -372,117 +581,93 @@ var medCast;
         webRtc.call(this,opts);
         //media casting list
         this.castList = [];
+        this.initFlag = false;
         this.mediaActive = 'idle';
-        //////////////command for audio casting
-        function getMediaCastList(audCon){
-            //reset it everytime
-            self.castList = [];
-            if(audCon.state==1){
-                if(audCon.talk == self.config.usrId){
-                    self.castList[0] = self.config.user;
-                }else{
-                    self.castList[0] = self.usrList[audCon.talk];
-                }
-                
-                audCon.que.forEach(function(id){
-                    if(id == self.config.usrId){
-                        self.castList[self.castList.length] = self.config.user;
-                    }else{
-                        self.castList[self.castList.length] = self.usrList[id];
-                    }
-                });
-            } 
-        }
-        cn = this.connt;
-        //media casting feature
-        function startMediaJob(){
-            if(self.isRmtAudOn()){
-                console.log('remote stream still active');
-                setTimeout(startMediaJob, 100);
-            }else{
-                self.startMedia(function(s){
-                    self.setMediaAct('active');
-                },function(err){
-                    console.log('Error',err);
-                    self.setMediaAct('idle');
-                });
-            }
-        }
-
-        cn.on('media', function (message){
-            var cmd = message.cmd;
-            if(cmd == 'ans'){
-                startMediaJob();
-            }else if(cmd == 'update'){
-                console.log('msg update',message.control);
-                if(message.control){
-                    getMediaCastList(message.control);
-                    self.onCastList(self.castList);
-                }
-            }
-        });
-
     }
     _proto = MedCast.prototype = extend(webRtc);
     medCast = MedCast;
-    _proto.setMediaAct = function(state){
-        this.mediaActive = state;
-        this.onMediaAct(state);
-    };
 
-    _proto.startAudioCast = function(){
-        var cn, cfg;
-        cn = this.connt;
-        cfg = this.config;
-
-        if(cfg.oneway){
-            cn.emit('media',{room:cfg.room,cmd:'req'});
-            this.setMediaAct('pending');
-        }else{
-            this.startMedia(null,function(err){
-                console.log('Error',err);
+    _proto.startSpeaking = function(){
+        var self = this;
+        if(this.ctrl)this.ctrl.start(function(){
+            self.startMedia(function(){
+                self._setMedState('active');
+            }, function(err){
+                console.log('Error', err);
+                self._setMedState('idle');
             });
-        }
+        });
+        this._setMedState('pending');
     };
 
-    _proto.stopAudioCast = function(){
-        var cn, cfg, st;
-        cn = this.connt;
-        cfg = this.config;
-        st = this.mediaActive;
-
-        if(cfg.oneway){
-            switch(st){
-                case 'pending' :
-                this.setMediaAct('idle');
-                cn.emit('media',{room:cfg.room,cmd:'rls'});
-                break;
-                case 'active' :
-                this.stopMedia();
-                this.setMediaAct('idle');
-                cn.emit('media',{room:cfg.room,cmd:'rls'});
-                break;
-            }
-        }else{
-            this.stopMedia();
-            this.setMediaAct('idle');
-        }
+    _proto.stopSpeaking = function(){
+        var self = this;
+        if(this.ctrl)this.ctrl.stop(function(){
+            self.stopMedia();
+        });
+        this._setMedState('idle');
     };
 
     _proto.onCastList = function(){};
     _proto.onMediaAct = function(){};
 
+    //internal APIs
+    _proto._initCmdChan = function(){
+        var self;
+        if(this.initFlag)return;
+        self = this;
+        this.ctrl = new castCtrl(this.config.usrId);
+        this.createDataChan('castCtrl',function(from,data){
+            var cmd = JSON.parse(data);
+            self.ctrl.hdlMsg(cmd);
+        });
+        this.ctrl.onSend = function(cmd){
+            var data = JSON.stringify(cmd);
+            console.log('castcmd send ',data);
+            self.sendData('castCtrl',data);
+        };
+        this.ctrl.onCastList = function(list){
+            self.onCastList(list);
+        }
+        setTimeout(function(){
+            self.ctrl.login();
+        }, 50);
+        this.initFlag = true;
+    };
+
+    _proto._onChansReady = function(){
+        this._initCmdChan();
+    };
+
+    _proto._setMedState = function(state){
+        this.mediaActive = state;
+        this.onMediaAct(state);
+    };
+
 
 })();
 
 module.exports = medCast;
-},{"./webrtc":7}],5:[function(require,module,exports){
+},{"./castctrl":1,"./webrtc":8}],6:[function(require,module,exports){
 'use strict';
 var adapter = require('webrtc-adapter-test');
 var peerConn;
 
 (function(){
-    var _proto;
+    var _proto, _dbgFlag;
+
+    _dbgFlag = false;
+    function _infLog(){
+        if(_dbgFlag){
+            console.log.apply(console, arguments);
+        }
+    }
+
+    function _errLog(){
+        console.log.apply(console, arguments);
+    }
+
+
 
     //constructors
     function PeerConn(opts){
@@ -523,10 +708,11 @@ var peerConn;
         this.rmtStrms = [];
         this.locStrms = [];
         this.datChans = {};
+        this.ready =  false;
 
         //internal methods
         function onIce(event){
-          console.log('onIce: ', event);
+          _infLog('onIce: ', event);
           if (event.candidate) {
             self.onSend('msg',{
                     room: self.config.room,
@@ -538,7 +724,7 @@ var peerConn;
                   candidate: event.candidate.candidate},
                     });
           } else {
-            console.log('End of candidates.');
+            _infLog('End of candidates.');
           }
         }
 
@@ -580,11 +766,11 @@ var peerConn;
             from my mind, it should be a=recevonly */
             var sdp = self.prePrcsSdp(desc.sdp);
             desc.sdp = sdp;
-            console.log('makeOffer ',desc);
+            _infLog('makeOffer ',desc);
             self.peer.setLocalDescription(desc);
             self.onSend('msg',{room:self.config.room, to:self.config.id, sdp:desc});
         }, function(err){
-            console.log('offer Error',err);
+            _errLog('offer Error',err);
         }, constrains);
     };
 
@@ -595,11 +781,11 @@ var peerConn;
         this.peer.createAnswer(function(desc){
             var sdp = self.prePrcsSdp(desc.sdp);
             desc.sdp = sdp;
-            console.log('makeAnswer ',desc);
+            _infLog('makeAnswer ',desc);
             self.peer.setLocalDescription(desc);
             self.onSend('msg',{room:self.config.room, to:self.config.id, sdp:desc});
         },function(err){
-            console.log('answer Error',err);
+            _errLog('answer Error',err);
         },constrains);
     };
 
@@ -616,16 +802,16 @@ var peerConn;
     _proto.setRmtDesc = function(desc){
         var sdp = new RTCSessionDescription(desc);
         this.peer.setRemoteDescription(sdp);
-        console.log('setRemoteDescription ',sdp);
+        _infLog('setRemoteDescription ',sdp);
     };
 
     _proto.addIceCandidate = function(candidate){
         this.peer.addIceCandidate(candidate);
-        console.log('addIceCandidate ',candidate);
+        _infLog('addIceCandidate ',candidate);
     };
 
     _proto.close = function(){
-        console.log('peerConnection close ',this.config.id);
+        _infLog('peerConnection close ',this.config.id);
         this.peer.close();
     };
 
@@ -636,24 +822,30 @@ var peerConn;
     _proto._obsrvDatChan = function(ch){
         var self = this;
         ch.onclose = function(){
-            console.log('dc chan close ',ch);
+            _infLog('dc chan close ',ch);
         };
         ch.onerror = function(){
-            console.log('dc chan erro ',ch);
-        }
+            _errLog('dc chan erro ',ch);
+            self.onConError(ch.label,self.config.id);
+        };
         ch.onopen =  function(){
-            console.log('dc chan open ',ch);
-        }
+            _infLog('dc chan open ',ch);
+            self.ready = true;
+            self.onConnReady(ch.label,self.config.id);
+        };
         ch.onmessage = function(ev){
-            self.onDcRecv(ch.label,self.config.id,event.data);
-        }
+            console.log('peer recv '+ch.label,ev.data);
+            self.onDcRecv(ch.label,self.config.id,ev.data);
+        };
     };
     _proto.getDatChan = function(name,opts){
         var chan = this.datChans[name];
         if(!opts) opts = {};
         if(chan) return chan;
-        chan = this.datChans[name] = this.peer.createDataChannel(name,opts);
-        this._obsrvDatChan(chan);
+        if(this.ctyp == 'calling'){
+            chan = this.datChans[name] = this.peer.createDataChannel(name,opts);
+            this._obsrvDatChan(chan);
+        }
         return chan;
     };
     _proto.hdlDatChanAdd = function(ev){
@@ -665,7 +857,7 @@ var peerConn;
     _proto.sendData = function(chan,data){
         var dc = this.getDatChan(chan);
         if(!dc || (dc.readyState != 'open')){
-            console.log('Error','datachannel is not ready, could not send');
+            _errLog('Error','channel '+dc.label+' is not ready, could not send');
         }else{
             dc.send(data);
         }
@@ -692,7 +884,7 @@ var peerConn;
         nwSdp = '';
         sdps = sdp.split('m=');
         cnt = 0;
-        console.log('parse sdp ','audio = '+auOn+' video = '+scOn);
+        _infLog('parse sdp ','audio = '+auOn+' video = '+scOn);
         sdps.forEach(function(d){
             var ss;
             ss = (cnt > 0)? 'm=' + d : d;
@@ -714,7 +906,7 @@ var peerConn;
 
 module.exports = peerConn;
 
-},{"webrtc-adapter-test":61}],6:[function(require,module,exports){
+},{"webrtc-adapter-test":62}],7:[function(require,module,exports){
 /* 
 * @Author: Phenix
 * @Date:   2015-11-13 17:25:58
@@ -740,11 +932,11 @@ var sockConnection;
     sockConnection = SockConnection;
 })();
 module.exports = sockConnection;
-},{"socket.io-client":13}],7:[function(require,module,exports){
+},{"socket.io-client":14}],8:[function(require,module,exports){
 /* 
 * @Author: Phenix Cai
 * @Date:   2015-11-13 19:14:00
-* @Last Modified time: 2015-11-20 15:47:08
+* @Last Modified time: 2015-11-26 19:39:14
 */
 
 'use strict';
@@ -755,7 +947,18 @@ var peerConn = require('./peerconn');
 
 var webRtc;
 (function(){
-    var _proto;
+    var _proto, _dbgFlag;
+    _dbgFlag = false;
+    function _infLog(){
+        if(_dbgFlag){
+            console.log.apply(console, arguments);
+        }
+    }
+
+    function _errLog(){
+        console.log.apply(console, arguments);
+    }
+
 
     function WebRtc(opts){
         
@@ -781,6 +984,9 @@ var webRtc;
         // user list keep the socket id list of all peers
         this.usrList = [];
 
+        this.datChRecvCb = {};
+        this.datChRecvCb['textMsg'] = this._onTextRecv.bind(this);
+
         //internal api for webrtc
         function isSdpWithAudio(s){
             var sdps,idx,sdp,ret;
@@ -798,6 +1004,8 @@ var webRtc;
             });
             return ret;
         }
+
+
         
         //register callback functions for peerconnections
         function regPconnEvtCb(pc){
@@ -805,28 +1013,31 @@ var webRtc;
                 self.connt.emit.apply(self.connt,arguments);
             };
             pc.onDcRecv = function (chan,from,data){
-                var usr = self.usrList[from];
-                switch(chan){
-                    case 'textMsg':
-                    self.onDataRecv(usr,data);
-                    break;
-                }
+                var hdlData = self.datChRecvCb[chan];
+                if(hdlData)hdlData(from,data);
             };
             pc.onAddRStrm = function (s){
                 self.onRMedAdd(s);
             };
             pc.onRmRStrm = function(s){
-                console.log('rmtStrmDel',s);
+                _infLog('rmtStrmDel',s);
                 self.onRMedDel(s);
             };
-            pc.onConError = function(id){
+            pc.onConError = function(label,id){
                 var config = self.config;
-                console.log('peer',id+' connect error');
-                // removePeer(id);
-                // config.type = 'calling';
-                // config.id = id;
-                // self.onCpErro(config);
+                _errLog('peer',id+' connect error');
+                removePeer(id);
+                config.type = 'calling';
+                config.id = id;
+                self.onCrpErro(config);
             };
+            pc.onConnReady = function(label,id){
+                var ready = true;
+                self.peers.forEach(function(p){
+                    if(p.ready == false) ready = false;
+                });
+                if(ready)self._onChansReady();
+            }
         }
 
 
@@ -836,7 +1047,7 @@ var webRtc;
             config.id = id;
             config.type = type;
             if(!rtc.support){
-                self.onCpErro(config);
+                self.onCrpErro(config);
             }
             pc = self.peers[id];
             if(!pc){
@@ -855,18 +1066,18 @@ var webRtc;
                 pc.setRmtDesc(sdp);
                 if(config.oneway == false){
                     if(isSdpWithAudio(sdp.sdp)){
-                        console.log('offered with audio active');
+                        _infLog('offered with audio active');
                         self.media.start(function(err,s){
                             if(!err){
                                 self.onLMedAdd(s);
                                 pc.addStream(s);
                                 pc.makeAnswer();
                             }else{
-                                console.log('start media Error');
+                                _errLog('start media Error',err);
                             }
                         });
                     }else{
-                        console.log('offered with audio mute');
+                        _infLog('offered with audio mute');
                         self.media.stop(function(s){
                             if(s)pc.removeStream(s);
                             pc.makeAnswer();
@@ -894,7 +1105,7 @@ var webRtc;
             id = msg.from;
             usr = msg.usr;
             pc = self.peers[id];
-            console.log('Received msg:', msg);
+            _infLog('Received msg:', msg);
             if(id>=0 && usr){
                 self.usrList[id] = usr;
                 self.onUsrList(self.usrList);
@@ -906,14 +1117,14 @@ var webRtc;
                 
             } else if (msg.sdp.type === 'answer' ) {
                 if(!pc){
-                    console.log("wrong answer id from "+id);
+                    _errLog("wrong answer id from "+id);
                     return;
                 }
               pc.setRmtDesc(msg.sdp);
                 
             } else if (msg.sdp.type === 'candidate') {
                 if(!pc){
-                    console.log("wrong candidate id from "+id);
+                    _errLog("wrong candidate id from "+id);
                     return;
                 }
               candidate = new RTCIceCandidate({sdpMLineIndex:msg.sdp.label,
@@ -924,27 +1135,27 @@ var webRtc;
 
         function regSigCallback(){
             cn.on('connected', function (data){
-                console.log('userid is ', data.id);
+                _infLog('userid is ', data.id);
                 self.config.usrId = data.id;
                 self.online = true;
             });
             cn.on('joined', function (data){
                 var config =self.config;
-                console.log('Another peer # '+data.id+ ' made a request to join room ' + config.room);
+                _infLog('Another peer # '+data.id+ ' made a request to join room ' + config.room);
                 if(rtc.support && data.rtc){
                     //create peerconnection
                     createPeer('calling',data.id,null);
                 }else{
                     config.type = 'calling';
                     config.id = data.id;
-                    self.onCpErro(config);
+                    self.onCrpErro(config);
                 }
             });
             cn.on('msg', function (data){
                 parseSigMsg(data);
             });
             cn.on('bye',function(data){
-                console.log('Another peer # '+data.id+ ' leave room ' + self.config.room);
+                _infLog('Another peer # '+data.id+ ' leave room ' + self.config.room);
                 var id = data.id;
 
                 delete self.usrList[id];
@@ -1021,7 +1232,7 @@ var webRtc;
     _proto.stopScnShare = function(){
         var self = this;
         this.media.rlsScn(function(s){
-            console.log('rls ',s);
+            _infLog('rls ',s);
             self.peers.forEach(function(pc){
                 pc.removeStream(s);
                 pc.makeOffer();
@@ -1041,13 +1252,31 @@ var webRtc;
         this.sendData('textMsg',data);
     }; 
 
+    _proto.createDataChan = function(label,onRecv){
+        this.datChRecvCb[label] = onRecv.bind(this);
+        
+        this.peers.forEach(function(p){
+            p.getDatChan(label);
+        });
+
+    };
+
     /*some callback fuctions*/
-    _proto.onDataRecv = function(){};
+    _proto.onTextRecv = function(){};
     _proto.onLMedAdd = function(){};
     _proto.onRMedAdd = function(){};
     _proto.onRMedDel = function(){};
-    _proto.onCpErro = function(){};
+    _proto.onCrpErro = function(){};
     _proto.onUsrList = function(){};
+
+    // internal APIs
+
+    _proto._onTextRecv = function(from, data){
+        var usr = this.usrList[from];
+        this.onTextRecv(usr,data);
+    };
+    
+    _proto._onChansReady = function(){};
 
 
 })();
@@ -1055,7 +1284,7 @@ var webRtc;
 module.exports = webRtc;
 
 
-},{"./localmedia":2,"./peerconn":5,"./sockconn":6,"webrtcsupport":62}],8:[function(require,module,exports){
+},{"./localmedia":3,"./peerconn":6,"./sockconn":7,"webrtcsupport":63}],9:[function(require,module,exports){
 // getScreenMedia helper by @HenrikJoreteg
 var getUserMedia = require('getusermedia');
 
@@ -1227,7 +1456,7 @@ window.addEventListener('message', function (event) {
     }
 });
 
-},{"getusermedia":9}],9:[function(require,module,exports){
+},{"getusermedia":10}],10:[function(require,module,exports){
 // getUserMedia helper by @HenrikJoreteg
 var adapter = require('webrtc-adapter-test');
 
@@ -1308,7 +1537,7 @@ module.exports = function (constraints, cb) {
     });
 };
 
-},{"webrtc-adapter-test":10}],10:[function(require,module,exports){
+},{"webrtc-adapter-test":11}],11:[function(require,module,exports){
 /*
  *  Copyright (c) 2014 The WebRTC project authors. All Rights Reserved.
  *
@@ -1858,15 +2087,15 @@ if (typeof module !== 'undefined') {
   });
 }
 
-},{}],11:[function(require,module,exports){
-arguments[4][9][0].apply(exports,arguments)
-},{"dup":9,"webrtc-adapter-test":12}],12:[function(require,module,exports){
+},{}],12:[function(require,module,exports){
 arguments[4][10][0].apply(exports,arguments)
-},{"dup":10}],13:[function(require,module,exports){
+},{"dup":10,"webrtc-adapter-test":13}],13:[function(require,module,exports){
+arguments[4][11][0].apply(exports,arguments)
+},{"dup":11}],14:[function(require,module,exports){
 
 module.exports = require('./lib/');
 
-},{"./lib/":14}],14:[function(require,module,exports){
+},{"./lib/":15}],15:[function(require,module,exports){
 
 /**
  * Module dependencies.
@@ -1955,7 +2184,7 @@ exports.connect = lookup;
 exports.Manager = require('./manager');
 exports.Socket = require('./socket');
 
-},{"./manager":15,"./socket":17,"./url":18,"debug":22,"socket.io-parser":56}],15:[function(require,module,exports){
+},{"./manager":16,"./socket":18,"./url":19,"debug":23,"socket.io-parser":57}],16:[function(require,module,exports){
 
 /**
  * Module dependencies.
@@ -2460,7 +2689,7 @@ Manager.prototype.onreconnect = function(){
   this.emitAll('reconnect', attempt);
 };
 
-},{"./on":16,"./socket":17,"./url":18,"backo2":19,"component-bind":20,"component-emitter":21,"debug":22,"engine.io-client":23,"indexof":52,"object-component":53,"socket.io-parser":56}],16:[function(require,module,exports){
+},{"./on":17,"./socket":18,"./url":19,"backo2":20,"component-bind":21,"component-emitter":22,"debug":23,"engine.io-client":24,"indexof":53,"object-component":54,"socket.io-parser":57}],17:[function(require,module,exports){
 
 /**
  * Module exports.
@@ -2486,7 +2715,7 @@ function on(obj, ev, fn) {
   };
 }
 
-},{}],17:[function(require,module,exports){
+},{}],18:[function(require,module,exports){
 
 /**
  * Module dependencies.
@@ -2873,7 +3102,7 @@ Socket.prototype.disconnect = function(){
   return this;
 };
 
-},{"./on":16,"component-bind":20,"component-emitter":21,"debug":22,"has-binary":50,"socket.io-parser":56,"to-array":60}],18:[function(require,module,exports){
+},{"./on":17,"component-bind":21,"component-emitter":22,"debug":23,"has-binary":51,"socket.io-parser":57,"to-array":61}],19:[function(require,module,exports){
 (function (global){
 
 /**
@@ -2950,7 +3179,7 @@ function url(uri, loc){
 }
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"debug":22,"parseuri":54}],19:[function(require,module,exports){
+},{"debug":23,"parseuri":55}],20:[function(require,module,exports){
 
 /**
  * Expose `Backoff`.
@@ -3037,7 +3266,7 @@ Backoff.prototype.setJitter = function(jitter){
 };
 
 
-},{}],20:[function(require,module,exports){
+},{}],21:[function(require,module,exports){
 /**
  * Slice reference.
  */
@@ -3062,7 +3291,7 @@ module.exports = function(obj, fn){
   }
 };
 
-},{}],21:[function(require,module,exports){
+},{}],22:[function(require,module,exports){
 
 /**
  * Expose `Emitter`.
@@ -3228,7 +3457,7 @@ Emitter.prototype.hasListeners = function(event){
   return !! this.listeners(event).length;
 };
 
-},{}],22:[function(require,module,exports){
+},{}],23:[function(require,module,exports){
 
 /**
  * Expose `debug()` as the module.
@@ -3367,11 +3596,11 @@ try {
   if (window.localStorage) debug.enable(localStorage.debug);
 } catch(e){}
 
-},{}],23:[function(require,module,exports){
+},{}],24:[function(require,module,exports){
 
 module.exports =  require('./lib/');
 
-},{"./lib/":24}],24:[function(require,module,exports){
+},{"./lib/":25}],25:[function(require,module,exports){
 
 module.exports = require('./socket');
 
@@ -3383,7 +3612,7 @@ module.exports = require('./socket');
  */
 module.exports.parser = require('engine.io-parser');
 
-},{"./socket":25,"engine.io-parser":37}],25:[function(require,module,exports){
+},{"./socket":26,"engine.io-parser":38}],26:[function(require,module,exports){
 (function (global){
 /**
  * Module dependencies.
@@ -4092,7 +4321,7 @@ Socket.prototype.filterUpgrades = function (upgrades) {
 };
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./transport":26,"./transports":27,"component-emitter":21,"debug":34,"engine.io-parser":37,"indexof":52,"parsejson":46,"parseqs":47,"parseuri":48}],26:[function(require,module,exports){
+},{"./transport":27,"./transports":28,"component-emitter":22,"debug":35,"engine.io-parser":38,"indexof":53,"parsejson":47,"parseqs":48,"parseuri":49}],27:[function(require,module,exports){
 /**
  * Module dependencies.
  */
@@ -4253,7 +4482,7 @@ Transport.prototype.onClose = function () {
   this.emit('close');
 };
 
-},{"component-emitter":21,"engine.io-parser":37}],27:[function(require,module,exports){
+},{"component-emitter":22,"engine.io-parser":38}],28:[function(require,module,exports){
 (function (global){
 /**
  * Module dependencies
@@ -4310,7 +4539,7 @@ function polling(opts){
 }
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./polling-jsonp":28,"./polling-xhr":29,"./websocket":31,"xmlhttprequest":32}],28:[function(require,module,exports){
+},{"./polling-jsonp":29,"./polling-xhr":30,"./websocket":32,"xmlhttprequest":33}],29:[function(require,module,exports){
 (function (global){
 
 /**
@@ -4547,7 +4776,7 @@ JSONPPolling.prototype.doWrite = function (data, fn) {
 };
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./polling":30,"component-inherit":33}],29:[function(require,module,exports){
+},{"./polling":31,"component-inherit":34}],30:[function(require,module,exports){
 (function (global){
 /**
  * Module requirements.
@@ -4935,7 +5164,7 @@ function unloadHandler() {
 }
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./polling":30,"component-emitter":21,"component-inherit":33,"debug":34,"xmlhttprequest":32}],30:[function(require,module,exports){
+},{"./polling":31,"component-emitter":22,"component-inherit":34,"debug":35,"xmlhttprequest":33}],31:[function(require,module,exports){
 /**
  * Module dependencies.
  */
@@ -5182,7 +5411,7 @@ Polling.prototype.uri = function(){
   return schema + '://' + this.hostname + port + this.path + query;
 };
 
-},{"../transport":26,"component-inherit":33,"debug":34,"engine.io-parser":37,"parseqs":47,"xmlhttprequest":32}],31:[function(require,module,exports){
+},{"../transport":27,"component-inherit":34,"debug":35,"engine.io-parser":38,"parseqs":48,"xmlhttprequest":33}],32:[function(require,module,exports){
 /**
  * Module dependencies.
  */
@@ -5422,7 +5651,7 @@ WS.prototype.check = function(){
   return !!WebSocket && !('__initialize' in WebSocket && this.name === WS.prototype.name);
 };
 
-},{"../transport":26,"component-inherit":33,"debug":34,"engine.io-parser":37,"parseqs":47,"ws":49}],32:[function(require,module,exports){
+},{"../transport":27,"component-inherit":34,"debug":35,"engine.io-parser":38,"parseqs":48,"ws":50}],33:[function(require,module,exports){
 // browser shim for xmlhttprequest module
 var hasCORS = require('has-cors');
 
@@ -5460,7 +5689,7 @@ module.exports = function(opts) {
   }
 }
 
-},{"has-cors":44}],33:[function(require,module,exports){
+},{"has-cors":45}],34:[function(require,module,exports){
 
 module.exports = function(a, b){
   var fn = function(){};
@@ -5468,7 +5697,7 @@ module.exports = function(a, b){
   a.prototype = new fn;
   a.prototype.constructor = a;
 };
-},{}],34:[function(require,module,exports){
+},{}],35:[function(require,module,exports){
 
 /**
  * This is the web browser implementation of `debug()`.
@@ -5617,7 +5846,7 @@ function load() {
 
 exports.enable(load());
 
-},{"./debug":35}],35:[function(require,module,exports){
+},{"./debug":36}],36:[function(require,module,exports){
 
 /**
  * This is the common logic for both the Node.js and web browser
@@ -5816,7 +6045,7 @@ function coerce(val) {
   return val;
 }
 
-},{"ms":36}],36:[function(require,module,exports){
+},{"ms":37}],37:[function(require,module,exports){
 /**
  * Helpers.
  */
@@ -5929,7 +6158,7 @@ function plural(ms, n, name) {
   return Math.ceil(ms / n) + ' ' + name + 's';
 }
 
-},{}],37:[function(require,module,exports){
+},{}],38:[function(require,module,exports){
 (function (global){
 /**
  * Module dependencies.
@@ -6527,7 +6756,7 @@ exports.decodePayloadAsBinary = function (data, binaryType, callback) {
 };
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./keys":38,"after":39,"arraybuffer.slice":40,"base64-arraybuffer":41,"blob":42,"has-binary":50,"utf8":43}],38:[function(require,module,exports){
+},{"./keys":39,"after":40,"arraybuffer.slice":41,"base64-arraybuffer":42,"blob":43,"has-binary":51,"utf8":44}],39:[function(require,module,exports){
 
 /**
  * Gets the keys for an object.
@@ -6548,7 +6777,7 @@ module.exports = Object.keys || function keys (obj){
   return arr;
 };
 
-},{}],39:[function(require,module,exports){
+},{}],40:[function(require,module,exports){
 module.exports = after
 
 function after(count, callback, err_cb) {
@@ -6578,7 +6807,7 @@ function after(count, callback, err_cb) {
 
 function noop() {}
 
-},{}],40:[function(require,module,exports){
+},{}],41:[function(require,module,exports){
 /**
  * An abstraction for slicing an arraybuffer even when
  * ArrayBuffer.prototype.slice is not supported
@@ -6609,7 +6838,7 @@ module.exports = function(arraybuffer, start, end) {
   return result.buffer;
 };
 
-},{}],41:[function(require,module,exports){
+},{}],42:[function(require,module,exports){
 /*
  * base64-arraybuffer
  * https://github.com/niklasvh/base64-arraybuffer
@@ -6670,7 +6899,7 @@ module.exports = function(arraybuffer, start, end) {
   };
 })("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/");
 
-},{}],42:[function(require,module,exports){
+},{}],43:[function(require,module,exports){
 (function (global){
 /**
  * Create a blob builder even when vendor prefixes exist
@@ -6770,7 +6999,7 @@ module.exports = (function() {
 })();
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],43:[function(require,module,exports){
+},{}],44:[function(require,module,exports){
 (function (global){
 /*! https://mths.be/utf8js v2.0.0 by @mathias */
 ;(function(root) {
@@ -7018,7 +7247,7 @@ module.exports = (function() {
 }(this));
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],44:[function(require,module,exports){
+},{}],45:[function(require,module,exports){
 
 /**
  * Module dependencies.
@@ -7043,7 +7272,7 @@ try {
   module.exports = false;
 }
 
-},{"global":45}],45:[function(require,module,exports){
+},{"global":46}],46:[function(require,module,exports){
 
 /**
  * Returns `this`. Execute this without a "context" (i.e. without it being
@@ -7053,7 +7282,7 @@ try {
 
 module.exports = (function () { return this; })();
 
-},{}],46:[function(require,module,exports){
+},{}],47:[function(require,module,exports){
 (function (global){
 /**
  * JSON parse.
@@ -7088,7 +7317,7 @@ module.exports = function parsejson(data) {
   }
 };
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],47:[function(require,module,exports){
+},{}],48:[function(require,module,exports){
 /**
  * Compiles a querystring
  * Returns string representation of the object
@@ -7127,7 +7356,7 @@ exports.decode = function(qs){
   return qry;
 };
 
-},{}],48:[function(require,module,exports){
+},{}],49:[function(require,module,exports){
 /**
  * Parses an URI
  *
@@ -7168,7 +7397,7 @@ module.exports = function parseuri(str) {
     return uri;
 };
 
-},{}],49:[function(require,module,exports){
+},{}],50:[function(require,module,exports){
 
 /**
  * Module dependencies.
@@ -7213,7 +7442,7 @@ function ws(uri, protocols, opts) {
 
 if (WebSocket) ws.prototype = WebSocket.prototype;
 
-},{}],50:[function(require,module,exports){
+},{}],51:[function(require,module,exports){
 (function (global){
 
 /*
@@ -7275,12 +7504,12 @@ function hasBinary(data) {
 }
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"isarray":51}],51:[function(require,module,exports){
+},{"isarray":52}],52:[function(require,module,exports){
 module.exports = Array.isArray || function (arr) {
   return Object.prototype.toString.call(arr) == '[object Array]';
 };
 
-},{}],52:[function(require,module,exports){
+},{}],53:[function(require,module,exports){
 
 var indexOf = [].indexOf;
 
@@ -7291,7 +7520,7 @@ module.exports = function(arr, obj){
   }
   return -1;
 };
-},{}],53:[function(require,module,exports){
+},{}],54:[function(require,module,exports){
 
 /**
  * HOP ref.
@@ -7376,7 +7605,7 @@ exports.length = function(obj){
 exports.isEmpty = function(obj){
   return 0 == exports.length(obj);
 };
-},{}],54:[function(require,module,exports){
+},{}],55:[function(require,module,exports){
 /**
  * Parses an URI
  *
@@ -7403,7 +7632,7 @@ module.exports = function parseuri(str) {
   return uri;
 };
 
-},{}],55:[function(require,module,exports){
+},{}],56:[function(require,module,exports){
 (function (global){
 /*global Blob,File*/
 
@@ -7548,7 +7777,7 @@ exports.removeBlobs = function(data, callback) {
 };
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./is-buffer":57,"isarray":58}],56:[function(require,module,exports){
+},{"./is-buffer":58,"isarray":59}],57:[function(require,module,exports){
 
 /**
  * Module dependencies.
@@ -7950,7 +8179,7 @@ function error(data){
   };
 }
 
-},{"./binary":55,"./is-buffer":57,"component-emitter":21,"debug":22,"isarray":58,"json3":59}],57:[function(require,module,exports){
+},{"./binary":56,"./is-buffer":58,"component-emitter":22,"debug":23,"isarray":59,"json3":60}],58:[function(require,module,exports){
 (function (global){
 
 module.exports = isBuf;
@@ -7967,9 +8196,9 @@ function isBuf(obj) {
 }
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],58:[function(require,module,exports){
-arguments[4][51][0].apply(exports,arguments)
-},{"dup":51}],59:[function(require,module,exports){
+},{}],59:[function(require,module,exports){
+arguments[4][52][0].apply(exports,arguments)
+},{"dup":52}],60:[function(require,module,exports){
 /*! JSON v3.2.6 | http://bestiejs.github.io/json3 | Copyright 2012-2013, Kit Cambridge | http://kit.mit-license.org */
 ;(function (window) {
   // Convenience aliases.
@@ -8832,7 +9061,7 @@ arguments[4][51][0].apply(exports,arguments)
   }
 }(this));
 
-},{}],60:[function(require,module,exports){
+},{}],61:[function(require,module,exports){
 module.exports = toArray
 
 function toArray(list, index) {
@@ -8847,9 +9076,9 @@ function toArray(list, index) {
     return array
 }
 
-},{}],61:[function(require,module,exports){
-arguments[4][10][0].apply(exports,arguments)
-},{"dup":10}],62:[function(require,module,exports){
+},{}],62:[function(require,module,exports){
+arguments[4][11][0].apply(exports,arguments)
+},{"dup":11}],63:[function(require,module,exports){
 // created by @HenrikJoreteg
 var prefix;
 var version;
@@ -8896,4 +9125,4 @@ module.exports = {
     getUserMedia: getUserMedia
 };
 
-},{}]},{},[3]);
+},{}]},{},[4]);

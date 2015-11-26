@@ -26,7 +26,7 @@ var mediaActive = 'idle';
 var hubCom = new HubCom(options);
 
 
-hubCom.onDataRecv = hdlDataRecv;
+hubCom.onTextRecv = hdlTextMsg;
 hubCom.onMediaAct =  hdlMedAct;
 hubCom.onCastList = updateCastList;
 hubCom.onUsrList = updateUsrList;
@@ -71,7 +71,7 @@ function sendData() {
 }
 
 
-function hdlDataRecv(from, data) {
+function hdlTextMsg(from, data) {
   console.log('Received message from ' + from + ' msg is: ' + data);
 	addMsgHistory(from+': '+data,0);
 
@@ -147,9 +147,9 @@ function hdlMedAct(state){
 
 function invokeMedia(){
 	if(hubCom.mediaActive == 'idle'){
-		hubCom.startAudioCast();
+		hubCom.startSpeaking();
 	}else{
-		hubCom.stopAudioCast();
+		hubCom.stopSpeaking();
 	}
 }
 

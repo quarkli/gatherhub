@@ -1,7 +1,7 @@
 /* 
 * @Author: Phenix Cai
 * @Date:   2015-11-13 19:14:00
-* @Last Modified time: 2015-11-20 15:47:08
+* @Last Modified time: 2015-11-26 19:39:14
 */
 
 'use strict';
@@ -12,7 +12,18 @@ var peerConn = require('./peerconn');
 
 var webRtc;
 (function(){
-    var _proto;
+    var _proto, _dbgFlag;
+    _dbgFlag = false;
+    function _infLog(){
+        if(_dbgFlag){
+            console.log.apply(console, arguments);
+        }
+    }
+
+    function _errLog(){
+        console.log.apply(console, arguments);
+    }
+
 
     function WebRtc(opts){
         
@@ -38,6 +49,9 @@ var webRtc;
         // user list keep the socket id list of all peers
         this.usrList = [];
 
+        this.datChRecvCb = {};
+        this.datChRecvCb['textMsg'] = this._onTextRecv.bind(this);
+
         //internal api for webrtc
         function isSdpWithAudio(s){
             var sdps,idx,sdp,ret;
@@ -55,6 +69,8 @@ var webRtc;
             });
             return ret;
         }
+
+
         
         //register callback functions for peerconnections
         function regPconnEvtCb(pc){
@@ -62,28 +78,31 @@ var webRtc;
                 self.connt.emit.apply(self.connt,arguments);
             };
             pc.onDcRecv = function (chan,from,data){
-                var usr = self.usrList[from];
-                switch(chan){
-                    case 'textMsg':
-                    self.onDataRecv(usr,data);
-                    break;
-                }
+                var hdlData = self.datChRecvCb[chan];
+                if(hdlData)hdlData(from,data);
             };
             pc.onAddRStrm = function (s){
                 self.onRMedAdd(s);
             };
             pc.onRmRStrm = function(s){
-                console.log('rmtStrmDel',s);
+                _infLog('rmtStrmDel',s);
                 self.onRMedDel(s);
             };
-            pc.onConError = function(id){
+            pc.onConError = function(label,id){
                 var config = self.config;
-                console.log('peer',id+' connect error');
-                // removePeer(id);
-                // config.type = 'calling';
-                // config.id = id;
-                // self.onCpErro(config);
+                _errLog('peer',id+' connect error');
+                removePeer(id);
+                config.type = 'calling';
+                config.id = id;
+                self.onCrpErro(config);
             };
+            pc.onConnReady = function(label,id){
+                var ready = true;
+                self.peers.forEach(function(p){
+                    if(p.ready == false) ready = false;
+                });
+                if(ready)self._onChansReady();
+            }
         }
 
 
@@ -93,7 +112,7 @@ var webRtc;
             config.id = id;
             config.type = type;
             if(!rtc.support){
-                self.onCpErro(config);
+                self.onCrpErro(config);
             }
             pc = self.peers[id];
             if(!pc){
@@ -112,18 +131,18 @@ var webRtc;
                 pc.setRmtDesc(sdp);
                 if(config.oneway == false){
                     if(isSdpWithAudio(sdp.sdp)){
-                        console.log('offered with audio active');
+                        _infLog('offered with audio active');
                         self.media.start(function(err,s){
                             if(!err){
                                 self.onLMedAdd(s);
                                 pc.addStream(s);
                                 pc.makeAnswer();
                             }else{
-                                console.log('start media Error');
+                                _errLog('start media Error',err);
                             }
                         });
                     }else{
-                        console.log('offered with audio mute');
+                        _infLog('offered with audio mute');
                         self.media.stop(function(s){
                             if(s)pc.removeStream(s);
                             pc.makeAnswer();
@@ -151,7 +170,7 @@ var webRtc;
             id = msg.from;
             usr = msg.usr;
             pc = self.peers[id];
-            console.log('Received msg:', msg);
+            _infLog('Received msg:', msg);
             if(id>=0 && usr){
                 self.usrList[id] = usr;
                 self.onUsrList(self.usrList);
@@ -163,14 +182,14 @@ var webRtc;
                 
             } else if (msg.sdp.type === 'answer' ) {
                 if(!pc){
-                    console.log("wrong answer id from "+id);
+                    _errLog("wrong answer id from "+id);
                     return;
                 }
               pc.setRmtDesc(msg.sdp);
                 
             } else if (msg.sdp.type === 'candidate') {
                 if(!pc){
-                    console.log("wrong candidate id from "+id);
+                    _errLog("wrong candidate id from "+id);
                     return;
                 }
               candidate = new RTCIceCandidate({sdpMLineIndex:msg.sdp.label,
@@ -181,27 +200,27 @@ var webRtc;
 
         function regSigCallback(){
             cn.on('connected', function (data){
-                console.log('userid is ', data.id);
+                _infLog('userid is ', data.id);
                 self.config.usrId = data.id;
                 self.online = true;
             });
             cn.on('joined', function (data){
                 var config =self.config;
-                console.log('Another peer # '+data.id+ ' made a request to join room ' + config.room);
+                _infLog('Another peer # '+data.id+ ' made a request to join room ' + config.room);
                 if(rtc.support && data.rtc){
                     //create peerconnection
                     createPeer('calling',data.id,null);
                 }else{
                     config.type = 'calling';
                     config.id = data.id;
-                    self.onCpErro(config);
+                    self.onCrpErro(config);
                 }
             });
             cn.on('msg', function (data){
                 parseSigMsg(data);
             });
             cn.on('bye',function(data){
-                console.log('Another peer # '+data.id+ ' leave room ' + self.config.room);
+                _infLog('Another peer # '+data.id+ ' leave room ' + self.config.room);
                 var id = data.id;
 
                 delete self.usrList[id];
@@ -278,7 +297,7 @@ var webRtc;
     _proto.stopScnShare = function(){
         var self = this;
         this.media.rlsScn(function(s){
-            console.log('rls ',s);
+            _infLog('rls ',s);
             self.peers.forEach(function(pc){
                 pc.removeStream(s);
                 pc.makeOffer();
@@ -298,13 +317,31 @@ var webRtc;
         this.sendData('textMsg',data);
     }; 
 
+    _proto.createDataChan = function(label,onRecv){
+        this.datChRecvCb[label] = onRecv.bind(this);
+        
+        this.peers.forEach(function(p){
+            p.getDatChan(label);
+        });
+
+    };
+
     /*some callback fuctions*/
-    _proto.onDataRecv = function(){};
+    _proto.onTextRecv = function(){};
     _proto.onLMedAdd = function(){};
     _proto.onRMedAdd = function(){};
     _proto.onRMedDel = function(){};
-    _proto.onCpErro = function(){};
+    _proto.onCrpErro = function(){};
     _proto.onUsrList = function(){};
+
+    // internal APIs
+
+    _proto._onTextRecv = function(from, data){
+        var usr = this.usrList[from];
+        this.onTextRecv(usr,data);
+    };
+    
+    _proto._onChansReady = function(){};
 
 
 })();

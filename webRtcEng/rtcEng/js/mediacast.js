@@ -1,9 +1,10 @@
 /* 
 * @Author: phenix cai
 * @Date:   2015-11-19 10:08:39
-* @Last Modified time: 2015-11-20 14:20:52
+* @Last Modified time: 2015-11-26 19:09:32
 */
 var webRtc = require('./webrtc');
+var castCtrl = require('./castctrl');
 var medCast;
 (function(){
     var _proto;
@@ -19,105 +20,68 @@ var medCast;
         webRtc.call(this,opts);
         //media casting list
         this.castList = [];
+        this.initFlag = false;
         this.mediaActive = 'idle';
-        //////////////command for audio casting
-        function getMediaCastList(audCon){
-            //reset it everytime
-            self.castList = [];
-            if(audCon.state==1){
-                if(audCon.talk == self.config.usrId){
-                    self.castList[0] = self.config.user;
-                }else{
-                    self.castList[0] = self.usrList[audCon.talk];
-                }
-                
-                audCon.que.forEach(function(id){
-                    if(id == self.config.usrId){
-                        self.castList[self.castList.length] = self.config.user;
-                    }else{
-                        self.castList[self.castList.length] = self.usrList[id];
-                    }
-                });
-            } 
-        }
-        cn = this.connt;
-        //media casting feature
-        function startMediaJob(){
-            if(self.isRmtAudOn()){
-                console.log('remote stream still active');
-                setTimeout(startMediaJob, 100);
-            }else{
-                self.startMedia(function(s){
-                    self.setMediaAct('active');
-                },function(err){
-                    console.log('Error',err);
-                    self.setMediaAct('idle');
-                });
-            }
-        }
-
-        cn.on('media', function (message){
-            var cmd = message.cmd;
-            if(cmd == 'ans'){
-                startMediaJob();
-            }else if(cmd == 'update'){
-                console.log('msg update',message.control);
-                if(message.control){
-                    getMediaCastList(message.control);
-                    self.onCastList(self.castList);
-                }
-            }
-        });
-
     }
     _proto = MedCast.prototype = extend(webRtc);
     medCast = MedCast;
-    _proto.setMediaAct = function(state){
-        this.mediaActive = state;
-        this.onMediaAct(state);
-    };
 
-    _proto.startAudioCast = function(){
-        var cn, cfg;
-        cn = this.connt;
-        cfg = this.config;
-
-        if(cfg.oneway){
-            cn.emit('media',{room:cfg.room,cmd:'req'});
-            this.setMediaAct('pending');
-        }else{
-            this.startMedia(null,function(err){
-                console.log('Error',err);
+    _proto.startSpeaking = function(){
+        var self = this;
+        if(this.ctrl)this.ctrl.start(function(){
+            self.startMedia(function(){
+                self._setMedState('active');
+            }, function(err){
+                console.log('Error', err);
+                self._setMedState('idle');
             });
-        }
+        });
+        this._setMedState('pending');
     };
 
-    _proto.stopAudioCast = function(){
-        var cn, cfg, st;
-        cn = this.connt;
-        cfg = this.config;
-        st = this.mediaActive;
-
-        if(cfg.oneway){
-            switch(st){
-                case 'pending' :
-                this.setMediaAct('idle');
-                cn.emit('media',{room:cfg.room,cmd:'rls'});
-                break;
-                case 'active' :
-                this.stopMedia();
-                this.setMediaAct('idle');
-                cn.emit('media',{room:cfg.room,cmd:'rls'});
-                break;
-            }
-        }else{
-            this.stopMedia();
-            this.setMediaAct('idle');
-        }
+    _proto.stopSpeaking = function(){
+        var self = this;
+        if(this.ctrl)this.ctrl.stop(function(){
+            self.stopMedia();
+        });
+        this._setMedState('idle');
     };
 
     _proto.onCastList = function(){};
     _proto.onMediaAct = function(){};
+
+    //internal APIs
+    _proto._initCmdChan = function(){
+        var self;
+        if(this.initFlag)return;
+        self = this;
+        this.ctrl = new castCtrl(this.config.usrId);
+        this.createDataChan('castCtrl',function(from,data){
+            var cmd = JSON.parse(data);
+            self.ctrl.hdlMsg(cmd);
+        });
+        this.ctrl.onSend = function(cmd){
+            var data = JSON.stringify(cmd);
+            console.log('castcmd send ',data);
+            self.sendData('castCtrl',data);
+        };
+        this.ctrl.onCastList = function(list){
+            self.onCastList(list);
+        }
+        setTimeout(function(){
+            self.ctrl.login();
+        }, 50);
+        this.initFlag = true;
+    };
+
+    _proto._onChansReady = function(){
+        this._initCmdChan();
+    };
+
+    _proto._setMedState = function(state){
+        this.mediaActive = state;
+        this.onMediaAct(state);
+    };
 
 
 })();

@@ -3,7 +3,20 @@ var adapter = require('webrtc-adapter-test');
 var peerConn;
 
 (function(){
-    var _proto;
+    var _proto, _dbgFlag;
+
+    _dbgFlag = false;
+    function _infLog(){
+        if(_dbgFlag){
+            console.log.apply(console, arguments);
+        }
+    }
+
+    function _errLog(){
+        console.log.apply(console, arguments);
+    }
+
+
 
     //constructors
     function PeerConn(opts){
@@ -44,10 +57,11 @@ var peerConn;
         this.rmtStrms = [];
         this.locStrms = [];
         this.datChans = {};
+        this.ready =  false;
 
         //internal methods
         function onIce(event){
-          console.log('onIce: ', event);
+          _infLog('onIce: ', event);
           if (event.candidate) {
             self.onSend('msg',{
                     room: self.config.room,
@@ -59,7 +73,7 @@ var peerConn;
                   candidate: event.candidate.candidate},
                     });
           } else {
-            console.log('End of candidates.');
+            _infLog('End of candidates.');
           }
         }
 
@@ -101,11 +115,11 @@ var peerConn;
             from my mind, it should be a=recevonly */
             var sdp = self.prePrcsSdp(desc.sdp);
             desc.sdp = sdp;
-            console.log('makeOffer ',desc);
+            _infLog('makeOffer ',desc);
             self.peer.setLocalDescription(desc);
             self.onSend('msg',{room:self.config.room, to:self.config.id, sdp:desc});
         }, function(err){
-            console.log('offer Error',err);
+            _errLog('offer Error',err);
         }, constrains);
     };
 
@@ -116,11 +130,11 @@ var peerConn;
         this.peer.createAnswer(function(desc){
             var sdp = self.prePrcsSdp(desc.sdp);
             desc.sdp = sdp;
-            console.log('makeAnswer ',desc);
+            _infLog('makeAnswer ',desc);
             self.peer.setLocalDescription(desc);
             self.onSend('msg',{room:self.config.room, to:self.config.id, sdp:desc});
         },function(err){
-            console.log('answer Error',err);
+            _errLog('answer Error',err);
         },constrains);
     };
 
@@ -137,16 +151,16 @@ var peerConn;
     _proto.setRmtDesc = function(desc){
         var sdp = new RTCSessionDescription(desc);
         this.peer.setRemoteDescription(sdp);
-        console.log('setRemoteDescription ',sdp);
+        _infLog('setRemoteDescription ',sdp);
     };
 
     _proto.addIceCandidate = function(candidate){
         this.peer.addIceCandidate(candidate);
-        console.log('addIceCandidate ',candidate);
+        _infLog('addIceCandidate ',candidate);
     };
 
     _proto.close = function(){
-        console.log('peerConnection close ',this.config.id);
+        _infLog('peerConnection close ',this.config.id);
         this.peer.close();
     };
 
@@ -157,24 +171,30 @@ var peerConn;
     _proto._obsrvDatChan = function(ch){
         var self = this;
         ch.onclose = function(){
-            console.log('dc chan close ',ch);
+            _infLog('dc chan close ',ch);
         };
         ch.onerror = function(){
-            console.log('dc chan erro ',ch);
-        }
+            _errLog('dc chan erro ',ch);
+            self.onConError(ch.label,self.config.id);
+        };
         ch.onopen =  function(){
-            console.log('dc chan open ',ch);
-        }
+            _infLog('dc chan open ',ch);
+            self.ready = true;
+            self.onConnReady(ch.label,self.config.id);
+        };
         ch.onmessage = function(ev){
-            self.onDcRecv(ch.label,self.config.id,event.data);
-        }
+            console.log('peer recv '+ch.label,ev.data);
+            self.onDcRecv(ch.label,self.config.id,ev.data);
+        };
     };
     _proto.getDatChan = function(name,opts){
         var chan = this.datChans[name];
         if(!opts) opts = {};
         if(chan) return chan;
-        chan = this.datChans[name] = this.peer.createDataChannel(name,opts);
-        this._obsrvDatChan(chan);
+        if(this.ctyp == 'calling'){
+            chan = this.datChans[name] = this.peer.createDataChannel(name,opts);
+            this._obsrvDatChan(chan);
+        }
         return chan;
     };
     _proto.hdlDatChanAdd = function(ev){
@@ -186,7 +206,7 @@ var peerConn;
     _proto.sendData = function(chan,data){
         var dc = this.getDatChan(chan);
         if(!dc || (dc.readyState != 'open')){
-            console.log('Error','datachannel is not ready, could not send');
+            _errLog('Error','channel '+dc.label+' is not ready, could not send');
         }else{
             dc.send(data);
         }
@@ -213,7 +233,7 @@ var peerConn;
         nwSdp = '';
         sdps = sdp.split('m=');
         cnt = 0;
-        console.log('parse sdp ','audio = '+auOn+' video = '+scOn);
+        _infLog('parse sdp ','audio = '+auOn+' video = '+scOn);
         sdps.forEach(function(d){
             var ss;
             ss = (cnt > 0)? 'm=' + d : d;
