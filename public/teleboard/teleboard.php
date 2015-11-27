@@ -23,7 +23,7 @@ if(isset($_POST['email']) && isset($_POST['sendMail'])) {
 }
 ?>
 <!--
-teleboard.html is distributed under the permissive MIT License:
+teleboard.php is distributed under the permissive MIT License:
 
 Copyright (c) 2015, Quark Li, quarkli@gmail.com
 All rights reserved.
@@ -59,98 +59,12 @@ Author: quarkli@gmail.com
 	<script>
 	var hub = '<?= $hub ?>';
 	var peer = '<?= $peer ?>';
-
-	$(function(){
-		var mycolor = "#7FD";
-		$('#plist').niceScroll();
-		$('#msgbox').niceScroll();
-		$('#pad').width($(window).width() - 55);
-		mvp.moveto('left', 9999);
-
-		var btnUser = new Gatherhub.SvgButton({icon: svgicon.user, w: 40, h: 40, borderradius: 1, bgcolor: '#CCC'});
-		btnUser.pad.css('padding', '5px');
-		btnUser.onclick = function(){toggleexp('#plist');};
-		btnUser.appendto('#bgroup');
-		var btnMsg = new Gatherhub.SvgButton({icon: svgicon.chat, w: 40, h: 40, resize: .7, borderradius: 1, bgcolor: '#CCC'});
-		btnMsg.pad.css('padding', '5px');
-		btnMsg.onclick = function(){toggleexp('#msg');};
-		btnMsg.appendto('#bgroup');
-		var btnSpk = new Gatherhub.SvgButton({icon: svgicon.mic, w: 40, h: 40, borderradius: 1, bgcolor: '#CCC'});
-		btnSpk.pad.css('padding', '5px');
-		btnSpk.onclick = function(){toggleexp('#plist');};
-		btnSpk.appendto('#bgroup');
-		
-		function toggleexp(exp) {
-			if ($(exp).position().left == 55) {
-				$(exp).animate({left: -250});
-			}
-			else {
-				$(exp).parent().children().each(function(){
-					$(this).animate({left: -250});
-				});
-				$(exp).animate({left: 55});
-			}
-		}
-
-		$('#tmsg').keyup(function(e){
-			if(e.keyCode == 13){
-				$('#send').click();
-			}
-		});		
-
-		$('#send').on('click', function(){
-			msp.sendmsg($('#tmsg').val());
-			appendMsg('#msgbox', 'Me', $('#tmsg').val(), msp.repcolor);
-			$('#tmsg').val('').focus();
-		});
-		
-		$(window).on('resize', function(){
-			$('#msgbox').height($(window).height() - parseInt($('#ts').css('height')) - 10);
-			$('#pad').width($(window).width() - 55);
-		});
-		
-		$("#joinhub").on('shown.bs.modal', function(){
-			$(this).find('#peer').focus();
-		});		
-	});
-
-	function rgb2hex(rgb) {
-		rgb = rgb.match(/^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/);
-		function hex(x) {
-			return ("0" + parseInt(x).toString(16)).slice(-2);
-		}
-		return '#' + hex(rgb[1]) + hex(rgb[2]) + hex(rgb[3]);
-	}
-
-	function appendMsg(elem, sender, msg, color) {
-		var lr = sender == 'Me' ? 'right' : 'left';
-		var d1 = '<div class="panel-body" style="background-color: ' + color + '; text-align: ' + lr + ';">'; 
-		var s1 = '<span style="font-size: 10px; color: #333">';
-		var s2 = '<span style="font-weight: bold;">';
-
-		color = color.toLowerCase();
-		if (color[0] == '#' && color.length == 4) color = color.slice(0,2) + color.slice(1,3) + color.slice(2,4) + color[3];
-		if ($(elem).children().length > 0 && rgb2hex($(elem).children().last().css('background-color')) == color) {
-			$(elem).children().last().append($('<br>'));
-			$(elem).children().last().append($(s2).html(msg));
-		}
-		else {
-			var d = $(d1).appendTo(elem);
-			$(s1).html(sender + ':').appendTo(d);
-			$('<br>').appendTo(d);
-			$(s2).html(msg).appendTo(d);
-		}
-
-		$(elem).height($(window).height() - parseInt($('#ts').css('height')) - 10);
-		$(elem).scrollTop($(elem)[0].scrollHeight);
-	}
 	</script>
 	<style>
 	body {
 		width: 100%;
 		height: 100%;
 		overflow: hidden;
-		background: black;
 	}
 	#pad {
 		position: absolute;
@@ -160,7 +74,6 @@ Author: quarkli@gmail.com
 		margin: 0px auto;
 		padding: 0px;
 		text-align: center;
-		background-color: #44F;
 		overflow: hidden;
 	}
 	#bgroup {
@@ -191,6 +104,7 @@ Author: quarkli@gmail.com
 		margin-bottom: -10px
 		border-style: solid;
 		border-width: 1px;
+		border-color: #CCC;
 		border-top-right-radius:5px;
 		border-bottom-right-radius:5px;
 		background-color: auto;
@@ -221,20 +135,16 @@ Author: quarkli@gmail.com
 		padding: 2px;
 		height: 30px;
 		width: 100%;
+		border-top-style: solid;
+		border-top-width: 1px;
+		border-top-color: #CCC;
 	}
 	</style>
   </head>
   <body>
 	<div id="pad"></div>
 	<div id="exp">
-		<div id="plist" class="panel">
-			<div class="panel-body" style="background-color: #AAF">
-				<span style="margin: 10px; font-weight: bold;">Pheix Cai</span>
-			</div>
-			<div class="panel-body" style="background-color: #BA8">
-				<span style="margin: 10px; font-weight: bold;">Quark Li</span>
-			</div>
-		</div>
+		<div id="plist" class="panel"></div>
 		<div id="msg" class="panel">
 			<div id="msgbox"></div>
 			<div id="ts">
@@ -259,7 +169,7 @@ Author: quarkli@gmail.com
 				<div class="checkbox">
 				  <label><input type="checkbox" id="cacheOn">Remember me</label>
 				</div>
-				  <button type="Button" class="btn btn-default" onclick="return validateInput()">OK</button>
+				  <button id="btnok" type="Button" class="btn btn-default">OK</button>
 			  </div>
 			</div>
 		  </div>

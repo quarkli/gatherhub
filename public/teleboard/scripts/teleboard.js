@@ -1,8 +1,30 @@
-var msp; // for debug use
+// for debug use
+var msp;
 var mvp;
 var mbmenu;
 
 $(function(){
+	var svr = ws1 = 'minichat.gatherhub.com';
+	var ws2 = '192.168.11.123';
+	var port = 55688;
+	var dispatch = function(){};
+
+	$('#plist').niceScroll();
+	$('#msgbox').niceScroll();
+	$('#pad').width($(window).width() - 55);
+
+	function addBtnToMenu(config, toggle) {
+		var btn = new Gatherhub.SvgButton(config);
+		btn.pad.css('padding', '5px');
+		if (toggle) btn.onclick = function(){toggleexp(toggle);};
+		btn.appendto('#bgroup');
+		return btn;
+	}
+	
+	var btnUser = addBtnToMenu({icon: svgicon.user, w: 40, h: 40, borderradius: 1, bgcolor: '#CCC'}, '#plist');
+	var btnMsg = addBtnToMenu({icon: svgicon.chat, w: 40, h: 40, resize: .7, borderradius: 1, bgcolor: '#CCC'}, '#msg');
+	var btnSpk = addBtnToMenu({icon: svgicon.mic, w: 40, h: 40, borderradius: 1, bgcolor: '#CCC'}, '');
+	
 	var sp = msp = new Gatherhub.SketchPad();
 	sp.floating('absolute').pencolor(sp.repcolor).appendto('#pad');
 	sp.canvas.css('opacity', 0.75);	
@@ -14,22 +36,7 @@ $(function(){
 	vp.defsize(sp.width()/4, sp.height()/4).minimize().appendto('#pad');
 
 	sp.attachvp(vp);
-	sp.altsvr = '192.168.11.123';
 
-	if (hub.length > 0) sp.hubid = hub;
-
-	if (peer.length == 0) {
-		if (getCookie('peer') && getCookie('peer').length > 0) {
-			$('#peer').val(getCookie('peer'));
-			$('#cacheOn').attr('checked', true);
-		}
-		$('#joinhub').modal('toggle');
-	}
-	else {
-		sp.peername = peer;
-		sp.connect('minichat.gatherhub.com', 55688);
-	}
-	
 	var w = h = parseInt($(window).height() / 24) * 2;
 	var rootdir = 'v0';
 	var subdir = 'h0';
@@ -39,7 +46,6 @@ $(function(){
 		w = h = parseInt($(window).width() / 24) * 2;
 	}
 	if (w < 40) w = h = 40;
-	
 	var penList = [
 		{btn: {w: w, h: h, icon: svgicon.pen, iconcolor: sp.repcolor, tip: 'User Pen'}, act: function(){sp.dragmode = false;sp.pencolor(sp.repcolor);}},
 		{btn: {w: w, h: h, icon: svgicon.pen, tip: 'Black Pen'}, act: function(){sp.dragmode = false;sp.pencolor('black');}},
@@ -72,16 +78,195 @@ $(function(){
 		{btn: {w: w, h: h, icon: svgicon.setting, tip: 'Settings'},	sublist: settingList, direction: subdir}
 	];
 	var rootList = {rootlist: mainBtn, direction: rootdir};
-	
 	var toolBar = mbmenu = new Gatherhub.BtnMenu(rootList);
 	toolBar.root.css({'position': 'absolute', 'bottom': 0, 'right': 0});
 
-	window.onresize = function(){
+	$(window).on('resize', function(){
+		$('#msgbox').height($(window).height() - parseInt($('#ts').css('height')) - 10);
+		$('#pad').width($(window).width() - 55);
 		vp.defsize(sp.width()/4, sp.height()/4).minimize();
 		sp.width(sp.width()).height(sp.width()).maximize().zoom(sp.zoom());
 		toolBar.collapseall();
-	};
+	});
+	$("#joinhub").on('shown.bs.modal', function(){
+		$(this).find('#peer').focus();
+	});		
+	$('#peer').keyup(function(e){
+		if(e.keyCode == 13){
+			$('#btnok').click();
+		}
+	});		
+	$('#btnok').on('click', function validateInput(){
+		if ($('#peer').val().trim().length == 0) {
+			alert('Please enter your name!');
+			return false;
+		}
+
+		if ($('#cacheOn').is(':checked')) setCookie('peer', $('#peer').val());
+		else setCookie('peer', '');
+
+		peer = $('#peer').val();
+		//sp.gid = peer;
+		connect();
+		$('#joinhub').modal('toggle');
+		
+		return true;
+	});
+	$('#tmsg').keyup(function(e){
+		if(e.keyCode == 13){
+			$('#send').click();
+		}
+	});		
+	$('#send').on('click', function(){
+		if ($('#tmsg').val().length) {
+			dispatch({msg: $('#tmsg').val()}, 'message');
+			appendMsg('#msgbox', 'Me', $('#tmsg').val(), sp.repcolor);
+		}
+		$('#tmsg').val('').focus();
+	});
+
+	if (hub.length == 0) hub = 1000;
+	if (peer.length == 0) {
+		if (getCookie('peer') && getCookie('peer').length > 0) {
+			$('#peer').val(getCookie('peer'));
+			$('#cacheOn').attr('checked', true);
+		}
+		$('#joinhub').modal('toggle');
+	}
+	else {
+		//sp.gid = peer;
+		connect();
+	}	
+
+	function connect() {
+		var wsready = false, pulse = null;
+		var peerid = (peer + '_' + sp.gid).replace(/ /g,'');
+		var ws = new WebSocket('ws://' + svr + ':' + port);
+		
+		sp.dispatch = dispatch = function(data, type, dst) {
+			if (wsready) {
+				data.name = peer;
+				data.color = sp.repcolor;
+				if (dst) ws.send(JSON.stringify({hub: hub, peer: peerid, action: type, data: data, dst: dst}));
+				else ws.send(JSON.stringify({hub: hub, peer: peerid, action: type, data: data}));
+			}
+		};
+		
+		ws.onerror = function(){
+			console.log("Message Router Connecting Error!");
+			if (svr == ws1) svr = ws2;
+			else svr = ws1;
+			connect();
+		};
+		ws.onopen = function(){
+			console.log("Message Router Connected.");
+			wsready = true;
+			dispatch({}, 'hello');
+			pulse = setInterval(function(){
+				if (wsready) ws.send('');
+				else ws = new WebSocket('ws://' + svr + ':' + port);
+			}, 30000);
+			appendUser('#plist', peerid, peer, sp.repcolor);
+		};
+		ws.onmessage = function(msg){
+			var ctx = JSON.parse(msg.data);
+			var data = ctx.data;
+			
+			switch (ctx.action) {
+				case 'hello':
+					console.log(ctx.peer + ': hello!');
+					appendUser('#plist', ctx.peer, data.name, data.color);
+					dispatch({}, 'welcome', ctx.peer);
+					//self.undoall();
+					//self.redoall();
+					break;
+				case 'welcome':
+					console.log(ctx.peer + ': welcome!');
+					appendUser('#plist', ctx.peer, data.name, data.color);
+					break;
+				case 'bye':
+					console.log(ctx.peer + ': bye!');
+					$('#plist').children().each(function(){
+						if ($(this).attr('id') == ctx.peer) $(this).remove();
+					});
+					break;
+				case 'message':
+					console.log(ctx.peer + ': ' + data.msg);
+					appendMsg('#msgbox', data.name, data.msg, data.color);
+					break;
+				case 'undo':
+					//$('#' + data.pid).remove();
+					//flush(self);
+					break;
+				case 'clear':
+					//self.clearcanvas();
+					//flush(self);
+					break;
+				case 'drawing':
+					sp.showdrawing(data);
+					break;
+				case 'graph':
+					sp.appendpath(data);
+					break;
+			}
+		};
+		ws.onclose = function(){
+			clearInterval(pulse);
+			wsready = false;
+		};
+	}
+
 });
+
+function toggleexp(exp) {
+	if ($(exp).position().left == 55) {
+		$(exp).animate({left: -250});
+	}
+	else {
+		$(exp).parent().children().each(function(){
+			$(this).animate({left: -250});
+		});
+		$(exp).animate({left: 55});
+	}
+}
+
+function rgb2hex(rgb) {
+	rgb = rgb.match(/^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/);
+	function hex(x) {
+		return ("0" + parseInt(x).toString(16)).slice(-2);
+	}
+	return '#' + hex(rgb[1]) + hex(rgb[2]) + hex(rgb[3]);
+}
+
+function appendUser(elem, peerid, uname, color) {
+	var d1 = '<div class="panel-body" style="background-color:' + color + '" id="' + peerid + '">';
+	var s1 = '<span style="margin: 10px; font-weight: bold;">';
+	$(s1).html(uname).appendTo($(d1).appendTo(elem));
+	$(elem).scrollTop($(elem)[0].scrollHeight);
+}
+
+function appendMsg(elem, sender, msg, color) {
+	var lr = sender == 'Me' ? 'right' : 'left';
+	var d1 = '<div class="panel-body" style="background-color: ' + color + '; text-align: ' + lr + ';">'; 
+	var s1 = '<span style="font-size: 10px; color: #333">';
+	var s2 = '<span style="font-weight: bold;">';
+
+	color = color.toLowerCase();
+	if (color[0] == '#' && color.length == 4) color = color.slice(0,2) + color.slice(1,3) + color.slice(2,4) + color[3];
+	if ($(elem).children().last().hasClass('panel-body') && rgb2hex($(elem).children().last().css('background-color')) == color) {
+		$(elem).children().last().append($('<br>'));
+		$(elem).children().last().append($(s2).html(msg));
+	}
+	else {
+		var d = $(d1).appendTo(elem);
+		$(s1).html(sender + ':').appendTo(d);
+		$('<br>').appendTo(d);
+		$(s2).html(msg).appendTo(d);
+	}
+
+	$(elem).height($(window).height() - parseInt($('#ts').css('height')) - 10);
+	$(elem).scrollTop($(elem)[0].scrollHeight);
+}
 
 function setCookie(key, value) {
 	var expires = new Date();
@@ -92,21 +277,4 @@ function setCookie(key, value) {
 function getCookie(key) {
 	var keyValue = document.cookie.match('(^|;) ?' + key + '=([^;]*)(;|$)');
 	return keyValue ? keyValue[2] : null;
-}
-
-function validateInput(){
-	if ($('#peer').val().trim().length == 0) {
-		alert('Please enter your name!');
-		return false;
-	}
-
-	if ($('#cacheOn').is(':checked')) setCookie('peer', $('#peer').val());
-	else setCookie('peer', '');
-
-	peer = $('#peer').val();
-	msp.peername = peer;
-	msp.connect('minichat.gatherhub.com', 55688);
-	$('#joinhub').modal('toggle');
-	
-	return true;
 }
