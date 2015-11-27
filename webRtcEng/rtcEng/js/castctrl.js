@@ -1,7 +1,7 @@
 /* 
 * @Author: Phenix Cai
 * @Date:   2015-11-22 10:02:34
-* @Last Modified time: 2015-11-26 19:09:35
+* @Last Modified time: 2015-11-26 21:44:30
 */
 
 
@@ -114,6 +114,7 @@ var castCtrl;
                 }
             break;
             case 'hello':
+                _infLog('cmp ',this.castList[0] + ' vs ',+myself);
                 if(this.castList[0] == myself){
                     this._infCastList();
                 }

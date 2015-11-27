@@ -2,7 +2,7 @@
 /* 
 * @Author: Phenix Cai
 * @Date:   2015-11-22 10:02:34
-* @Last Modified time: 2015-11-26 19:09:35
+* @Last Modified time: 2015-11-26 21:44:30
 */
 
 
@@ -115,6 +115,7 @@ var castCtrl;
                 }
             break;
             case 'hello':
+                _infLog('cmp ',this.castList[0] + ' vs ',+myself);
                 if(this.castList[0] == myself){
                     this._infCastList();
                 }
@@ -562,7 +563,7 @@ $('#scnButton').click(function(event) {
 /* 
 * @Author: phenix cai
 * @Date:   2015-11-19 10:08:39
-* @Last Modified time: 2015-11-26 19:09:32
+* @Last Modified time: 2015-11-26 22:10:02
 */
 var webRtc = require('./webrtc');
 var castCtrl = require('./castctrl');
@@ -614,25 +615,34 @@ var medCast;
     //internal APIs
     _proto._initCmdChan = function(){
         var self;
-        if(this.initFlag)return;
         self = this;
-        this.ctrl = new castCtrl(this.config.usrId);
+        if(this.initFlag == false){
+            this.ctrl = new castCtrl(this.config.usrId);
+            this.ctrl.onSend = function(cmd){
+                var data = JSON.stringify(cmd);
+                console.log('castcmd send ',data);
+                self.sendData('castCtrl',data);
+            };
+            this.ctrl.onCastList = function(list){
+                var spkrs = [];
+                list.forEach(function(p){
+                    if(p == self.config.usrId){
+                        spkrs.push(self.config.user);
+                    }else{
+                        spkrs.push(self.usrList[p]);
+                    }
+                });
+                self.onCastList(spkrs);
+            }
+            setTimeout(function(){
+                self.ctrl.login();
+            }, 400);
+            this.initFlag = true;
+        }
         this.createDataChan('castCtrl',function(from,data){
             var cmd = JSON.parse(data);
             self.ctrl.hdlMsg(cmd);
         });
-        this.ctrl.onSend = function(cmd){
-            var data = JSON.stringify(cmd);
-            console.log('castcmd send ',data);
-            self.sendData('castCtrl',data);
-        };
-        this.ctrl.onCastList = function(list){
-            self.onCastList(list);
-        }
-        setTimeout(function(){
-            self.ctrl.login();
-        }, 50);
-        this.initFlag = true;
     };
 
     _proto._onChansReady = function(){
@@ -834,7 +844,7 @@ var peerConn;
             self.onConnReady(ch.label,self.config.id);
         };
         ch.onmessage = function(ev){
-            console.log('peer recv '+ch.label,ev.data);
+            // _infLog('peer recv '+ch.label,ev.data);
             self.onDcRecv(ch.label,self.config.id,ev.data);
         };
     };
@@ -857,7 +867,7 @@ var peerConn;
     _proto.sendData = function(chan,data){
         var dc = this.getDatChan(chan);
         if(!dc || (dc.readyState != 'open')){
-            _errLog('Error','channel '+dc.label+' is not ready, could not send');
+            _errLog('Error','channel '+dc+' is not ready, could not send');
         }else{
             dc.send(data);
         }

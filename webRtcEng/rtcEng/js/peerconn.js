@@ -183,7 +183,7 @@ var peerConn;
             self.onConnReady(ch.label,self.config.id);
         };
         ch.onmessage = function(ev){
-            console.log('peer recv '+ch.label,ev.data);
+            // _infLog('peer recv '+ch.label,ev.data);
             self.onDcRecv(ch.label,self.config.id,ev.data);
         };
     };
@@ -206,7 +206,7 @@ var peerConn;
     _proto.sendData = function(chan,data){
         var dc = this.getDatChan(chan);
         if(!dc || (dc.readyState != 'open')){
-            _errLog('Error','channel '+dc.label+' is not ready, could not send');
+            _errLog('Error','channel '+dc+' is not ready, could not send');
         }else{
             dc.send(data);
         }

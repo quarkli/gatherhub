@@ -1,7 +1,7 @@
 /* 
 * @Author: phenix cai
 * @Date:   2015-11-19 10:08:39
-* @Last Modified time: 2015-11-26 19:09:32
+* @Last Modified time: 2015-11-26 22:10:02
 */
 var webRtc = require('./webrtc');
 var castCtrl = require('./castctrl');
@@ -53,25 +53,34 @@ var medCast;
     //internal APIs
     _proto._initCmdChan = function(){
         var self;
-        if(this.initFlag)return;
         self = this;
-        this.ctrl = new castCtrl(this.config.usrId);
+        if(this.initFlag == false){
+            this.ctrl = new castCtrl(this.config.usrId);
+            this.ctrl.onSend = function(cmd){
+                var data = JSON.stringify(cmd);
+                console.log('castcmd send ',data);
+                self.sendData('castCtrl',data);
+            };
+            this.ctrl.onCastList = function(list){
+                var spkrs = [];
+                list.forEach(function(p){
+                    if(p == self.config.usrId){
+                        spkrs.push(self.config.user);
+                    }else{
+                        spkrs.push(self.usrList[p]);
+                    }
+                });
+                self.onCastList(spkrs);
+            }
+            setTimeout(function(){
+                self.ctrl.login();
+            }, 400);
+            this.initFlag = true;
+        }
         this.createDataChan('castCtrl',function(from,data){
             var cmd = JSON.parse(data);
             self.ctrl.hdlMsg(cmd);
         });
-        this.ctrl.onSend = function(cmd){
-            var data = JSON.stringify(cmd);
-            console.log('castcmd send ',data);
-            self.sendData('castCtrl',data);
-        };
-        this.ctrl.onCastList = function(list){
-            self.onCastList(list);
-        }
-        setTimeout(function(){
-            self.ctrl.login();
-        }, 50);
-        this.initFlag = true;
     };
 
     _proto._onChansReady = function(){
