@@ -67,7 +67,7 @@ $(function(){
 		{btn: {w: w, h: h, icon: svgicon.zoomin, tip: 'Zoom In'}, act: function(){sp.zoom(sp.zrate * 1.1);}}
 	];
 	var settingList = [
-		{btn: {w: w, h: h, icon: svgicon.clear, tip: 'Clear Canvas'}, act: function(){sp.undoall();}},
+		{btn: {w: w, h: h, icon: svgicon.clear, tip: 'Clear Canvas'}, act: function(){sp.clearall();}},
 		{btn: {w: w, h: h, icon: svgicon.redo, tip: 'Redo'}, act: function(){sp.redo();}},
 		{btn: {w: w, h: h, icon: svgicon.undo, tip: 'Undo'}, act: function(){sp.undo();}}
 	];	
@@ -177,8 +177,7 @@ $(function(){
 					console.log(ctx.peer + ': hello!');
 					appendUser('#plist', ctx.peer, data.name, data.color);
 					dispatch({}, 'welcome', ctx.peer);
-					//self.undoall();
-					//self.redoall();
+					sp.syncgraph(ctx.peer);
 					break;
 				case 'welcome':
 					console.log(ctx.peer + ': welcome!');
@@ -195,12 +194,10 @@ $(function(){
 					appendMsg('#msgbox', data.name, data.msg, data.color);
 					break;
 				case 'undo':
-					//$('#' + data.pid).remove();
-					//flush(self);
+					if ($('#' + data.id).length) $('#' + data.id).remove();
 					break;
 				case 'clear':
-					//self.clearcanvas();
-					//flush(self);
+					sp.clearcanvas();
 					break;
 				case 'drawing':
 					sp.showdrawing(data);

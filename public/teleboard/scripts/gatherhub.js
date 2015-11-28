@@ -455,7 +455,7 @@ var Gatherhub = Gatherhub || {};
 			setTimeout(function(){falseTouch=false;}, 5);
 			if (this.dispatch) {
 				this.dispatch({
-					pid: path.attr('id'),
+					id: path.attr('id'),
 					x: point.x,
 					y: point.y,
 					c: this.pc
@@ -488,16 +488,17 @@ var Gatherhub = Gatherhub || {};
 				flush(this);
 
 				if (this.dispatch) {
-					this.dispatch({
-						pid: path.attr('id'),
-						stroke: path.attr('stroke'),
-						strokeWidth: path.attr('stroke-width'),
-						strokeLinecap: path.attr('stroke-linecap'),
-						fill: path.attr('fill'),
-						d: path.attr('d')									
-					}, 'graph');
+					this.dispatch(path2obj(path), 'graph');
 				}
 			}
+		}
+		function path2obj(p) {
+			var obj = {};
+			obj.tagName = p.prop('tagName');
+			$.each(p[0].attributes, function(i, attr) {
+				obj[attr.name] = attr.value;
+			});
+			return obj;
 		}
 		function flush(sp) {
 			if (sp) {
@@ -671,7 +672,7 @@ var Gatherhub = Gatherhub || {};
 			var scnxy = vbox2scn.call(this, point);
 			var left = scnxy.x == 0 ? 1 : (scnxy.x / this.width() > 0.5) ? scnxy.x - this.width() : scnxy.x;
 			var top = scnxy.y == 0 ? 1 : (scnxy.y / this.height() > 0.5) ? scnxy.y - this.height() : scnxy.y;
-			var i = data.pid.split('-', 1);
+			var i = data.id.split('-', 1);
 			var r = $('<span/>').attr('id', i).html(data.name).appendTo('body');
 			r.css({'position': 'absolute', 'color': data.c, 'border-width': 1, 'border-style': 'solid'});
 			if (left > 0) r.css('left', left);
@@ -680,19 +681,26 @@ var Gatherhub = Gatherhub || {};
 			else r.css('bottom', -top);
 			setTimeout(function(){$('#' + i).remove();}, 2000);			
 		};
-		_proto.appendpath = function(data) {
-			var path = $(document.createElementNS('http://www.w3.org/2000/svg', 'path'));
-			path.attr('id', data.pid);
-			path.attr('stroke-width', data.strokeWidth);
-			path.attr('stroke', data.stroke);
-			path.attr('stroke-linecap', data.strokeLinecap);
-			path.attr('fill', data.fill);
-			path.attr('d', data.d);
+		_proto.appendpath = function(p) {
+			var path;
+			$.each(p, function(k, v){
+				if (k == 'tagName') {
+					path = $(document.createElementNS('http://www.w3.org/2000/svg', v));
+				}
+				else {
+					path.attr(k, v);
+				}
+			});
 			path.appendTo(this.pathholder);
 			flush(this);
-			$('#' + data.pid.split('-', 1)).remove();
 			
 			return this;
+		};
+		_proto.syncgraph = function(dst) {
+			var self = this;
+			$.each($('.' + this.gid), function(i, p) {
+				self.dispatch(path2obj($(p)), 'graph', dst);
+			});
 		};
 		_proto.clearall = function() {
 			if (this.dispatch) this.dispatch({}, 'clear');
@@ -709,7 +717,7 @@ var Gatherhub = Gatherhub || {};
 			var path = $('.' + this.gid).length ? $('.' + this.gid).last() : null;
 			if (path && path.attr('id').indexOf(this.gid) == 0) {
 				path.appendTo(this.redocache);
-				if (this.dispatch) this.dispatch({pid: path.attr('id')}, 'undo');
+				if (this.dispatch) this.dispatch({id: path.attr('id')}, 'undo');
 				flush(this);
 			}
 			return this;
@@ -721,14 +729,7 @@ var Gatherhub = Gatherhub || {};
 		_proto.redo = function() {
 			if (this.redocache.children().length) var path = this.redocache.children().last().appendTo(this.pathholder);
 			if (path && this.dispatch) {
-				this.dispatch({
-					pid: path.attr('id'),
-					stroke: path.attr('stroke'),
-					strokeWidth: path.attr('stroke-width'),
-					strokeLinecap: path.attr('stroke-linecap'),
-					fill: path.attr('fill'),
-					d: path.attr('d')
-				}, 'graph');
+				this.dispatch(path2obj(path), 'graph');
 			}
 			flush(this);
 			return this;
