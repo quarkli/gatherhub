@@ -3,11 +3,16 @@ var msp;
 var mvp;
 var mbmenu;
 
+// global variables and functions
+var ts = null;
+var tsid = null;
+var dispatch = function(){};
+
 $(function(){
+	var peerid;
 	var svr = ws1 = 'minichat.gatherhub.com';
 	var ws2 = '192.168.11.123';
 	var port = 55688;
-	var dispatch = function(){};
 
 	$('#plist').niceScroll();
 	$('#msgbox').niceScroll();
@@ -106,7 +111,7 @@ $(function(){
 		else setCookie('peer', '');
 
 		peer = $('#peer').val();
-		//sp.gid = peer;
+		peerid = (peer + '_' + sp.gid).replace(/ /g,'');
 		connect();
 		$('#joinhub').modal('toggle');
 		
@@ -118,10 +123,7 @@ $(function(){
 		}
 	});		
 	$('#send').on('click', function(){
-		if ($('#tmsg').val().length) {
-			dispatch({msg: $('#tmsg').val()}, 'message');
-			appendMsg('#msgbox', 'Me', $('#tmsg').val(), sp.repcolor);
-		}
+		if ($('#tmsg').val().length) appendMsg('#msgbox', peerid, 'Me', $('#tmsg').val(), sp.repcolor, $.now() - ts);
 		$('#tmsg').val('').focus();
 	});
 
@@ -134,13 +136,12 @@ $(function(){
 		$('#joinhub').modal('toggle');
 	}
 	else {
-		//sp.gid = peer;
+		peerid = (peer + '_' + sp.gid).replace(/ /g,'');
 		connect();
 	}	
 
 	function connect() {
 		var wsready = false, pulse = null;
-		var peerid = (peer + '_' + sp.gid).replace(/ /g,'');
 		var ws = new WebSocket('ws://' + svr + ':' + port);
 		
 		sp.dispatch = dispatch = function(data, type, dst) {
@@ -162,6 +163,7 @@ $(function(){
 			console.log("Message Router Connected.");
 			wsready = true;
 			dispatch({}, 'hello');
+			tsid = setTimeout(function(){ts = $.now();console.log('ts='+ts);}, 1000);
 			pulse = setInterval(function(){
 				if (wsready) ws.send('');
 				else ws = new WebSocket('ws://' + svr + ':' + port);
@@ -174,13 +176,29 @@ $(function(){
 			
 			switch (ctx.action) {
 				case 'hello':
-					console.log(ctx.peer + ': hello!');
+					console.log(data.name + ': hello!');
+					if (ts == null) {
+						clearTimeout(tsid);
+						ts = $.now();
+						console.log('ts='+ts);						
+					}
 					appendUser('#plist', ctx.peer, data.name, data.color);
-					dispatch({}, 'welcome', ctx.peer);
+					dispatch({ts: ts}, 'welcome', ctx.peer);
 					sp.syncgraph(ctx.peer);
+					$('.tmsg_' + peerid).each(function() {
+						dispatch({msg: $(this).children('.panel-body').last().html(), tid: $(this).attr('tid')}, 'message', ctx.peer);
+					});
 					break;
 				case 'welcome':
-					console.log(ctx.peer + ': welcome!');
+					console.log(data.name + ': welcome!');
+					if (ts == null && $.isNumeric(data.ts)) {
+						clearTimeout(tsid);
+						ts = data.ts;
+						console.log('ts='+ts);
+					}
+					else if ($.isNumeric(ts) && $.isNumeric(data.ts) && ts != data.ts) {
+						ts = ts > data.ts ? ts : data.ts;
+					}
 					appendUser('#plist', ctx.peer, data.name, data.color);
 					break;
 				case 'bye':
@@ -190,8 +208,7 @@ $(function(){
 					});
 					break;
 				case 'message':
-					console.log(ctx.peer + ': ' + data.msg);
-					appendMsg('#msgbox', data.name, data.msg, data.color);
+					appendMsg('#msgbox', ctx.peer, data.name, data.msg, data.color, data.tid);
 					break;
 				case 'undo':
 					if ($('#' + data.id).length) $('#' + data.id).remove();
@@ -236,33 +253,34 @@ function rgb2hex(rgb) {
 }
 
 function appendUser(elem, peerid, uname, color) {
-	var d1 = '<div class="panel-body" style="background-color:' + color + '" id="' + peerid + '">';
-	var s1 = '<span style="margin: 10px; font-weight: bold;">';
-	$(s1).html(uname).appendTo($(d1).appendTo(elem));
+	var ph = '<div class="panel-heading" style="text-shadow: 1px 2px #444; color: #FFF; font-weight: bold; background-color:' + color + '" id="' + peerid + '" uname="' + uname + '">';
+	$(ph).html(uname).appendTo(elem);
+	$(elem).children().sort(function(a,b){
+		return $(a).attr('uname') > $(b).attr('uname');
+	}).appendTo($(elem));
 	$(elem).scrollTop($(elem)[0].scrollHeight);
 }
 
-function appendMsg(elem, sender, msg, color) {
+function appendMsg(elem, pid, sender, msg, color, tid) {
+	console.log(sender + '(' + tid + '): ' + msg);
 	var lr = sender == 'Me' ? 'right' : 'left';
-	var d1 = '<div class="panel-body" style="background-color: ' + color + '; text-align: ' + lr + ';">'; 
-	var s1 = '<span style="font-size: 10px; color: #333">';
-	var s2 = '<span style="font-weight: bold;">';
-
-	color = color.toLowerCase();
-	if (color[0] == '#' && color.length == 4) color = color.slice(0,2) + color.slice(1,3) + color.slice(2,4) + color[3];
-	if ($(elem).children().last().hasClass('panel-body') && rgb2hex($(elem).children().last().css('background-color')) == color) {
-		$(elem).children().last().append($('<br>'));
-		$(elem).children().last().append($(s2).html(msg));
-	}
-	else {
-		var d = $(d1).appendTo(elem);
-		$(s1).html(sender + ':').appendTo(d);
-		$('<br>').appendTo(d);
-		$(s2).html(msg).appendTo(d);
-	}
+	var prev = $(elem).children().last();
+	var prevlr = prev.length ? prev.children().last().css('float') : '';
+	var pp = $('<div class="tmsg_' + pid + '" style="clear: ' + prevlr + '">'); 
+	var ph = $('<div class="panel-heading" style="text-shadow: 1px 2px #CCC; color: #000; margin: 0; padding: 0; text-align: ' + lr + '">');
+	var pb = $('<div class="panel-body" style="float: ' + lr + '; width: 80%; border-radius: 5px; margin: 5px; font-weight: bold; background-color: ' + color + ';">');
+	
+	pp.attr('tid', tid);
+	ph.html(sender + ':').appendTo(pp);
+	pb.html(msg).appendTo(pp);
+	pp.appendTo(elem);
+	$(elem).children().sort(function(a,b){
+		return $(a).attr('tid')*1 > $(b).attr('tid')*1;
+	}).appendTo($(elem));
 
 	$(elem).height($(window).height() - parseInt($('#ts').css('height')) - 10);
 	$(elem).scrollTop($(elem)[0].scrollHeight);
+	if (sender == 'Me') dispatch({msg: $('#tmsg').val(), tid: pp.attr('tid')}, 'message');
 }
 
 function setCookie(key, value) {

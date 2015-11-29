@@ -122,11 +122,16 @@ Author: quarkli@gmail.com
 		padding: 6px;
 		margin: 0px; 
 	}
+	#msg {
+		overflow: hidden;
+	}
 	#msgbox {
 		position: absolute;
 		top: 0;
 		height: 90%;
 		width: 100%;
+		overflow-x: hidden;
+		overflow-y: auto;
 	}
 	#ts {
 		position: absolute;
@@ -138,6 +143,7 @@ Author: quarkli@gmail.com
 		border-top-style: solid;
 		border-top-width: 1px;
 		border-top-color: #CCC;
+		overflow: hidden;
 	}
 	</style>
   </head>
