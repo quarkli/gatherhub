@@ -86,6 +86,7 @@ Author: quarkli@gmail.com
 		text-align: center;
 		background-color: #CCC;
 		overflow: hidden;
+		z-index: 99;
 	}
 	.panel.parent {
 		position: absolute; 
@@ -122,8 +123,14 @@ Author: quarkli@gmail.com
 		padding: 6px;
 		margin: 0px; 
 	}
+	#plist {
+		overflow-x: hidden;
+		overflow-y: auto;
+		z-index: 90;
+	}
 	#msg {
 		overflow: hidden;
+		z-index: 90;
 	}
 	#msgbox {
 		position: absolute;
@@ -158,6 +165,7 @@ Author: quarkli@gmail.com
 				<button id="send" type="button">Send</button>
 			</div>
 		</div>
+		<div id="media" class="panel"><div class="alert alert-info">Screen-cast, Video-cast, and Audio speach features will be available soon!</div></div>
 	</div>
 	<div id="bgroup"></div>
 	<div id="joinhub" class="modal fade" role="dialog">

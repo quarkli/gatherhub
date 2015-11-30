@@ -6,6 +6,8 @@ var mbmenu;
 // global variables and functions
 var ts = null;
 var tsid = null;
+var topmenu = false;
+var showpop = false;
 var dispatch = function(){};
 
 $(function(){
@@ -28,7 +30,7 @@ $(function(){
 	
 	var btnUser = addBtnToMenu({icon: svgicon.user, w: 40, h: 40, borderradius: 1, bgcolor: '#CCC'}, '#plist');
 	var btnMsg = addBtnToMenu({icon: svgicon.chat, w: 40, h: 40, resize: .7, borderradius: 1, bgcolor: '#CCC'}, '#msg');
-	var btnSpk = addBtnToMenu({icon: svgicon.mic, w: 40, h: 40, borderradius: 1, bgcolor: '#CCC'}, '');
+	var btnSpk = addBtnToMenu({icon: svgicon.mic, w: 40, h: 40, borderradius: 1, bgcolor: '#CCC'}, '#media');
 	
 	var sp = msp = new Gatherhub.SketchPad();
 	sp.floating('absolute').pencolor(sp.repcolor).appendto('#pad');
@@ -41,6 +43,7 @@ $(function(){
 	vp.defsize(sp.width()/4, sp.height()/4).minimize().appendto('#pad');
 
 	sp.attachvp(vp);
+	arrangemenu();
 
 	var w = h = parseInt($(window).height() / 24) * 2;
 	var rootdir = 'v0';
@@ -72,7 +75,9 @@ $(function(){
 		{btn: {w: w, h: h, icon: svgicon.zoomin, tip: 'Zoom In'}, act: function(){sp.zoom(sp.zrate * 1.1);}}
 	];
 	var settingList = [
-		{btn: {w: w, h: h, icon: svgicon.clear, tip: 'Clear Canvas'}, act: function(){sp.clearall();}},
+		{btn: {w: w, h: h, icon: svgicon.clear, tip: 'Clear Canvas'}, act: function(){
+			if (confirm('This will clear everything on the whiteboard of all peers. Are you sure?')) sp.clearall();
+		}},
 		{btn: {w: w, h: h, icon: svgicon.redo, tip: 'Redo'}, act: function(){sp.redo();}},
 		{btn: {w: w, h: h, icon: svgicon.undo, tip: 'Undo'}, act: function(){sp.undo();}}
 	];	
@@ -87,11 +92,12 @@ $(function(){
 	toolBar.root.css({'position': 'absolute', 'bottom': 0, 'right': 0});
 
 	$(window).on('resize', function(){
-		$('#msgbox').height($(window).height() - parseInt($('#ts').css('height')) - 10);
-		$('#pad').width($(window).width() - 55);
-		vp.defsize(sp.width()/4, sp.height()/4).minimize();
-		sp.width(sp.width()).height(sp.width()).maximize().zoom(sp.zoom());
 		toolBar.collapseall();
+		if (topmenu) {
+			$('#msg').height($(window).height() - 55);
+			$('#msgbox').height($(window).height() - parseInt($('#ts').css('height')) - 10 - (topmenu ? 55 : 0));
+			$('#msgbox').scrollTop($('#msgbox')[0].scrollHeight);
+		}
 	});
 	$("#joinhub").on('shown.bs.modal', function(){
 		$(this).find('#peer').focus();
@@ -169,6 +175,7 @@ $(function(){
 				else ws = new WebSocket('ws://' + svr + ':' + port);
 			}, 30000);
 			appendUser('#plist', peerid, peer, sp.repcolor);
+			setTimeout(function(){showpop = true;}, 5000);
 		};
 		ws.onmessage = function(msg){
 			var ctx = JSON.parse(msg.data);
@@ -209,6 +216,14 @@ $(function(){
 					break;
 				case 'message':
 					appendMsg('#msgbox', ctx.peer, data.name, data.msg, data.color, data.tid);
+					if (showpop && ($('#msg').position().top < 0 || $('#msg').position().left < 0)) {
+						var x = 0 | (Math.random() * $(window).width() * .5) + $(window).width() * .25;
+						var y = 0 | (Math.random() * $(window).height() * .5) + $(window).height() * .25;
+						var popmsg = $('<div class="panel-body" style="width: 150px; border-radius: 5px; margin: 5px; font-weight: bold; border-style: solid; border-color: ' + data.color + ';">');
+						popmsg.css({position: 'absolute', top: y, left: x});
+						popmsg.html(data.name + ': ' + data.msg).appendTo('body');
+						setTimeout(function(){popmsg.fadeOut(500, function(){$(this).remove()})}, 2000);
+					}
 					break;
 				case 'undo':
 					if ($('#' + data.id).length) $('#' + data.id).remove();
@@ -227,20 +242,68 @@ $(function(){
 		ws.onclose = function(){
 			clearInterval(pulse);
 			wsready = false;
+			showpop = false;
 		};
 	}
 
 });
 
-function toggleexp(exp) {
-	if ($(exp).position().left == 55) {
-		$(exp).animate({left: -250});
+function arrangemenu () {
+	if ($(window).height() / $(window).width() > 1)  {
+		$('#bgroup').children().css({float: 'left', clear: ''});
+		$('#bgroup').css({height: 55, width: '100%'});
+		$('#exp').children().css({left: 0, top: -$(window).height(), height: $(window).height() - 55});
+		$('#pad').height($(window).height() - 55).width($(window).width()).css({top: 55, left: 0});
+		msp.height(9999);
+		msp.width(9999);
+		mvp.moveto('top', 0);
+		mvp.moveto('left', 9999);
+		topmenu = true;
 	}
 	else {
-		$(exp).parent().children().each(function(){
-			$(this).animate({left: -250});
-		});
-		$(exp).animate({left: 55});
+		$('#bgroup').children().css({float: '', clear: 'left'});
+		$('#bgroup').css({height: '100%', width: 55});
+		$('#exp').children().css({top: 0, left: -$('#exp').children().width(), height: '100%'});
+		$('#pad').height($(window).height()).width($(window).width() - 55).css({top: 0, left: 55});
+		msp.height(9999);
+		msp.width(9999);
+		mvp.moveto('top', 0);
+		mvp.moveto('left', 9999);
+		topmenu = false;
+	}
+}
+
+function toggleexp(exp) {
+	if (topmenu) {
+		if ($(exp).position().top == 55) {
+			$('#tmsg').blur();
+			$(exp).animate({top:  -9999});
+		}
+		else {
+			if (parseInt($(exp).css('left')) != 0) $(exp).css({left: 0});
+			$(exp).parent().children().each(function(){
+				if ($(this).position().top > 0) $(this).animate({top: -9999});
+				$('#tmsg').blur();
+			});
+			$(exp).find('#tmsg').focus();
+			$(exp).animate({top: 55});
+		}
+	}
+	else {
+		if ($(exp).position().left == 55) {
+			$('#tmsg').blur();
+			$(exp).animate({left: -250});
+		}
+		else {
+			if (parseInt($(exp).css('top')) != 0) $(exp).css({top: 0});
+			$(exp).parent().children().each(function(){
+				if ($(this).position().left > 0) $(this).animate({left: -250});
+				$('#tmsg').blur();
+			});
+			$(exp).find('#tmsg').focus();
+			$(exp).height($(window).height());
+			$(exp).animate({left: 55});
+		}
 	}
 }
 
@@ -268,7 +331,7 @@ function appendMsg(elem, pid, sender, msg, color, tid) {
 	var prevlr = prev.length ? prev.children().last().css('float') : '';
 	var pp = $('<div class="tmsg_' + pid + '" style="clear: ' + prevlr + '">'); 
 	var ph = $('<div class="panel-heading" style="text-shadow: 1px 2px #CCC; color: #000; margin: 0; padding: 0; text-align: ' + lr + '">');
-	var pb = $('<div class="panel-body" style="float: ' + lr + '; width: 80%; border-radius: 5px; margin: 5px; font-weight: bold; background-color: ' + color + ';">');
+	var pb = $('<div class="panel-body" style="float: ' + lr + '; width: auto; border-radius: 5px; margin: 5px; font-weight: bold; background-color: ' + color + ';">');
 	
 	pp.attr('tid', tid);
 	ph.html(sender + ':').appendTo(pp);
@@ -278,7 +341,7 @@ function appendMsg(elem, pid, sender, msg, color, tid) {
 		return $(a).attr('tid')*1 > $(b).attr('tid')*1;
 	}).appendTo($(elem));
 
-	$(elem).height($(window).height() - parseInt($('#ts').css('height')) - 10);
+	$(elem).height($(window).height() - parseInt($('#ts').css('height')) - 10 - (topmenu ? 55 : 0));
 	$(elem).scrollTop($(elem)[0].scrollHeight);
 	if (sender == 'Me') dispatch({msg: $('#tmsg').val(), tid: pp.attr('tid')}, 'message');
 }
