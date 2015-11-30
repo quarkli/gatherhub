@@ -1,7 +1,7 @@
 /* 
 * @Author: Phenix Cai
 * @Date:   2015-11-13 19:14:00
-* @Last Modified time: 2015-11-30 17:07:19
+* @Last Modified time: 2015-11-30 22:18:30
 */
 
 'use strict';
@@ -82,11 +82,11 @@ var webRtc;
     };
 
 
-    _proto.addAttendee = function(id){
+    _proto.addPartener = function(id){
         this._createPeer('calling',id,null);
     };
 
-    _proto.rmAttendee = function(id){
+    _proto.rmPartener = function(id){
         this._removePeer(id);
     };
 

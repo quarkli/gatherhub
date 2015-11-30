@@ -86,7 +86,6 @@ function updateUsrList(list){
     $('#usrList').append('</ul>');
 
 }
-var medList = [];
 
 // Attach a media stream to an element.
 function attachMediaStream (element, stream) {

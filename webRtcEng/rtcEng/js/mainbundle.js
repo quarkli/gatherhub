@@ -382,7 +382,6 @@ function updateUsrList(list){
     $('#usrList').append('</ul>');
 
 }
-var medList = [];
 
 // Attach a media stream to an element.
 function attachMediaStream (element, stream) {
@@ -923,13 +922,73 @@ module.exports = sockConnection;
 /* 
 * @Author: Phenix
 * @Date:   2015-11-27 09:26:39
-* @Last Modified time: 2015-11-30 17:10:07
+* @Last Modified time: 2015-12-01 00:05:53
 */
 
 'use strict';
 var medCast = require('./mediacast');
 var sockConnection = require('./sockconn');
 var rtc = require('webrtcsupport');
+
+var extrChan;
+(function(){
+    var _proto;
+    function ExtrChan(config){
+        var self = this;
+        this.datChCbs = {};
+        this.parteners = [];
+        this.config = config;
+        this.datChCbs['txt'] = function(msg){
+            self.onTextRecv(msg.from,msg.data);
+        };
+    }
+    _proto = ExtrChan.prototype;
+    extrChan = ExtrChan;
+    _proto.createDataChan = function(label,onRecv){
+        this.datChCbs[label] = onRecv;
+    };
+    _proto.addPartener = function(id){
+        var p = this.parteners[id];
+        if(p) return;
+        this.parteners[id] = id;
+        this.onSend('msg',{
+            room: this.config.room,
+            to: id,
+            mid: 0,
+            sdp:{type:'exlnk'}
+        });
+
+    };
+    _proto.rmPartener = function(id){
+        var idx;
+        idx = this.parteners.indexOf(id);
+        if(idx>=0) this.parteners.splice(idx,1);        
+    };
+    _proto.sendData = function(chan,data){
+        var self, msg;
+        self = this;
+        this.parteners.forEach(function(id){
+            msg = {
+                room: self.config.room,
+                to: id,
+                label: chan,
+                data: data
+            };
+            self.onSend('dat',msg);
+        });
+    };
+    _proto.sendTxt2All = function(data){
+        this.sendData('txt',data);
+    };
+    _proto.hdlRecv = function(msg){
+        var self, hdl;
+        hdl = this.datChCbs[msg.label];
+        if(hdl)hdl(msg);
+    };
+    _proto.onSend = function(){};
+    _proto.onTextRecv = function(){};
+
+})();
 
 var teleCom;
 (function(){
@@ -947,7 +1006,7 @@ var teleCom;
 
 
     function TeleCom(opts){
-        var self, config, item, room, cn;
+        var self, config, item, cn;
         self = this;
         config = {};
         for(item in opts){
@@ -964,6 +1023,7 @@ var teleCom;
         config.scnCast = true;
         this.scn = this.medias[1] = new medCast(config);
 
+        this.exChan = new extrChan(config);
         // user list keep the socket id list of all peers
         this.usrList = [];
 
@@ -976,15 +1036,17 @@ var teleCom;
                 self.online = true;
             });
             cn.on('joined', function (data){
-                var config =self.config;
-                _infLog('Another peer # '+data.id+ ' made a request to join room ' + config.room);
+                var c, id;
+                c = self.config;
+                id = data.id;
+                _infLog('Another peer # '+id+ ' made a request to join room ' + c.room);
                 if(rtc.support && data.rtc){
                     //create peerconnection
                     self.medias.forEach(function(m){
-                        m.addAttendee(data.id);
+                        m.addPartener(id);
                     });
                 }else{
-
+                    self.exChan.addPartener(id);
                 }
             });
             cn.on('msg', function (data){
@@ -995,7 +1057,11 @@ var teleCom;
                     self.usrList[id] = usr;
                     self.onUsrList(self.usrList);
                 }
-                if(!rtc.support)return;
+                if(!rtc.support || data.sdp.type == 'exlnk'){
+                    // other side could not support webrtc, send exlnk 
+                    self.exChan.addPartener(id);
+                    return;
+                }
                 self.medias[data.mid].parseSigMsg(data);
             });
             cn.on('bye',function(data){
@@ -1004,9 +1070,12 @@ var teleCom;
                 delete self.usrList[id];
                 self.onUsrList(self.usrList);
                 self.medias.forEach(function(m){
-                    m.rmAttendee(id);
+                    m.rmPartener(id);
                 });
-
+                self.exChan.rmPartener(id);
+            });
+            cn.on('dat',function(data){
+                self.exChan.hdlRecv(data);
             });
             /////////////// log from server
             cn.on('log', function (array){
@@ -1059,11 +1128,22 @@ var teleCom;
                 var usr = self.usrList[f];
                 self.onTextRecv(usr,d);
             };
+        }
 
-        };
+        function regExChCallback(){
+            self.exChan.onTextRecv = function(f,d){
+                var usr = self.usrList[f];
+                self.onTextRecv(usr,d);
+            };
+            self.exChan.onSend = function(){
+                self.connt.emit.apply(self.connt,arguments);
+            };
+
+        }
 
         regSigCallback();
         regMedCallback();
+        regExChCallback();
 
     }
     _proto = TeleCom.prototype ;
@@ -1073,6 +1153,9 @@ var teleCom;
         var c = this.config;
         if(!this.online){
             this.connt.emit('join', {room:c.room,user:c.user,rtc:rtc.support});
+        }
+        if(!rtc.support){
+            this.onWarnMsg('Your browser could not support webrtc, you could not use media casting!');
         }
     };
     _proto.logout = function(){
@@ -1093,9 +1176,11 @@ var teleCom;
     _proto.onFrScnAdd = function(){};
     _proto.onFrScnRm = function(){};
     _proto.onScnState = function(){};
+    _proto.onWarnMsg = function(){};
 
     _proto.sendTxt2All = function(d){
         this.avt.sendTxt2All(d);
+        this.exChan.sendTxt2All(d);
     };
     _proto.getSpkrStatus = function(){
         return this.avt.getMedStatus();
@@ -1123,7 +1208,7 @@ module.exports = teleCom;
 /* 
 * @Author: Phenix Cai
 * @Date:   2015-11-13 19:14:00
-* @Last Modified time: 2015-11-30 17:07:19
+* @Last Modified time: 2015-11-30 22:18:30
 */
 
 'use strict';
@@ -1204,11 +1289,11 @@ var webRtc;
     };
 
 
-    _proto.addAttendee = function(id){
+    _proto.addPartener = function(id){
         this._createPeer('calling',id,null);
     };
 
-    _proto.rmAttendee = function(id){
+    _proto.rmPartener = function(id){
         this._removePeer(id);
     };
 

@@ -68,16 +68,16 @@ io.sockets.on('connection', function (socket){
 	}
 
 
-	socket.on('join', function (data) {
+	socket.on('join', function (msg) {
 
     var index, id, user, rtc;
-		if(!data){
+		if(!msg){
 			log('could not join a room with empty name!');
 			return;
 		}
-		index = data.room;
-		user = data.user;
-		rtc = data.rtc;
+		index = msg.room;
+		user = msg.user;
+		rtc = msg.rtc;
 		
 		var room = rooms[index];
 		
@@ -120,9 +120,9 @@ io.sockets.on('connection', function (socket){
 	});
 
 
-	function parseMessage(type,data,socket){
+	function parseMessage(type,msg,socket){
 		var  roomIdx, to, room, from;
-    	roomIdx = data.room;
+    	roomIdx = msg.room;
 		if(!roomIdx){
 			log("wrong room name!");
 			return ;
@@ -133,7 +133,7 @@ io.sockets.on('connection', function (socket){
 			return ;
 		}
 
-      	to = parseInt(data.to, 10);
+      	to = parseInt(msg.to, 10);
       	if(!room[to]){
 			log("undefined sokcet");
 			return ;
@@ -147,10 +147,14 @@ io.sockets.on('connection', function (socket){
 		}
 
 		if(type == 'msg'){
-        	room[to].s.emit('msg', {from:from,usr:room[from].u,mid:data.mid,sdp:data.sdp});
+        	room[to].s.emit('msg', {from:from,usr:room[from].u,mid:msg.mid,sdp:msg.sdp});
 		}else if (type == 'dat'){
-			console.log('dat','fromn'+from+'data',data.dat);
-        	room[to].s.emit('dat', {from:from,dat:data.dat});
+			// console.log('dat','from'+from+'msg',msg.data);
+        	room[to].s.emit('dat', {
+        		from:from,
+        		label:msg.label,
+        		data:msg.data
+        	});
 		}
 
 	}
