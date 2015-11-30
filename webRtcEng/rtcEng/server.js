@@ -10,7 +10,7 @@ var app = http.createServer(options,function (req, res) {
   file.serve(req, res);
 }).listen(2013);
 
-//two obj, not array
+//obj, not array
 var rooms = {};
 //decriptions or rooms
 //there might be serveral different rooms with different name.
@@ -23,19 +23,13 @@ var nameList = [];
 //ex.
 // nameList[0] = 'work',nameList[1] = 'live';
 
-// audio manager for each room
-var audsMan = {};
-//// audoMan = {'work':{state:talk/idle,que:[alice's id, bob's id, ]
-/// getFirstId(){return que[0], for other, que[i] = q[i+1]};
-///  
-///}
 
 
 
 function pushNameList(name){
 	var index = nameList.indexOf(name);
 	if(index<0){
-		nameList[nameList.length]=name;
+		nameList.push(name);
 	}
 }
 
@@ -57,79 +51,12 @@ function getIdBySocket(room,socket){
 	return id;
 }
 
-//////////////audio broadcasting manager
-function informAudioEvt(room,audCon){
-  room.forEach(function (obj) {
-		//console.log('informAudioEvt');
-    if(obj)obj.s.emit('media', {cmd: 'update', control: audCon });
-  });
-}
-
-function parseAudioReq(message,socket){
-	var currentRoom = message.room;
-	var audCon = audsMan[currentRoom];
-	if(!audCon){
-		console.log('audsMan:','invalid room'+currentRoom);
-		return;
-	}
-	var room = rooms[currentRoom];
-	if(!room){
-		console.log('room:','invalid room'+currentRoom);
-		return;
-	}
-	var id = getIdBySocket(room, socket);
-	var cmd = message.cmd;
-	//console.log('id:',id);
-	if(id!==undefined){
-		switch(audCon.state){
-			case 0:
-				//Idle, 
-				if(cmd == 'req'){
-					socket.emit('media',{cmd:'ans'});
-					audCon.state = 1;
-					audCon.talk = id;
-				}
-			break;
-			case 1:
-			default:
-				if(cmd == 'req'){
-					if(audCon.que.indexOf(id)==-1){
-						audCon.que.push(id);
-					}
-				}else if (cmd == 'rls'){
-					if(audCon.talk == id){
-						//last talk finished..
-						if(audCon.que.length > 0){
-							//find next talker
-							var nxtId = audCon.que.shift();
-							audCon.talk = nxtId;
-							room[nxtId].s.emit('media',{cmd:'ans'});
-						}else{
-							audCon.talk = -1;
-							audCon.state = 0;
-						}
-					}else{
-						//delete itself from que
-						var idx = audCon.que.indexOf(id);
-						if(idx >= 0){
-							audCon.que.splice(idx,1);
-						}
-					}
-				}
-			break;
-		}
-		//inform all others that audio casting que have changed...
-		informAudioEvt(room,audCon);
-	}
-	
-}
-
 
 var io = require('socket.io').listen(app);
 io.sockets.on('connection', function (socket){
 
 	function log(){
-		var array = [">>> "];
+		var array = ["[srv]"];
 	  for (var i = 0; i < arguments.length; i++) {
 	  	array.push(arguments[i]);
 	  }
@@ -140,23 +67,19 @@ io.sockets.on('connection', function (socket){
 		socket.emit('err',m);
 	}
 
-	socket.on('media', function (message) {
-		console.log('msg media',message.room,message.cmd);
-		parseAudioReq(message,socket);
-	});
 
 	socket.on('join', function (data) {
 
-    var currentRoom, id,user,rtc;
+    var index, id, user, rtc;
 		if(!data){
 			log('could not join a room with empty name!');
 			return;
 		}
-		currentRoom = data.room;
+		index = data.room;
 		user = data.user;
 		rtc = data.rtc;
 		
-		var room = rooms[currentRoom];
+		var room = rooms[index];
 		
 
 		var numClients =0;
@@ -167,18 +90,17 @@ io.sockets.on('connection', function (socket){
 			});
 		} 
 
-		log('Room ' + currentRoom + ' has ' + numClients + ' client(s)');
-		log('user',user+' enter into '+currentRoom);
+		log('Room ' + index + ' has ' + numClients + ' client(s)');
+		log('user',user+' enter into '+index);
 
 		if (numClients == 0){
 			//free previous room
 			if(room){
 				delete(room);
 			}
-			rooms[currentRoom] = [{s:socket,u:user}];
+			rooms[index] = [{s:socket,u:user}];
 			//init audio manager
-			audsMan[currentRoom] ={state:0,talk:-1,que:[]};
-      		console.log('Room created, with name', currentRoom);
+      		console.log('Room created, with name', index);
 			id = 0;
 			//do you want send back to client something...
 		} else {
@@ -189,10 +111,10 @@ io.sockets.on('connection', function (socket){
         		obj.s.emit('joined', { id: id, rtc: rtc});
       		});
       		room[id] = {s:socket,u:user};
-      		console.log('Peer connected to room', currentRoom, 'with #', id);			
+      		console.log('Peer connected to room', index, 'with #', id);			
 		} 
 
-		pushNameList(currentRoom);
+		pushNameList(index);
 		socket.emit('connected',{id:id});
 
 	});
@@ -259,9 +181,6 @@ io.sockets.on('connection', function (socket){
 				from = getIdBySocket(room,socket);
 				//send socket leave msg to other sockets in the room
 				if(from!=undefined){
-					//if there is audio con que here
-					var message = {room:r,cmd:'rls'};
-					parseAudioReq(message,socket);
 					console.log('socket leaved ','id='+from +' from room '+r);
 					delete room[from];
 					room.forEach(function (obj) {

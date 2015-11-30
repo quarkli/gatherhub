@@ -540,7 +540,7 @@ function showWarnMsg(msg){
 /* 
 * @Author: phenix cai
 * @Date:   2015-11-19 10:08:39
-* @Last Modified time: 2015-11-30 15:28:43
+* @Last Modified time: 2015-11-30 17:44:39
 */
 var webRtc = require('./webrtc');
 var castCtrl = require('./castctrl');
@@ -607,7 +607,7 @@ var medCast;
             this.ctrl = new castCtrl(this.myId());
             this.ctrl.onSend = function(cmd){
                 var data = JSON.stringify(cmd);
-                console.log('castcmd send ',data);
+                // console.log('castcmd send ',data);
                 self.sendData('castCtrl',data);
             };
             this.ctrl.onCastList = this.onCastList.bind(this);

@@ -1,7 +1,7 @@
 /* 
 * @Author: Phenix
 * @Date:   2015-11-27 09:26:39
-* @Last Modified time: 2015-11-30 17:10:07
+* @Last Modified time: 2015-11-30 18:05:01
 */
 
 'use strict';
@@ -12,7 +12,7 @@ var rtc = require('webrtcsupport');
 var teleCom;
 (function(){
     var _proto, _dbgFlag;
-    _dbgFlag = true;
+    _dbgFlag = false;
     function _infLog(){
         if(_dbgFlag){
             console.log.apply(console, arguments);
