@@ -23,7 +23,7 @@ if(isset($_POST['email']) && isset($_POST['sendMail'])) {
 }
 ?>
 <!--
-teleboard.html is distributed under the permissive MIT License:
+teleboard.php is distributed under the permissive MIT License:
 
 Copyright (c) 2015, Quark Li, quarkli@gmail.com
 All rights reserved.
@@ -52,97 +52,142 @@ Author: quarkli@gmail.com
     <link rel="stylesheet" href="css/bootstrap.min.css">
     <script src="scripts/jquery.min.js"></script>
     <script src="js/bootstrap.min.js"></script>
-    <script src="scripts/gatherhub.js"></script>
-    <script src="scripts/svgicons.js"></script>
     <script src="scripts/jquery.nicescroll.min.js"></script>
+    <script src="scripts/svgicons.js"></script>
+    <script src="scripts/gatherhub.js"></script>
     <script src="scripts/teleboard.js"></script>
-    <script>
-      var hub = '<?= $hub ?>';
-      var peer = '<?= $peer ?>';
-    </script>
-    <style>
-	.scrollarea {
-		background-color: auto;
-		display: none;
-		width: 250px;
+	<script>
+	var hub = '<?= $hub ?>';
+	var peer = '<?= $peer ?>';
+	</script>
+	<style>
+	body {
+		width: 100%;
 		height: 100%;
-		float: left;
-		overflow-y: auto;
-		border-style: solid;
-		border-width: 1px;
-		border-top-right-radius:5px;
-		border-bottom-right-radius:5px;
-	}
-	.collapse.width {
-		display: block;
-		-webkit-transition: 0.5s ease-in-out;
-		-moz-transition: 0.5s ease-in-out;
-		-o-transition: 0.5s ease-in-out;
-		transition: 0.5s ease-in-out;
-	}
-	.btn {
-		padding: 5px;
-	}
-	#menu {
-		float: left;
-		height: 100%;
-		width: 60px;
-		font-size: 0px;
-		text-align: center;
-		margin: 0 auto;
-		background-color: #CCC;
 		overflow: hidden;
 	}
-	#list {
-		float: left;
+	#pad {
+		position: absolute;
+		left: 55px;
+		width: 100%;
 		height: 100%;
-		width: 250px;
-		font-size: 0px;
+		margin: 0px auto;
+		padding: 0px;
 		text-align: center;
+		overflow: hidden;
+	}
+	#bgroup {
+		position: absolute;
+		left: 0px;
+		width: 55px;
+		height: 100%;
+		margin: 0px auto;
+		padding: 0px;
+		text-align: center;
+		background-color: #CCC;
+		overflow: hidden;
+		z-index: 99;
+	}
+	.panel.parent {
+		position: absolute; 
+		left: 53px; 
+		margin: 0px auto; 
+		padding: 0px; 
+		height: 100%
+	}
+	.panel {
+		position: absolute;
+		left: -250px;
+		width: 250px;
+		height: 100%;
+		padding: 0px;
+		margin: 0px;
+		margin-bottom: -10px
+		border-style: solid;
+		border-width: 1px;
+		border-color: #CCC;
+		border-top-right-radius:5px;
+		border-bottom-right-radius:5px;
 		background-color: auto;
 		overflow-x: hidden;
 		overflow-y: auto;
-		border-style: solid;
-		border-width: 1px;
-		border-top-right-radius:5px;
-		border-bottom-right-radius:5px;
-		background-color: #00C;
 	}
-	#eboard {
-		position: absolute;
-		top: 50px;
-		right: 50px;
-		width: 640px;
-		height: 480px;
+	.collapse.width {
+		left: 0px;
+		-webkit-transition: .75s;
+		-moz-transition: .75s;
+		-o-transition: .75s;
+		transition: .75s;
+	}
+	.panel-body {
+		padding: 6px;
+		margin: 0px; 
+	}
+	#plist {
+		overflow-x: hidden;
+		overflow-y: auto;
+		z-index: 90;
+	}
+	#msg {
 		overflow: hidden;
-		background-color: #C00;
+		z-index: 90;
 	}
-	body {
+	#msgbox {
+		position: absolute;
+		top: 0;
+		height: 90%;
+		width: 100%;
+		overflow-x: hidden;
+		overflow-y: auto;
+	}
+	#ts {
+		position: absolute;
+		bottom: 0;
+		margin: 2px;
+		padding: 2px;
+		height: 30px;
+		width: 100%;
+		border-top-style: solid;
+		border-top-width: 1px;
+		border-top-color: #CCC;
 		overflow: hidden;
 	}
 	</style>
   </head>
   <body>
-  <div id="joinhub" class="modal fade" role="dialog">
-	<div class="modal-dialog">
-	  <div class="modal-content">
-		<div class="modal-header">
-		  <h4 class="modal-title">Join hub</h4>
-		</div>
-		<div class="modal-body">
-		  <div class="form-group">
-			<label for="text">Your Name:</label>
-			<input type="text" class="form-control" id="peer" name="peer">
-		  </div>
-		  <div class="form-group" style="text-align: right;">
-			<div class="checkbox">
-			  <label><input type="checkbox" id="cacheOn">Remember me</label>
+	<div id="pad"></div>
+	<div id="exp">
+		<div id="plist" class="panel"></div>
+		<div id="msg" class="panel">
+			<div id="msgbox"></div>
+			<div id="ts">
+				<input id="tmsg" type="text">
+				<button id="send" type="button">Send</button>
 			</div>
-			  <button type="Button" class="btn btn-default" onclick="return validateInput()">OK</button>
-		  </div>
 		</div>
-	  </div>
+		<div id="media" class="panel"><div class="alert alert-info">Screen-cast, Video-cast, and Audio speach features will be available soon!</div></div>
 	</div>
-  </div>
+	<div id="bgroup"></div>
+	<div id="joinhub" class="modal fade" role="dialog">
+		<div class="modal-dialog">
+		  <div class="modal-content">
+			<div class="modal-header">
+			  <h4 class="modal-title">Join hub</h4>
+			</div>
+			<div class="modal-body">
+			  <div class="form-group">
+				<label for="text">Your Name:</label>
+				<input type="text" class="form-control" id="peer" name="peer">
+			  </div>
+			  <div class="form-group" style="text-align: right;">
+				<div class="checkbox">
+				  <label><input type="checkbox" id="cacheOn">Remember me</label>
+				</div>
+				  <button id="btnok" type="Button" class="btn btn-default">OK</button>
+			  </div>
+			</div>
+		  </div>
+	</div>
+	</div>
   </body>
 </html>

@@ -314,7 +314,7 @@ var Gatherhub = Gatherhub || {};
 				if (t) {
 					if (t.length == 2) {
 						pinch += 1;
-						if (pinch > self.pinchSensitivity) {
+						if (pinch > self.pinchlevel) {
 							var delta = Math.pow(t[1].pageX - x, 2) + Math.pow(t[1].pageY - y, 2) - pinchDelta;
 							self.mousewheelHdl(delta);
 							pinchDelta = Math.pow(t[1].pageX - x, 2) + Math.pow(t[1].pageY - y, 2);
@@ -338,7 +338,7 @@ var Gatherhub = Gatherhub || {};
 		_proto.constructor = VisualPad;							// Overload constructor
 		_proto.source;
 		_proto.draggable = false;
-		_proto.pinchSensitivity = 3;
+		_proto.pinchlevel = 3;
 		_proto.src = function(srcid) {
 			this.source = (srcid && srcid[0] == '#' ? $(srcid) : $('#' + srcid));
 			// this is a workaround method to resolve <svg> namespace issue that could not be display properly in some browser
@@ -436,8 +436,8 @@ var Gatherhub = Gatherhub || {};
 			var self = this;
 			var pw = this.pc == 'white' ?  this.pw / this.zrate : this.pw;
 			var path =  $(document.createElementNS('http://www.w3.org/2000/svg', 'path'));
-			path.attr('id', this.peername + '-' + this.seq++);
-			path.attr('class', this.peername);
+			path.attr('id', this.gid + '-' + this.seq++);
+			path.attr('class', this.gid);
 			path.attr('stroke-width', pw);
 			path.attr('stroke-linecap', this.ps);
 			path.attr('stroke', this.pc);
@@ -453,21 +453,13 @@ var Gatherhub = Gatherhub || {};
 			this.activepath = path;
 			falseTouch = true;
 			setTimeout(function(){falseTouch=false;}, 5);
-			if (this.wsready) {
-				this.ws.send(
-					JSON.stringify(
-						{
-							id: this.hubid,
-							name: this.peername,
-							action: 'path',
-							pid: path.attr('id'),
-							ops: 'start',
-							x: point.x,
-							y: point.y,
-							c: this.repcolor
-						}
-					)
-				);
+			if (this.dispatch) {
+				this.dispatch({
+					id: path.attr('id'),
+					x: point.x,
+					y: point.y,
+					c: this.pc
+				}, 'drawing');
 			}
 		}
 		function drawPath(x, y){
@@ -495,24 +487,18 @@ var Gatherhub = Gatherhub || {};
 				this.redocache.empty();
 				flush(this);
 
-				if (this.wsready) {
-					this.ws.send(
-						JSON.stringify(
-							{
-								id: this.hubid,
-								name: this.peername,
-								action: 'path',
-								pid: path.attr('id'),
-								stroke: path.attr('stroke'),
-								strokeWidth: path.attr('stroke-width'),
-								strokeLinecap: path.attr('stroke-linecap'),
-								fill: path.attr('fill'),
-								d: path.attr('d')
-							}
-						)
-					);
+				if (this.dispatch) {
+					this.dispatch(path2obj(path), 'graph');
 				}
 			}
+		}
+		function path2obj(p) {
+			var obj = {};
+			obj.tagName = p.prop('tagName');
+			$.each(p[0].attributes, function(i, attr) {
+				obj[attr.name] = attr.value;
+			});
+			return obj;
 		}
 		function flush(sp) {
 			if (sp) {
@@ -521,12 +507,14 @@ var Gatherhub = Gatherhub || {};
 			}			
 		}
 		function randcolor() {
-			var c = '#', m = 0 | Math.random() * 255;
+			var c = '#';
 			while (c.length < 7) {
-				var n = 0 | Math.random() * 255;
-				while (Math.abs(n - m) < 16) n = 0 | Math.random() * 255;
-				m = n;
-				c += n < 16 ? '0' + n.toString(16) : n.toString(16);
+				if (c.length % 2) {
+					c += ((0 | Math.random() * 8) + 7).toString(16);
+				}
+				else {
+					c += (0 | Math.random() * 16).toString(16);					
+				}
 			}
 			return c.toUpperCase();
 		}
@@ -540,8 +528,8 @@ var Gatherhub = Gatherhub || {};
 			this.pathholder = $(document.createElementNS('http://www.w3.org/2000/svg', 'g')).attr('id', 'g' + (0 | Math.random() * 1000)).appendTo(this.canvas);
 			this.redocache = $(document.createElementNS('http://www.w3.org/2000/svg', 'g'));
 			this.nocontext();
-			this.peername = 'Peer' + (0 | Math.random() * 1000);
 			this.repcolor = randcolor();
+			this.gid = this.repcolor.slice(1,7);
 
 			this.pad.on('mousedown touchstart', function(evt){
 				var e = evt.originalEvent;
@@ -603,7 +591,7 @@ var Gatherhub = Gatherhub || {};
 				if (t) {
 					if (t.length == 2) {
 						pinch += 1;
-						if (pinch > self.pinchSensitivity) {
+						if (pinch > self.pinchlevel) {
 							var delta = Math.pow(t[1].pageX - x, 2) + Math.pow(t[1].pageY - y, 2) - pinchDelta;
 							self.mousewheelHdl(delta);
 							pinchDelta = Math.pow(t[1].pageX - x, 2) + Math.pow(t[1].pageY - y, 2);
@@ -636,16 +624,9 @@ var Gatherhub = Gatherhub || {};
 		// Prototypes
 		var _proto = SketchPad.prototype = extend(g.SvgPad);	// Inheritance
 		_proto.constructor = SketchPad;							// Overload constructor
-		_proto.svr = null;
-		_proto.altsvr = null;
-		_proto.port = null;
-		_proto.altport = null;
-		_proto.ws = null;
-		_proto.wsready = false;
-		_proto.hubid = 0;
-		_proto.peername = null;
+		_proto.dispatch = null;
+		_proto.gid = null;
 		_proto.repcolor = '#FFF';
-		_proto.pulse = null;
 		_proto.vpad = null;
 		_proto.pathholder = null;
 		_proto.redocache = null;
@@ -654,100 +635,9 @@ var Gatherhub = Gatherhub || {};
 		_proto.pw = 5;
 		_proto.ps = 'round';
 		_proto.activepath = null;
-		_proto.pinchSensitivity = 7;
+		_proto.pinchlevel = 7;
 		_proto.dragging = false;
 		_proto.dragmode = false;
-		_proto.connect = function(svr, port) {
-			var self = this;
-			svr = svr || this.svr || '127.0.0.1';
-			if (this.svr == null) this.svr = svr;
-			port = port || this.port || 0;
-			if (this.port == null) this.port = port;
-			var ws = this.ws = new WebSocket('ws://' + svr + ':' + port);
-			ws.onerror = function(){
-				if (svr == self.svr) {
-					svr = self.altsvr || svr;
-					port = self.altport || port;
-				}
-				else {
-					svr = self.svr || svr;
-					port = self.port || port;
-				}
-				self.connect(svr, port);
-			};
-			ws.onopen = function(){
-				ws.send(JSON.stringify({id: self.hubid, name: self.peername, action: 'connect'}));
-				self.wsready = true;
-				if (self.wsready) {
-					self.pulse = setInterval(function(){if (self.wsready) ws.send('');}, 30000);
-				}
-			};
-			ws.onmessage = function(msg){
-				if (msg.data.match('path')){
-					var ctx = JSON.parse(msg.data);
-					if (ctx.id == self.hubid && ctx.name != self.peername){
-						if (ctx.ops) {
-							switch (ctx.ops) {
-								case 'undo':
-									$('#' + ctx.pid).remove();
-									flush(self);
-									break;
-								case 'redo':
-									break;
-								case 'clear':
-									self.clearcanvas();
-									flush(self);
-									break;
-								case 'start':
-									var point = {x: ctx.x, y: ctx.y};
-									var scnxy = vbox2scn.call(self, point);
-									var left = scnxy.x == 0 ? 1 : (scnxy.x / self.width() > 0.5) ? scnxy.x - self.width() : scnxy.x;
-									var top = scnxy.y == 0 ? 1 : (scnxy.y / self.height() > 0.5) ? scnxy.y - self.height() : scnxy.y;
-									var i = ctx.pid.split('-', 1);
-									var r = $('<span/>').attr('id', i).html(i).appendTo('body');
-									r.css({'position': 'absolute', 'color': ctx.c, 'border-width': 1, 'border-style': 'solid'});
-									if (left > 0) r.css('left', left);
-									else r.css('right', -left);
-									if (top > 0) r.css('top', top );
-									else r.css('bottom', -top);
-									setTimeout(function(){$('#' + i).remove();}, 2000);
-									break;
-							}
-						}
-						else if (ctx.d) {
-							var path = $(document.createElementNS('http://www.w3.org/2000/svg', 'path'));
-							path.attr('id', ctx.pid);
-							path.attr('stroke-width', ctx.strokeWidth);
-							path.attr('stroke', ctx.stroke);
-							path.attr('stroke-linecap', ctx.strokeLinecap);
-							path.attr('fill', ctx.fill);
-							path.attr('d', ctx.d);
-							path.appendTo(self.pathholder);
-							flush(self);
-							$('#' + ctx.pid.split('-', 1)).remove();
-						}
-					}
-				}
-				else {
-					console.log(msg.data);
-					if (msg.data.indexOf(this.peername) < 0 && msg.data.indexOf('has entered')) {
-						self.undoall();
-						self.redoall();
-					}
-				}
-			};
-			ws.onclose = function(){
-				clearInterval(self.pulse);
-				self.wsready = false;
-			};
-			return this;
-		};
-		_proto.sendmsg = function(msg, tgt) {
-			if (this.wsready) {
-				this.ws.send(JSON.stringify({id: this.hubid, name: this.peername, action: 'say', data: msg, target: tgt}));
-			}
-			return this;
-		};
 		_proto.attachvp = function(vp) {
 			if (Object.getPrototypeOf(vp) === g.VisualPad.prototype) {
 				vp.src(this.pathholder.attr('id'));
@@ -777,45 +667,57 @@ var Gatherhub = Gatherhub || {};
 			}
 			return this.ps;
 		};
+		_proto.showdrawing = function(data) {
+			var point = {x: data.x, y: data.y};
+			var scnxy = vbox2scn.call(this, point);
+			var left = scnxy.x == 0 ? 1 : (scnxy.x / this.width() > 0.5) ? scnxy.x - this.width() : scnxy.x;
+			var top = scnxy.y == 0 ? 1 : (scnxy.y / this.height() > 0.5) ? scnxy.y - this.height() : scnxy.y;
+			var i = data.id.split('-', 1);
+			var r = $('<span/>').attr('id', i).html(data.name).appendTo('body');
+			r.css({'position': 'absolute', 'color': data.c, 'border-width': 1, 'border-style': 'solid'});
+			if (left > 0) r.css('left', left);
+			else r.css('right', -left);
+			if (top > 0) r.css('top', top );
+			else r.css('bottom', -top);
+			setTimeout(function(){$('#' + i).remove();}, 2000);			
+		};
+		_proto.appendpath = function(p) {
+			var path;
+			$.each(p, function(k, v){
+				if (k == 'tagName') {
+					path = $(document.createElementNS('http://www.w3.org/2000/svg', v));
+				}
+				else {
+					path.attr(k, v);
+				}
+			});
+			path.appendTo(this.pathholder);
+			flush(this);
+			
+			return this;
+		};
+		_proto.syncgraph = function(dst) {
+			var self = this;
+			$.each($('.' + this.gid), function(i, p) {
+				self.dispatch(path2obj($(p)), 'graph', dst);
+			});
+		};
 		_proto.clearall = function() {
-			if (this.wsready) {
-				this.ws.send(
-					JSON.stringify(
-						{
-							id: this.hubid,
-							name: this.peername,
-							action: 'path',
-							ops: 'clear'
-						}
-					)
-				);
-			}
+			if (this.dispatch) this.dispatch({}, 'clear');
 			this.clearcanvas();
 			this.redocache.empty();
 			flush(this);
 			return this;
 		};
 		_proto.undoall = function() {
-			while ($('.' + this.peername).length) this.undo();
+			while ($('.' + this.gid).length) this.undo();
 			return this;
 		};
 		_proto.undo = function() {
-			var path = $('.' + this.peername).length ? $('.' + this.peername).last() : null;
-			if (path && path.attr('id').indexOf(this.peername) == 0) {
+			var path = $('.' + this.gid).length ? $('.' + this.gid).last() : null;
+			if (path && path.attr('id').indexOf(this.gid) == 0) {
 				path.appendTo(this.redocache);
-				if (this.wsready) {
-					this.ws.send(
-						JSON.stringify(
-							{
-								id: this.hubid,
-								name: this.peername,
-								action: 'path',
-								pid: path.attr('id'),
-								ops: 'undo'
-							}
-						)
-					);
-				}
+				if (this.dispatch) this.dispatch({id: path.attr('id')}, 'undo');
 				flush(this);
 			}
 			return this;
@@ -826,22 +728,8 @@ var Gatherhub = Gatherhub || {};
 		};
 		_proto.redo = function() {
 			if (this.redocache.children().length) var path = this.redocache.children().last().appendTo(this.pathholder);
-			if (path && this.wsready) {
-				this.ws.send(
-					JSON.stringify(
-						{
-							id: this.hubid,
-							name: this.peername,
-							action: 'path',
-							pid: path.attr('id'),
-							stroke: path.attr('stroke'),
-							strokeWidth: path.attr('stroke-width'),
-							strokeLinecap: path.attr('stroke-linecap'),
-							fill: path.attr('fill'),
-							d: path.attr('d')
-						}
-					)
-				);
+			if (path && this.dispatch) {
+				this.dispatch(path2obj(path), 'graph');
 			}
 			flush(this);
 			return this;
