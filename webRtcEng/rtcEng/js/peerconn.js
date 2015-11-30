@@ -16,8 +16,6 @@ var peerConn;
         console.log.apply(console, arguments);
     }
 
-
-
     //constructors
     function PeerConn(opts){
         var self, options, item;
@@ -33,7 +31,7 @@ var peerConn;
             },
             recvMedia :{
                 mandatory: {
-                    OfferToReceiveVideo:false, 
+                    OfferToReceiveVideo:true, 
                     OfferToReceiveAudio:true
                 }
             },
@@ -63,9 +61,10 @@ var peerConn;
         function onIce(event){
           _infLog('onIce: ', event);
           if (event.candidate) {
-            self.onSend('msg',{
+            self.onCmdSend('msg',{
                     room: self.config.room,
                     to: self.config.id,
+                    mid: self.config.mid,
                     sdp: {
                   type: 'candidate',
                   label: event.candidate.sdpMLineIndex,
@@ -98,7 +97,7 @@ var peerConn;
     //prototype
     _proto = PeerConn.prototype ;
     //cb functions
-    _proto.onSend = function(){};
+    _proto.onCmdSend = function(){};
     _proto.onDcRecv = function(){};
     _proto.onAddRStrm = function(){};
     _proto.onRmRStrm = function(){};
@@ -117,7 +116,12 @@ var peerConn;
             desc.sdp = sdp;
             _infLog('makeOffer ',desc);
             self.peer.setLocalDescription(desc);
-            self.onSend('msg',{room:self.config.room, to:self.config.id, sdp:desc});
+            self.onCmdSend('msg',{
+                room:self.config.room, 
+                to:self.config.id, 
+                mid:self.config.mid,
+                sdp:desc
+            });
         }, function(err){
             _errLog('offer Error',err);
         }, constrains);
@@ -132,7 +136,12 @@ var peerConn;
             desc.sdp = sdp;
             _infLog('makeAnswer ',desc);
             self.peer.setLocalDescription(desc);
-            self.onSend('msg',{room:self.config.room, to:self.config.id, sdp:desc});
+            self.onCmdSend('msg',{
+                room:self.config.room, 
+                to:self.config.id,
+                mid: self.config.mid,
+                sdp:desc
+            });
         },function(err){
             _errLog('answer Error',err);
         },constrains);
@@ -208,18 +217,9 @@ var peerConn;
         if(!dc || (dc.readyState != 'open')){
             _errLog('Error','channel '+dc+' is not ready, could not send');
         }else{
+            // _infLog('send ',data);
             dc.send(data);
         }
-    };
-
-    _proto.isRmtAudOn = function(){
-        var rc = false;
-        this.rmtStrms.forEach(function(s){
-            if(s.getAudioTracks().length > 0){
-                rc =true;
-            }
-        });
-        return rc;
     };
 
     /*some other functions*/

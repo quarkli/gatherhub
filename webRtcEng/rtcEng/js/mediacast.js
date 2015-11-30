@@ -1,7 +1,7 @@
 /* 
 * @Author: phenix cai
 * @Date:   2015-11-19 10:08:39
-* @Last Modified time: 2015-11-26 22:10:02
+* @Last Modified time: 2015-11-30 15:28:43
 */
 var webRtc = require('./webrtc');
 var castCtrl = require('./castctrl');
@@ -21,15 +21,22 @@ var medCast;
         //media casting list
         this.castList = [];
         this.initFlag = false;
-        this.mediaActive = 'idle';
+        this.mState = 'idle';
     }
     _proto = MedCast.prototype = extend(webRtc);
     medCast = MedCast;
 
-    _proto.startSpeaking = function(){
-        var self = this;
+    _proto.getMedStatus = function(){
+        return this.mState;
+    };
+
+    _proto.start = function(){
+        var self, hdl;
+        self = this;
+        hdl = (this.config.scnCast) ? this.startScreen.bind(this) 
+            : this.startMedia.bind(this);
         if(this.ctrl)this.ctrl.start(function(){
-            self.startMedia(function(){
+            hdl(function(){
                 self._setMedState('active');
             }, function(err){
                 console.log('Error', err);
@@ -39,10 +46,13 @@ var medCast;
         this._setMedState('pending');
     };
 
-    _proto.stopSpeaking = function(){
-        var self = this;
+    _proto.stop = function(){
+        var self, hdl;
+        self = this;
+        hdl = (this.config.scnCast) ? this.stopScreen.bind(this) 
+            : this.stopMedia.bind(this);
         if(this.ctrl)this.ctrl.stop(function(){
-            self.stopMedia();
+            hdl();
         });
         this._setMedState('idle');
     };
@@ -55,23 +65,13 @@ var medCast;
         var self;
         self = this;
         if(this.initFlag == false){
-            this.ctrl = new castCtrl(this.config.usrId);
+            this.ctrl = new castCtrl(this.myId());
             this.ctrl.onSend = function(cmd){
                 var data = JSON.stringify(cmd);
                 console.log('castcmd send ',data);
                 self.sendData('castCtrl',data);
             };
-            this.ctrl.onCastList = function(list){
-                var spkrs = [];
-                list.forEach(function(p){
-                    if(p == self.config.usrId){
-                        spkrs.push(self.config.user);
-                    }else{
-                        spkrs.push(self.usrList[p]);
-                    }
-                });
-                self.onCastList(spkrs);
-            }
+            this.ctrl.onCastList = this.onCastList.bind(this);
             setTimeout(function(){
                 self.ctrl.login();
             }, 400);
@@ -88,7 +88,7 @@ var medCast;
     };
 
     _proto._setMedState = function(state){
-        this.mediaActive = state;
+        this.mState = state;
         this.onMediaAct(state);
     };
 

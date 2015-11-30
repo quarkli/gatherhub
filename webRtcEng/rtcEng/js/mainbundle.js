@@ -2,7 +2,7 @@
 /* 
 * @Author: Phenix Cai
 * @Date:   2015-11-22 10:02:34
-* @Last Modified time: 2015-11-26 21:44:30
+* @Last Modified time: 2015-11-30 11:27:04
 */
 
 
@@ -16,7 +16,7 @@ var castCtrl;
     t1 = 150;
     t2 = 250;
     t3 = (t1+t2)*2;
-    _dbgFlag = true;
+    _dbgFlag = false;
     function _infLog(){
         if(_dbgFlag){
             console.log.apply(console, arguments);
@@ -208,88 +208,10 @@ var castCtrl;
 
 module.exports = castCtrl;
 },{}],2:[function(require,module,exports){
-'use strict';
-
-var medCast = require('./mediacast');
-var hubCom;
-
-(function(){
-	var _proto;
-	function extend(func){
-			var base = function(){};
-			base.prototype = func.prototype;
-			return new base();
-	}
-
-	//constructor
-	function HubCom(opts){
-
-		var self, cn, exPeers;		
-		self = this;
-		medCast.call(this,opts);
-
-		//extra peer connections for client that does not support webrtc
-		exPeers = this.exPeers = [];
-
-		//create extra peers for client that do not support webrtc
-		function createExPr(type,id){
-			var exPr = self.exPeers[id];
-			if(!exPr){
-				self.exPeers[id] =  id;
-			}
-			console.log('crateExPr ',type + 'id ' + id );
-			if(type == 'calling'){
-				self.socket.emit('msg',{
-                    room: self.config.room,
-                    to: id,
-                    sdp: {type: 'exoffer'},
-                    });
-
-			}else{
-				self.socket.emit('msg',{
-                    room: self.config.room,
-                    to: id,
-                    sdp: {type: 'exanswer'},
-                    });
-			}
-		}
-
-		function removeExPr(id){
-			delete self.exPeers[id];
-		}
-
-
-		function showWebRtcSupport(){
-			if(rtcsupport == true){
-				self.onWarnMsg('');
-			}else{
-				self.onWarnMsg('Your browser could not support webrtc, you could not use media casting!');
-			}			
-		}
-
-		cn = this.connt;
-
-	  /////end of socket msg handler
-	  
-
-	} // end of HubCom contructor
-
-	_proto = HubCom.prototype = extend(medCast);
-
-
-	hubCom =HubCom;
-
-})();
-
-
-module.exports = hubCom;
-
-
-},{"./mediacast":5}],3:[function(require,module,exports){
 /* 
 * @Author: Phenix Cai
 * @Date:   2015-11-13 14:44:49
-* @Last Modified time: 2015-11-18 10:18:42
+* @Last Modified time: 2015-11-30 16:57:37
 */
 'use strict';
 var getUserMedia = require('getusermedia');
@@ -325,9 +247,10 @@ var localMedia;
         var s = this.lcStrm;
         if(s)muteStrm(s);
     } 
-    _proto.start = function (cb){
-        var constraints = this.config.media;
-        var self = this;
+    _proto.start = function (cs, cb){
+        var constraints, self;
+        self = this;
+        constraints = (cs)? cs : this.config.media;
         /*stop previous local medias*/
         this.mute();
         getUserMedia(constraints, function(err,s){
@@ -370,18 +293,12 @@ var localMedia;
     localMedia = LocalMedia;
 })();
 module.exports = localMedia;
-},{"getscreenmedia":9,"getusermedia":12}],4:[function(require,module,exports){
+},{"getscreenmedia":9,"getusermedia":12}],3:[function(require,module,exports){
 'use strict';
-var HubCom = require('./hubcom');
-
-var mediaButton = document.getElementById("mediaButton");
-
-var localAudio = document.querySelector('#localAudio');
-// var remoteAudio = document.querySelector('#remoteAudio');
-var ssAct = 'idle'; //screen share active mark
+var TeleCom = require('./telecom');
 
 var options = {room:'foo'};
-/*pass local and remote audio element to hubcom*/
+/*pass local and remote audio element to teleCom*/
 // options.locAudio = localAudio;
 // options.remAudio = remoteAudio;
 
@@ -394,22 +311,26 @@ if(!user){
 
 options.user = user;
 
-var mediaActive = 'idle';
-
-var hubCom = new HubCom(options);
+var teleCom = new TeleCom(options);
 
 
-hubCom.onTextRecv = hdlTextMsg;
-hubCom.onMediaAct =  hdlMedAct;
-hubCom.onCastList = updateCastList;
-hubCom.onUsrList = updateUsrList;
-hubCom.onWarnMsg = showWarnMsg;
-hubCom.onLMedAdd = hdlLMedAdd;
-hubCom.onRMedAdd = hdlRMedAdd;
-hubCom.onRMedDel = hdlRMedDel;
-mediaButton.onclick = invokeMedia;
+teleCom.onTextRecv = hdlTextMsg;
+teleCom.onSpkrList = updateSpkrList;
+teleCom.onUsrList = updateUsrList;
+teleCom.onScnList = updateScnList;
+teleCom.onWarnMsg = showWarnMsg;
 
-hubCom.login();
+teleCom.onMyAvAdd = hdlMyAvAdd;
+teleCom.onFrAvAdd = hdlFarAvAdd;
+teleCom.onFrAvRm = hdlFarAvRm;
+teleCom.onAvState =  hdlAvState;
+
+teleCom.onMyScnAdd = hdlMyScnAdd;
+teleCom.onFrScnAdd = hdlFarScnAdd;
+teleCom.onFrScnRm = hdlFarScnRm;
+teleCom.onScnState = hdlScnState;
+
+teleCom.login();
 
 
 $('.message-input').keydown(function(e) {
@@ -437,7 +358,7 @@ function addMsgHistory(data,type){
 function sendData() {
   var data = $('.message-input').val();
 	if(data&&data!=''){
-		hubCom.sendTxt2All(data);	
+		teleCom.sendTxt2All(data);	
 		addMsgHistory(user+': '+data,1);
     $('.message-input').val(''); 
 	}
@@ -468,69 +389,139 @@ function attachMediaStream (element, stream) {
   element.srcObject = stream;
 }
 
-function hdlLMedAdd(s){
-    attachMediaStream(localAudio,s);
-}
 
-
-function hdlRMedAdd(s){
-    //<audio id='localAudio' autoplay muted></audio>
-    var mNode,m;
-    mNode = {};
+function hdlMyAvAdd(s){
+    var ln,m;
     if(s.getVideoTracks().length>0){
-        mNode.id = 'rVideo'+medList.length;
-        mNode.ln = "<video id="+mNode.id+" autoplay></video>"
-
+        ln = "<video id='localMed' autoplay muted></video>";
     }else{
-        mNode.id = 'rAudio'+medList.length;
-        mNode.ln = "<audio id="+mNode.id+" autoplay></audio>"
+        ln = "<audio id='localMed' autoplay muted></audio>";
     }
-    mNode.s = s;
-    medList[medList.length] = mNode;
-    $('.rStrmList').append(mNode.ln);
-    m = document.querySelector('#'+mNode.id);
+
+    $('.medAreas').append(ln);
+    m = document.querySelector('#localMed');
     attachMediaStream(m,s);
 }
 
-function hdlRMedDel(s){
-    var i, len;
-    len = medList.length;
-    for(i=0;i<len;i++){
-        if(medList[i] && medList[i].s == s){
-            $('#'+medList[i].id).remove();
-            delete medList[i];
-            return;
-        }
-    }
+function hdlMyAvRm(){
+    $('#localMed').remove();
 }
 
-function hdlMedAct(state){
+
+function hdlFarAvAdd(s){
+    var ln,m;
+    if(s.getVideoTracks().length>0){
+        ln = "<video id='remoteMed' autoplay></video>";
+    }else{
+        ln = "<audio id='remoteMed' autoplay></audio>";
+    }
+
+    $('.medAreas').append(ln);
+    m = document.querySelector('#remoteMed');
+    attachMediaStream(m,s);
+}
+
+function hdlFarAvRm(s){
+    $('#remoteMed').remove();
+}
+
+function hdlAvState(state){
 	switch(state){
 	case 'active':
-		mediaButton.innerHTML = "Stop Audio"
+		$('#medButton').html('Stop Media Cast'); 
 		break;
 	case 'pending':
-		mediaButton.innerHTML = "Trying...Cancel?"
+		$('#medButton').html('Trying...Cancel?'); 
 		break;
 	case 'idle':
-		mediaButton.innerHTML = "Start Audio"
+		$('#medButton').html('Start Media Cast');
 		break;
 	}
 }
 
-function invokeMedia(){
-	if(hubCom.mediaActive == 'idle'){
-		hubCom.startSpeaking();
-	}else{
-		hubCom.stopSpeaking();
-	}
+$('#medButton').click(function(event) {
+    if(teleCom.getSpkrStatus() == 'idle'){
+        var video = $('#enVideo').is(':checked');
+        teleCom.startSpeaking(video);
+    }else{
+        teleCom.stopSpeaking();
+        hdlMyAvRm();
+    }
+    event.preventDefault();
+});
+
+function updateSpkrList(l){
+    var c = 0;
+    $('#castingList').html('');
+	l.forEach(function(d){
+        if(c == 0){
+            $('#castingList').append('<p>' + d + ' is talking now</p>') ;
+        }else{
+            $('#castingList').append('<p>' + d + ' waits to talk</p>') ;
+        }
+        c++;
+	});
 }
 
-function updateCastList(list){
-    $('#castingList').html('');
-	list.forEach(function(item){
-		$('#castingList').append('<p>' + item + '</p>') ;
-	});
+function hdlMyScnAdd(s){
+    var ln,m;
+    ln = "<video id='localScn' autoplay muted></video>";
+    $('.scnAreas').append(ln);
+    m = document.querySelector('#localScn');
+    attachMediaStream(m,s);
+}
+function hdlMyScnRm(){
+    $('#localScn').remove();
+}
+
+function hdlFarScnAdd(s){
+    var ln,m;
+    ln = "<video id='remoteScn' autoplay></video>";
+    $('.scnAreas').append(ln);
+    m = document.querySelector('#remoteScn');
+    attachMediaStream(m,s);
+}
+
+function hdlFarScnRm(s){
+    $('#remoteScn').remove();
+}
+
+function updateScnList(l){
+    var c = 0;
+    $('#scnCastList').html('');
+    l.forEach(function(d){
+        if(c == 0){
+            $('#scnCastList').append('<p>' + d + ' is casting his screen</p>') ;
+        }else{
+            $('#scnCastList').append('<p>' + d + ' waits to do screen cast</p>') ;
+        }
+        c++;
+    });
+}
+
+$('#scnButton').click(function(event) {
+    if(teleCom.getScnStatus() == 'idle'){
+        teleCom.startscnCast();
+    }else{
+        teleCom.stopscnCast();
+        hdlMyScnRm();
+    }
+    event.preventDefault();
+});
+
+
+function hdlScnState(state){
+    switch(state){
+    case 'active':
+        $('#scnButton').html('Stop Screen Cast'); 
+        break;
+    case 'pending':
+        $('#scnButton').html('Waiting...Cancel?'); 
+        break;
+    case 'idle':
+        $('#scnButton').html('Start Screen Cast');
+        break;
+    }
 }
 
 function showWarnMsg(msg){
@@ -544,26 +535,12 @@ function showWarnMsg(msg){
     console.log('warn msg ',msg);
     $('.warn-msg').html('<strong>Warning: </strong>' + msg);
 }
-$('#scnButton').click(function(event) {
-    if(ssAct == 'idle'){
-        hubCom.startScnShare(function(){
-            ssAct = 'active';
-        },function(){
-            ssAct = 'idle';
-        });
-    }else{
-        hubCom.stopScnShare();
-        ssAct = 'idle';
-    }
-    event.preventDefault();
-});
 
-
-},{"./hubcom":2}],5:[function(require,module,exports){
+},{"./telecom":7}],4:[function(require,module,exports){
 /* 
 * @Author: phenix cai
 * @Date:   2015-11-19 10:08:39
-* @Last Modified time: 2015-11-26 22:10:02
+* @Last Modified time: 2015-11-30 15:28:43
 */
 var webRtc = require('./webrtc');
 var castCtrl = require('./castctrl');
@@ -583,15 +560,22 @@ var medCast;
         //media casting list
         this.castList = [];
         this.initFlag = false;
-        this.mediaActive = 'idle';
+        this.mState = 'idle';
     }
     _proto = MedCast.prototype = extend(webRtc);
     medCast = MedCast;
 
-    _proto.startSpeaking = function(){
-        var self = this;
+    _proto.getMedStatus = function(){
+        return this.mState;
+    };
+
+    _proto.start = function(){
+        var self, hdl;
+        self = this;
+        hdl = (this.config.scnCast) ? this.startScreen.bind(this) 
+            : this.startMedia.bind(this);
         if(this.ctrl)this.ctrl.start(function(){
-            self.startMedia(function(){
+            hdl(function(){
                 self._setMedState('active');
             }, function(err){
                 console.log('Error', err);
@@ -601,10 +585,13 @@ var medCast;
         this._setMedState('pending');
     };
 
-    _proto.stopSpeaking = function(){
-        var self = this;
+    _proto.stop = function(){
+        var self, hdl;
+        self = this;
+        hdl = (this.config.scnCast) ? this.stopScreen.bind(this) 
+            : this.stopMedia.bind(this);
         if(this.ctrl)this.ctrl.stop(function(){
-            self.stopMedia();
+            hdl();
         });
         this._setMedState('idle');
     };
@@ -617,23 +604,13 @@ var medCast;
         var self;
         self = this;
         if(this.initFlag == false){
-            this.ctrl = new castCtrl(this.config.usrId);
+            this.ctrl = new castCtrl(this.myId());
             this.ctrl.onSend = function(cmd){
                 var data = JSON.stringify(cmd);
                 console.log('castcmd send ',data);
                 self.sendData('castCtrl',data);
             };
-            this.ctrl.onCastList = function(list){
-                var spkrs = [];
-                list.forEach(function(p){
-                    if(p == self.config.usrId){
-                        spkrs.push(self.config.user);
-                    }else{
-                        spkrs.push(self.usrList[p]);
-                    }
-                });
-                self.onCastList(spkrs);
-            }
+            this.ctrl.onCastList = this.onCastList.bind(this);
             setTimeout(function(){
                 self.ctrl.login();
             }, 400);
@@ -650,7 +627,7 @@ var medCast;
     };
 
     _proto._setMedState = function(state){
-        this.mediaActive = state;
+        this.mState = state;
         this.onMediaAct(state);
     };
 
@@ -658,7 +635,7 @@ var medCast;
 })();
 
 module.exports = medCast;
-},{"./castctrl":1,"./webrtc":8}],6:[function(require,module,exports){
+},{"./castctrl":1,"./webrtc":8}],5:[function(require,module,exports){
 'use strict';
 var adapter = require('webrtc-adapter-test');
 var peerConn;
@@ -677,8 +654,6 @@ var peerConn;
         console.log.apply(console, arguments);
     }
 
-
-
     //constructors
     function PeerConn(opts){
         var self, options, item;
@@ -694,7 +669,7 @@ var peerConn;
             },
             recvMedia :{
                 mandatory: {
-                    OfferToReceiveVideo:false, 
+                    OfferToReceiveVideo:true, 
                     OfferToReceiveAudio:true
                 }
             },
@@ -724,9 +699,10 @@ var peerConn;
         function onIce(event){
           _infLog('onIce: ', event);
           if (event.candidate) {
-            self.onSend('msg',{
+            self.onCmdSend('msg',{
                     room: self.config.room,
                     to: self.config.id,
+                    mid: self.config.mid,
                     sdp: {
                   type: 'candidate',
                   label: event.candidate.sdpMLineIndex,
@@ -759,7 +735,7 @@ var peerConn;
     //prototype
     _proto = PeerConn.prototype ;
     //cb functions
-    _proto.onSend = function(){};
+    _proto.onCmdSend = function(){};
     _proto.onDcRecv = function(){};
     _proto.onAddRStrm = function(){};
     _proto.onRmRStrm = function(){};
@@ -778,7 +754,12 @@ var peerConn;
             desc.sdp = sdp;
             _infLog('makeOffer ',desc);
             self.peer.setLocalDescription(desc);
-            self.onSend('msg',{room:self.config.room, to:self.config.id, sdp:desc});
+            self.onCmdSend('msg',{
+                room:self.config.room, 
+                to:self.config.id, 
+                mid:self.config.mid,
+                sdp:desc
+            });
         }, function(err){
             _errLog('offer Error',err);
         }, constrains);
@@ -793,7 +774,12 @@ var peerConn;
             desc.sdp = sdp;
             _infLog('makeAnswer ',desc);
             self.peer.setLocalDescription(desc);
-            self.onSend('msg',{room:self.config.room, to:self.config.id, sdp:desc});
+            self.onCmdSend('msg',{
+                room:self.config.room, 
+                to:self.config.id,
+                mid: self.config.mid,
+                sdp:desc
+            });
         },function(err){
             _errLog('answer Error',err);
         },constrains);
@@ -869,18 +855,9 @@ var peerConn;
         if(!dc || (dc.readyState != 'open')){
             _errLog('Error','channel '+dc+' is not ready, could not send');
         }else{
+            // _infLog('send ',data);
             dc.send(data);
         }
-    };
-
-    _proto.isRmtAudOn = function(){
-        var rc = false;
-        this.rmtStrms.forEach(function(s){
-            if(s.getAudioTracks().length > 0){
-                rc =true;
-            }
-        });
-        return rc;
     };
 
     /*some other functions*/
@@ -916,11 +893,11 @@ var peerConn;
 
 module.exports = peerConn;
 
-},{"webrtc-adapter-test":62}],7:[function(require,module,exports){
+},{"webrtc-adapter-test":62}],6:[function(require,module,exports){
 /* 
 * @Author: Phenix
 * @Date:   2015-11-13 17:25:58
-* @Last Modified time: 2015-11-16 19:54:27
+* @Last Modified time: 2015-11-27 16:08:52
 */
 
 'use strict'
@@ -942,23 +919,22 @@ var sockConnection;
     sockConnection = SockConnection;
 })();
 module.exports = sockConnection;
-},{"socket.io-client":14}],8:[function(require,module,exports){
+},{"socket.io-client":14}],7:[function(require,module,exports){
 /* 
-* @Author: Phenix Cai
-* @Date:   2015-11-13 19:14:00
-* @Last Modified time: 2015-11-26 19:39:14
+* @Author: Phenix
+* @Date:   2015-11-27 09:26:39
+* @Last Modified time: 2015-11-30 17:10:07
 */
 
 'use strict';
-var localMedia =  require('./localmedia');
+var medCast = require('./mediacast');
 var sockConnection = require('./sockconn');
 var rtc = require('webrtcsupport');
-var peerConn = require('./peerconn');
 
-var webRtc;
+var teleCom;
 (function(){
     var _proto, _dbgFlag;
-    _dbgFlag = false;
+    _dbgFlag = true;
     function _infLog(){
         if(_dbgFlag){
             console.log.apply(console, arguments);
@@ -969,6 +945,206 @@ var webRtc;
         console.log.apply(console, arguments);
     }
 
+
+    function TeleCom(opts){
+        var self, config, item, room, cn;
+        self = this;
+        config = {};
+        for(item in opts){
+            config[item] = opts[item];
+        }
+        this.config = config;
+        cn = this.connt = new sockConnection(config);
+        this.online = false;
+        // media cast and scn cast 
+        this.medias = [];
+        config.mid = 0;
+        this.avt = this.medias[0] = new medCast(config);
+        config.mid = 1;
+        config.scnCast = true;
+        this.scn = this.medias[1] = new medCast(config);
+
+        // user list keep the socket id list of all peers
+        this.usrList = [];
+
+        function regSigCallback(){
+            cn.on('connected', function (data){
+                _infLog('userid is ', data.id);
+                self.medias.forEach(function(m){
+                    m.myId(data.id);
+                });
+                self.online = true;
+            });
+            cn.on('joined', function (data){
+                var config =self.config;
+                _infLog('Another peer # '+data.id+ ' made a request to join room ' + config.room);
+                if(rtc.support && data.rtc){
+                    //create peerconnection
+                    self.medias.forEach(function(m){
+                        m.addAttendee(data.id);
+                    });
+                }else{
+
+                }
+            });
+            cn.on('msg', function (data){
+                var id, usr;
+                id = data.from;
+                usr = data.usr;
+                if(id>=0 && usr){
+                    self.usrList[id] = usr;
+                    self.onUsrList(self.usrList);
+                }
+                if(!rtc.support)return;
+                self.medias[data.mid].parseSigMsg(data);
+            });
+            cn.on('bye',function(data){
+                _infLog('Another peer # '+data.id+ ' leave room ' + self.config.room);
+                var id = data.id;
+                delete self.usrList[id];
+                self.onUsrList(self.usrList);
+                self.medias.forEach(function(m){
+                    m.rmAttendee(id);
+                });
+
+            });
+            /////////////// log from server
+            cn.on('log', function (array){
+              console.log.apply(console, array);
+            });
+
+        }
+        function regMedCallback(){
+            var hdl;
+            self.medias.forEach(function(m){
+                m.onCmdSend = function () {
+                    self.connt.emit.apply(self.connt,arguments);
+                };
+                m.onCastList = function(list){
+                    var spkrs = [];
+                    hdl = (m.config.scnCast)? self.onScnList.bind(self) 
+                        : self.onSpkrList.bind(self);
+                    list.forEach(function(p){
+                        if(p == self.avt.myId()){
+                            spkrs.push(self.config.user);
+                        }else{
+                            spkrs.push(self.usrList[p]);
+                        }
+                    });
+                    hdl(spkrs);
+                };
+                m.onLMedAdd = function(s){
+                    hdl = (m.config.scnCast)? self.onMyScnAdd.bind(self)
+                        : self.onMyAvAdd.bind(self);
+                    hdl(s);
+                };
+                m.onRMedAdd = function(s){
+                    hdl = (m.config.scnCast)? self.onFrScnAdd.bind(self)
+                        : self.onFrAvAdd.bind(self);
+                    hdl(s);
+                };
+                m.onRMedDel = function(s){
+                    hdl = (m.config.scnCast)? self.onFrScnRm.bind(self)
+                        : self.onFrAvRm.bind(self);
+                    hdl(s);
+                };
+                m.onMediaAct = function(s){
+                    hdl = (m.config.scnCast)? self.onScnState.bind(self)
+                        : self.onAvState.bind(self);
+                    hdl(s);
+                };
+            });
+            self.avt.onTextRecv = function(f,d){
+                // _infLog('onTextRecv '+f,d);
+                var usr = self.usrList[f];
+                self.onTextRecv(usr,d);
+            };
+
+        };
+
+        regSigCallback();
+        regMedCallback();
+
+    }
+    _proto = TeleCom.prototype ;
+    teleCom = TeleCom;
+
+    _proto.login = function(){
+        var c = this.config;
+        if(!this.online){
+            this.connt.emit('join', {room:c.room,user:c.user,rtc:rtc.support});
+        }
+    };
+    _proto.logout = function(){
+        if(this.online){
+            this.connt.emit('bye',{room:this.config.room});
+        }
+    };
+    
+    _proto.onUsrList = function(){};
+    _proto.onTextRecv = function(){};
+    _proto.onSpkrList = function(){};
+    _proto.onMyAvAdd = function(){};
+    _proto.onFrAvAdd = function(){};
+    _proto.onFrAvRm = function(){};
+    _proto.onAvState = function(){};
+    _proto.onScnList = function(){};
+    _proto.onMyScnAdd = function(){};
+    _proto.onFrScnAdd = function(){};
+    _proto.onFrScnRm = function(){};
+    _proto.onScnState = function(){};
+
+    _proto.sendTxt2All = function(d){
+        this.avt.sendTxt2All(d);
+    };
+    _proto.getSpkrStatus = function(){
+        return this.avt.getMedStatus();
+    };
+    _proto.startSpeaking = function(c){
+        this.avt.useVideo(c);
+        return this.avt.start();
+    };
+    _proto.stopSpeaking = function(){
+        return this.avt.stop();
+    };
+    _proto.getScnStatus = function(){
+        return this.scn.getMedStatus();
+    };
+    _proto.startscnCast = function(){
+        return this.scn.start();
+    };
+    _proto.stopscnCast = function(){
+        return this.scn.stop();
+    };
+})();
+
+module.exports = teleCom;
+},{"./mediacast":4,"./sockconn":6,"webrtcsupport":63}],8:[function(require,module,exports){
+/* 
+* @Author: Phenix Cai
+* @Date:   2015-11-13 19:14:00
+* @Last Modified time: 2015-11-30 17:07:19
+*/
+
+'use strict';
+var localMedia =  require('./localmedia');
+var peerConn = require('./peerconn');
+
+
+var webRtc;
+(function(){
+    var _proto, _dbgFlag;
+    _dbgFlag = true;
+    function _infLog(){
+        if(_dbgFlag){
+            console.log.apply(console, arguments);
+        }
+    }
+
+    function _errLog(){
+        console.log.apply(console, arguments);
+    }
+    
 
     function WebRtc(opts){
         
@@ -989,221 +1165,67 @@ var webRtc;
         }
 
         this.media =  new localMedia(this.config); 
-        cn = this.connt = new sockConnection(this.config);
-        this.online = false;
-        // user list keep the socket id list of all peers
-        this.usrList = [];
 
         this.datChRecvCb = {};
-        this.datChRecvCb['textMsg'] = this._onTextRecv.bind(this);
-
-        //internal api for webrtc
-        function isSdpWithAudio(s){
-            var sdps,idx,sdp,ret;
-            ret = false;
-            sdps =s.split('m=');
-            sdps.forEach(function(d){
-                sdp = 'm=' +d;
-                idx = sdp.search('m=audio');
-                if(idx >=0){
-                    if(sdp.slice(idx).search('a=sendrecv')>=0){
-                        ret = true;
-                        return;
-                    }
-                }
-            });
-            return ret;
-        }
-
-
-        
-        //register callback functions for peerconnections
-        function regPconnEvtCb(pc){
-            pc.onSend = function(){
-                self.connt.emit.apply(self.connt,arguments);
-            };
-            pc.onDcRecv = function (chan,from,data){
-                var hdlData = self.datChRecvCb[chan];
-                if(hdlData)hdlData(from,data);
-            };
-            pc.onAddRStrm = function (s){
-                self.onRMedAdd(s);
-            };
-            pc.onRmRStrm = function(s){
-                _infLog('rmtStrmDel',s);
-                self.onRMedDel(s);
-            };
-            pc.onConError = function(label,id){
-                var config = self.config;
-                _errLog('peer',id+' connect error');
-                removePeer(id);
-                config.type = 'calling';
-                config.id = id;
-                self.onCrpErro(config);
-            };
-            pc.onConnReady = function(label,id){
-                var ready = true;
-                self.peers.forEach(function(p){
-                    if(p.ready == false) ready = false;
-                });
-                if(ready)self._onChansReady();
-            }
-        }
-
-
-        function createPeer(type,id,sdp){
-            var pc,config;
-            config = self.config;
-            config.id = id;
-            config.type = type;
-            if(!rtc.support){
-                self.onCrpErro(config);
-            }
-            pc = self.peers[id];
-            if(!pc){
-                pc = new peerConn(config);
-                self.peers[id] = pc;
-                regPconnEvtCb(pc);
-            }
-            if(type == 'calling'){
-                self.media.getStrms().forEach(function(s){
-                    if(s)pc.addStream(s);
-                });
-                pc.getDatChan('textMsg');
-                pc.makeOffer();
-            }else{
-                // received offer 
-                pc.setRmtDesc(sdp);
-                if(config.oneway == false){
-                    if(isSdpWithAudio(sdp.sdp)){
-                        _infLog('offered with audio active');
-                        self.media.start(function(err,s){
-                            if(!err){
-                                self.onLMedAdd(s);
-                                pc.addStream(s);
-                                pc.makeAnswer();
-                            }else{
-                                _errLog('start media Error',err);
-                            }
-                        });
-                    }else{
-                        _infLog('offered with audio mute');
-                        self.media.stop(function(s){
-                            if(s)pc.removeStream(s);
-                            pc.makeAnswer();
-                        });
-                    }
-                }else{
-                    pc.makeAnswer();
-                }
-
-            }
-
-        };
-
-        function removePeer(id){
-            var pc;
-            pc = self.peers[id];
-            if(pc){
-                pc.close();
-                delete self.peers[id];
-            }
-        }
-        //parse signal messages from other peers
-        function parseSigMsg(msg){
-            var id, usr, pc, candidate;
-            id = msg.from;
-            usr = msg.usr;
-            pc = self.peers[id];
-            _infLog('Received msg:', msg);
-            if(id>=0 && usr){
-                self.usrList[id] = usr;
-                self.onUsrList(self.usrList);
-            }
-
-            if (msg.sdp.type === 'offer') {
-                //get invite from other side
-                createPeer('called',id,msg.sdp);
-                
-            } else if (msg.sdp.type === 'answer' ) {
-                if(!pc){
-                    _errLog("wrong answer id from "+id);
-                    return;
-                }
-              pc.setRmtDesc(msg.sdp);
-                
-            } else if (msg.sdp.type === 'candidate') {
-                if(!pc){
-                    _errLog("wrong candidate id from "+id);
-                    return;
-                }
-              candidate = new RTCIceCandidate({sdpMLineIndex:msg.sdp.label,
-                candidate:msg.sdp.candidate});
-              pc.addIceCandidate(candidate);
-            } 
-        }
-
-        function regSigCallback(){
-            cn.on('connected', function (data){
-                _infLog('userid is ', data.id);
-                self.config.usrId = data.id;
-                self.online = true;
-            });
-            cn.on('joined', function (data){
-                var config =self.config;
-                _infLog('Another peer # '+data.id+ ' made a request to join room ' + config.room);
-                if(rtc.support && data.rtc){
-                    //create peerconnection
-                    createPeer('calling',data.id,null);
-                }else{
-                    config.type = 'calling';
-                    config.id = data.id;
-                    self.onCrpErro(config);
-                }
-            });
-            cn.on('msg', function (data){
-                parseSigMsg(data);
-            });
-            cn.on('bye',function(data){
-                _infLog('Another peer # '+data.id+ ' leave room ' + self.config.room);
-                var id = data.id;
-
-                delete self.usrList[id];
-                self.onUsrList(self.usrList);
-                removePeer(id);
-            });
-            /////////////// log from server
-            cn.on('log', function (array){
-              console.log.apply(console, array);
-            });
-
-        }
-        regSigCallback();
+        this.datChRecvCb['textMsg'] = this._onDatRecv.bind(this);
 
     }
     // export obj
     webRtc = WebRtc;
     _proto = WebRtc.prototype;
 
-    _proto.login = function(){
-        var c = this.config;
-        if(!this.online){
-            this.connt.emit('join', {room:c.room,user:c.user,rtc:rtc.support});
-        }
+    //parse signal messages from other peers
+    _proto.parseSigMsg = function (msg){
+        var id, pc, candidate;
+        id = msg.from;
+        pc = this.peers[id];
+        // _infLog('Received msg:', msg);
+
+        if (msg.sdp.type === 'offer') {
+            //get invite from other side
+            this._createPeer('called',id,msg.sdp);
+            
+        } else if (msg.sdp.type === 'answer' ) {
+            if(!pc){
+                _errLog("wrong answer id from "+id);
+                return;
+            }
+          pc.setRmtDesc(msg.sdp);
+            
+        } else if (msg.sdp.type === 'candidate') {
+            if(!pc){
+                _errLog("wrong candidate id from "+id);
+                return;
+            }
+          candidate = new RTCIceCandidate({sdpMLineIndex:msg.sdp.label,
+            candidate:msg.sdp.candidate});
+          pc.addIceCandidate(candidate);
+        } 
     };
-    _proto.logout = function(){
-        if(this.online){
-            this.connt.emit('bye',{room:this.config.room});
-        }
+
+
+    _proto.addAttendee = function(id){
+        this._createPeer('calling',id,null);
     };
+
+    _proto.rmAttendee = function(id){
+        this._removePeer(id);
+    };
+
     _proto.sendData = function(chan,data){
         this.peers.forEach(function(pc){
             if(pc)pc.sendData(chan, data);
         });
     };
+
+    _proto.useVideo =function(b){
+        this.config.videoCast = b;
+    };
     _proto.startMedia =  function(onSuc,onErr){
-        var self = this;
-        this.media.start(function(err,s){
+        var self, cs;
+        self = this;
+        if(this.config.videoCast) cs = {video: true, audio: true};
+        this.media.start(cs, function(err,s){
             if(!err){
                 if(onSuc)onSuc(s);
                 self.onLMedAdd(s);
@@ -1225,11 +1247,12 @@ var webRtc;
             });
         });
     };
-    _proto.startScnShare = function(onSuc,onErr){
+    _proto.startScreen = function(onSuc,onErr){
         var self = this;
         this.media.getScn(function(err,s){
             if(!err){
                 if(onSuc)onSuc(s);
+                self.onLMedAdd(s);
                 self.peers.forEach(function(pc){
                     pc.addStream(s);
                     pc.makeOffer();
@@ -1239,7 +1262,7 @@ var webRtc;
             }
         });
     };
-    _proto.stopScnShare = function(){
+    _proto.stopScreen = function(){
         var self = this;
         this.media.rlsScn(function(s){
             _infLog('rls ',s);
@@ -1250,15 +1273,8 @@ var webRtc;
         });
     };
 
-    _proto.isRmtAudOn = function(){
-        var rc = false;
-        this.peers.forEach(function(p){
-            if(p.isRmtAudOn()) rc = true;
-        });
-        return rc;
-    };
-
     _proto.sendTxt2All = function(data){
+        // console.log('sendTxt2All ',data);
         this.sendData('textMsg',data);
     }; 
 
@@ -1271,22 +1287,134 @@ var webRtc;
 
     };
 
+    _proto.myId = function(v){
+        return (v==undefined)? this._myId : this._myId = v;
+    };
+
     /*some callback fuctions*/
+    _proto.onCmdSend = function(){};
     _proto.onTextRecv = function(){};
     _proto.onLMedAdd = function(){};
     _proto.onRMedAdd = function(){};
     _proto.onRMedDel = function(){};
     _proto.onCrpErro = function(){};
-    _proto.onUsrList = function(){};
 
     // internal APIs
 
-    _proto._onTextRecv = function(from, data){
-        var usr = this.usrList[from];
-        this.onTextRecv(usr,data);
-    };
-    
     _proto._onChansReady = function(){};
+    _proto._onDatRecv = function(f,d){
+        this.onTextRecv(f,d);
+    };
+
+    //internal api for webrtc
+    //register callback functions for peerconnections
+    _proto._regPconnEvtCb = function(pc){
+        var self = this;
+        pc.onCmdSend = function(h,d){
+            self.onCmdSend(h,d);
+        };
+        pc.onDcRecv = function (chan,from,data){
+            var hdlData = self.datChRecvCb[chan];
+            if(hdlData)hdlData(from,data);
+        };
+        pc.onAddRStrm = function (s){
+            self.onRMedAdd(s);
+        };
+        pc.onRmRStrm = function(s){
+            _infLog('rmtStrmDel',s);
+            self.onRMedDel(s);
+        };
+        pc.onConError = function(label,id){
+            var config = self.config;
+            _errLog('peer',id+' connect error');
+            removePeer(id);
+            config.type = 'calling';
+            config.id = id;
+            self.onCrpErro(config);
+        };
+        pc.onConnReady = function(label,id){
+            var ready = true;
+            self.peers.forEach(function(p){
+                if(p.ready == false) ready = false;
+            });
+            if(ready)self._onChansReady();
+        }
+    };
+
+    function isSdpWithAudio(s){
+        var sdps,idx,sdp,ret;
+        ret = false;
+        sdps =s.split('m=');
+        sdps.forEach(function(d){
+            sdp = 'm=' +d;
+            idx = sdp.search('m=audio');
+            if(idx >=0){
+                if(sdp.slice(idx).search('a=sendrecv')>=0){
+                    ret = true;
+                    return;
+                }
+            }
+        });
+        return ret;
+    }
+
+    _proto._createPeer = function(type,id,sdp){
+        var pc,config;
+        config = this.config;
+        config.id = id;
+        config.type = type;
+
+        pc = this.peers[id];
+        if(!pc){
+            pc = new peerConn(config);
+            this.peers[id] = pc;
+            this._regPconnEvtCb(pc);
+        }
+        if(type == 'calling'){
+            this.media.getStrms().forEach(function(s){
+                if(s)pc.addStream(s);
+            });
+            pc.getDatChan('textMsg');
+            pc.makeOffer();
+        }else{
+            // received offer 
+            pc.setRmtDesc(sdp);
+            if(config.oneway == false){
+                if(isSdpWithAudio(sdp.sdp)){
+                    _infLog('offered with audio active');
+                    this.media.start(function(err,s){
+                        if(!err){
+                            this.onLMedAdd(s);
+                            pc.addStream(s);
+                            pc.makeAnswer();
+                        }else{
+                            _errLog('start media Error',err);
+                        }
+                    });
+                }else{
+                    _infLog('offered with audio mute');
+                    this.media.stop(function(s){
+                        if(s)pc.removeStream(s);
+                        pc.makeAnswer();
+                    });
+                }
+            }else{
+                pc.makeAnswer();
+            }
+
+        }
+
+    };
+
+    _proto._removePeer = function(id){
+        var pc;
+        pc = this.peers[id];
+        if(pc){
+            pc.close();
+            delete this.peers[id];
+        }
+    };
+
 
 
 })();
@@ -1294,7 +1422,7 @@ var webRtc;
 module.exports = webRtc;
 
 
-},{"./localmedia":3,"./peerconn":6,"./sockconn":7,"webrtcsupport":63}],9:[function(require,module,exports){
+},{"./localmedia":2,"./peerconn":5}],9:[function(require,module,exports){
 // getScreenMedia helper by @HenrikJoreteg
 var getUserMedia = require('getusermedia');
 
@@ -9135,4 +9263,4 @@ module.exports = {
     getUserMedia: getUserMedia
 };
 
-},{}]},{},[4]);
+},{}]},{},[3]);

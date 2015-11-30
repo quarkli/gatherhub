@@ -1,7 +1,7 @@
 /* 
 * @Author: Phenix Cai
 * @Date:   2015-11-22 10:02:34
-* @Last Modified time: 2015-11-26 21:44:30
+* @Last Modified time: 2015-11-30 11:27:04
 */
 
 
@@ -15,7 +15,7 @@ var castCtrl;
     t1 = 150;
     t2 = 250;
     t3 = (t1+t2)*2;
-    _dbgFlag = true;
+    _dbgFlag = false;
     function _infLog(){
         if(_dbgFlag){
             console.log.apply(console, arguments);

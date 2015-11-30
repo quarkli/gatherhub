@@ -1,7 +1,7 @@
 /* 
 * @Author: Phenix Cai
 * @Date:   2015-11-13 14:44:49
-* @Last Modified time: 2015-11-18 10:18:42
+* @Last Modified time: 2015-11-30 16:57:37
 */
 'use strict';
 var getUserMedia = require('getusermedia');
@@ -37,9 +37,10 @@ var localMedia;
         var s = this.lcStrm;
         if(s)muteStrm(s);
     } 
-    _proto.start = function (cb){
-        var constraints = this.config.media;
-        var self = this;
+    _proto.start = function (cs, cb){
+        var constraints, self;
+        self = this;
+        constraints = (cs)? cs : this.config.media;
         /*stop previous local medias*/
         this.mute();
         getUserMedia(constraints, function(err,s){

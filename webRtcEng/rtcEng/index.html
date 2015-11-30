@@ -32,6 +32,7 @@
   }
   #usrList {color: #fff; background-color: #343434; min-height: 400px; }
   #voiceList {color: #fff; background-color: #ff9800; min-height: 400px;}
+  #scnList{color: #fff; background-color: #50bff0; min-height: 400px;}
   #msgsend{
     float: right;
   }
@@ -58,7 +59,7 @@
     </div>
   </div>
 
-  <div class="col-md-3">
+  <div class="col-md-4">
     <nav class ="navbar navbar-inverse" >
       <div class="navbar-header">
         <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#myNavbar">
@@ -70,7 +71,8 @@
       <div class="collapse navbar-collapse" id="myNavbar">
         <ul class="nav navbar-nav">
           <li><a href="#usrList">Users</a></li>
-          <li class="voice-list"><a href="#voiceList">Talking</a></li>
+          <li class="voice-list"><a href="#voiceList">Speakers</a></li>
+          <li class="scrn-list"><a href="#scnList">Screens</a></li>
         </ul>
       </div>  
     </nav>
@@ -79,18 +81,22 @@
       <div id="usrList">
       </div>
       <div id="voiceList">
-        <h1>Talking list</h1>
+        <button id="medButton">Start Media Cast</button>
+        <div>
+          <label><input type="checkbox" id="enVideo" value="">Use Camera</label>
+        </div>
         <div id='castingList'></div>
-        <button id="mediaButton">Start Audio</button>
-        <button id="scnButton">Share Screen</button>
-  
+      </div>
+      <div id="scnList">
+        <button id="scnButton">Start Screen Cast</button>
+        <div id='scnCastList'></div>
       </div>
     </div>
    </div>
 
 </div>
-<audio id='localAudio' autoplay muted></audio>
-<div class = "rStrmList"></div>
+<div class = "medAreas"></div>
+<div class = "scnAreas"></div>
 <div>
   <a href="extension/chrome.crx">download plugin to share screen</a>
 </div>

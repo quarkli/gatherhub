@@ -1,14 +1,8 @@
 'use strict';
-var HubCom = require('./hubcom');
-
-var mediaButton = document.getElementById("mediaButton");
-
-var localAudio = document.querySelector('#localAudio');
-// var remoteAudio = document.querySelector('#remoteAudio');
-var ssAct = 'idle'; //screen share active mark
+var TeleCom = require('./telecom');
 
 var options = {room:'foo'};
-/*pass local and remote audio element to hubcom*/
+/*pass local and remote audio element to teleCom*/
 // options.locAudio = localAudio;
 // options.remAudio = remoteAudio;
 
@@ -21,22 +15,26 @@ if(!user){
 
 options.user = user;
 
-var mediaActive = 'idle';
-
-var hubCom = new HubCom(options);
+var teleCom = new TeleCom(options);
 
 
-hubCom.onTextRecv = hdlTextMsg;
-hubCom.onMediaAct =  hdlMedAct;
-hubCom.onCastList = updateCastList;
-hubCom.onUsrList = updateUsrList;
-hubCom.onWarnMsg = showWarnMsg;
-hubCom.onLMedAdd = hdlLMedAdd;
-hubCom.onRMedAdd = hdlRMedAdd;
-hubCom.onRMedDel = hdlRMedDel;
-mediaButton.onclick = invokeMedia;
+teleCom.onTextRecv = hdlTextMsg;
+teleCom.onSpkrList = updateSpkrList;
+teleCom.onUsrList = updateUsrList;
+teleCom.onScnList = updateScnList;
+teleCom.onWarnMsg = showWarnMsg;
 
-hubCom.login();
+teleCom.onMyAvAdd = hdlMyAvAdd;
+teleCom.onFrAvAdd = hdlFarAvAdd;
+teleCom.onFrAvRm = hdlFarAvRm;
+teleCom.onAvState =  hdlAvState;
+
+teleCom.onMyScnAdd = hdlMyScnAdd;
+teleCom.onFrScnAdd = hdlFarScnAdd;
+teleCom.onFrScnRm = hdlFarScnRm;
+teleCom.onScnState = hdlScnState;
+
+teleCom.login();
 
 
 $('.message-input').keydown(function(e) {
@@ -64,7 +62,7 @@ function addMsgHistory(data,type){
 function sendData() {
   var data = $('.message-input').val();
 	if(data&&data!=''){
-		hubCom.sendTxt2All(data);	
+		teleCom.sendTxt2All(data);	
 		addMsgHistory(user+': '+data,1);
     $('.message-input').val(''); 
 	}
@@ -95,69 +93,139 @@ function attachMediaStream (element, stream) {
   element.srcObject = stream;
 }
 
-function hdlLMedAdd(s){
-    attachMediaStream(localAudio,s);
-}
 
-
-function hdlRMedAdd(s){
-    //<audio id='localAudio' autoplay muted></audio>
-    var mNode,m;
-    mNode = {};
+function hdlMyAvAdd(s){
+    var ln,m;
     if(s.getVideoTracks().length>0){
-        mNode.id = 'rVideo'+medList.length;
-        mNode.ln = "<video id="+mNode.id+" autoplay></video>"
-
+        ln = "<video id='localMed' autoplay muted></video>";
     }else{
-        mNode.id = 'rAudio'+medList.length;
-        mNode.ln = "<audio id="+mNode.id+" autoplay></audio>"
+        ln = "<audio id='localMed' autoplay muted></audio>";
     }
-    mNode.s = s;
-    medList[medList.length] = mNode;
-    $('.rStrmList').append(mNode.ln);
-    m = document.querySelector('#'+mNode.id);
+
+    $('.medAreas').append(ln);
+    m = document.querySelector('#localMed');
     attachMediaStream(m,s);
 }
 
-function hdlRMedDel(s){
-    var i, len;
-    len = medList.length;
-    for(i=0;i<len;i++){
-        if(medList[i] && medList[i].s == s){
-            $('#'+medList[i].id).remove();
-            delete medList[i];
-            return;
-        }
-    }
+function hdlMyAvRm(){
+    $('#localMed').remove();
 }
 
-function hdlMedAct(state){
+
+function hdlFarAvAdd(s){
+    var ln,m;
+    if(s.getVideoTracks().length>0){
+        ln = "<video id='remoteMed' autoplay></video>";
+    }else{
+        ln = "<audio id='remoteMed' autoplay></audio>";
+    }
+
+    $('.medAreas').append(ln);
+    m = document.querySelector('#remoteMed');
+    attachMediaStream(m,s);
+}
+
+function hdlFarAvRm(s){
+    $('#remoteMed').remove();
+}
+
+function hdlAvState(state){
 	switch(state){
 	case 'active':
-		mediaButton.innerHTML = "Stop Audio"
+		$('#medButton').html('Stop Media Cast'); 
 		break;
 	case 'pending':
-		mediaButton.innerHTML = "Trying...Cancel?"
+		$('#medButton').html('Trying...Cancel?'); 
 		break;
 	case 'idle':
-		mediaButton.innerHTML = "Start Audio"
+		$('#medButton').html('Start Media Cast');
 		break;
 	}
 }
 
-function invokeMedia(){
-	if(hubCom.mediaActive == 'idle'){
-		hubCom.startSpeaking();
-	}else{
-		hubCom.stopSpeaking();
-	}
+$('#medButton').click(function(event) {
+    if(teleCom.getSpkrStatus() == 'idle'){
+        var video = $('#enVideo').is(':checked');
+        teleCom.startSpeaking(video);
+    }else{
+        teleCom.stopSpeaking();
+        hdlMyAvRm();
+    }
+    event.preventDefault();
+});
+
+function updateSpkrList(l){
+    var c = 0;
+    $('#castingList').html('');
+	l.forEach(function(d){
+        if(c == 0){
+            $('#castingList').append('<p>' + d + ' is talking now</p>') ;
+        }else{
+            $('#castingList').append('<p>' + d + ' waits to talk</p>') ;
+        }
+        c++;
+	});
 }
 
-function updateCastList(list){
-    $('#castingList').html('');
-	list.forEach(function(item){
-		$('#castingList').append('<p>' + item + '</p>') ;
-	});
+function hdlMyScnAdd(s){
+    var ln,m;
+    ln = "<video id='localScn' autoplay muted></video>";
+    $('.scnAreas').append(ln);
+    m = document.querySelector('#localScn');
+    attachMediaStream(m,s);
+}
+function hdlMyScnRm(){
+    $('#localScn').remove();
+}
+
+function hdlFarScnAdd(s){
+    var ln,m;
+    ln = "<video id='remoteScn' autoplay></video>";
+    $('.scnAreas').append(ln);
+    m = document.querySelector('#remoteScn');
+    attachMediaStream(m,s);
+}
+
+function hdlFarScnRm(s){
+    $('#remoteScn').remove();
+}
+
+function updateScnList(l){
+    var c = 0;
+    $('#scnCastList').html('');
+    l.forEach(function(d){
+        if(c == 0){
+            $('#scnCastList').append('<p>' + d + ' is casting his screen</p>') ;
+        }else{
+            $('#scnCastList').append('<p>' + d + ' waits to do screen cast</p>') ;
+        }
+        c++;
+    });
+}
+
+$('#scnButton').click(function(event) {
+    if(teleCom.getScnStatus() == 'idle'){
+        teleCom.startscnCast();
+    }else{
+        teleCom.stopscnCast();
+        hdlMyScnRm();
+    }
+    event.preventDefault();
+});
+
+
+function hdlScnState(state){
+    switch(state){
+    case 'active':
+        $('#scnButton').html('Stop Screen Cast'); 
+        break;
+    case 'pending':
+        $('#scnButton').html('Waiting...Cancel?'); 
+        break;
+    case 'idle':
+        $('#scnButton').html('Start Screen Cast');
+        break;
+    }
 }
 
 function showWarnMsg(msg){
@@ -171,17 +239,3 @@ function showWarnMsg(msg){
     console.log('warn msg ',msg);
     $('.warn-msg').html('<strong>Warning: </strong>' + msg);
 }
-$('#scnButton').click(function(event) {
-    if(ssAct == 'idle'){
-        hubCom.startScnShare(function(){
-            ssAct = 'active';
-        },function(){
-            ssAct = 'idle';
-        });
-    }else{
-        hubCom.stopScnShare();
-        ssAct = 'idle';
-    }
-    event.preventDefault();
-});
-

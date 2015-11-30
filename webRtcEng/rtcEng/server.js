@@ -225,7 +225,7 @@ io.sockets.on('connection', function (socket){
 		}
 
 		if(type == 'msg'){
-        	room[to].s.emit('msg', {from:from,usr:room[from].u,sdp:data.sdp});
+        	room[to].s.emit('msg', {from:from,usr:room[from].u,mid:data.mid,sdp:data.sdp});
 		}else if (type == 'dat'){
 			console.log('dat','fromn'+from+'data',data.dat);
         	room[to].s.emit('dat', {from:from,dat:data.dat});
