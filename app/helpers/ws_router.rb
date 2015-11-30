@@ -29,7 +29,7 @@ EventMachine.run {
       	    p[:socket].send(msg) 
           end
         end
-        puts "#{p[:peer]} has left Hub:#{p[:hub]}(#{@act_peers})"
+        puts "#{Time.now}: #{p[:peer]} has left Hub:#{p[:hub]}(#{@act_peers})"
 	  rescue StandardError => e
 	    puts "Error: #{e.message}"
 	  end
@@ -45,7 +45,7 @@ EventMachine.run {
 			  @peers.delete(p)
 			end
 		    @peers.push({:hub=>msg[:hub], :peer=>msg[:peer], :socket=>ws})
-		    puts "#{msg[:peer]} has entered Hub:#{msg[:hub]}(#{@act_peers})"
+		    puts "#{Time.now}: #{msg[:peer]} has entered Hub:#{msg[:hub]}(#{@act_peers})"
 		  end	
           if (msg.key?(:dst)) then
             # Unicast
