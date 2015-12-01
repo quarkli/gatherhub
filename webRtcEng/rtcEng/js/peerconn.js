@@ -3,7 +3,8 @@ var adapter = require('webrtc-adapter-test');
 var peerConn;
 
 (function(){
-    var _proto, _dbgFlag;
+    var _proto, _dbgFlag, _browser;
+    _browser = adapter.webrtcDetectedBrowser;
 
     _dbgFlag = false;
     function _infLog(){
@@ -54,6 +55,7 @@ var peerConn;
         this.ctyp = this.config.type;
         this.rmtStrms = [];
         this.locStrms = [];
+        this.rtpTracks = [];
         this.datChans = {};
         this.ready =  false;
 
@@ -148,12 +150,34 @@ var peerConn;
     };
 
     _proto.addStream =  function(stream){
-        this.peer.addStream(stream);
+        var self = this;
+        if(_browser == 'firefox'){
+            this.rtpTracks = [];
+            stream.getTracks().forEach(function(t){
+                self.rtpTracks.push(self.peer.addTrack(t,stream));
+            });
+        }else{
+            this.peer.addStream(stream);            
+        }        
         this.locStrms.push(stream);
+
     };
 
     _proto.removeStream = function(stream){
-        this.peer.removeStream(stream);
+        var self = this;
+        if(_browser == 'firefox'){
+            stream.stop();
+            this.rtpTracks.forEach(function(t){
+                // FIXME: FF could not support mulit negotiation
+                try{
+                    self.peer.removeTrack(t);
+                }catch(err){
+                    _errLog('remove track err ', err);
+                };
+            });
+        }else{
+            this.peer.removeStream(stream);            
+        }
         this.locStrms.splice(this.locStrms.indexOf(stream),1);
     };
 

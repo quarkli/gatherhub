@@ -211,7 +211,7 @@ module.exports = castCtrl;
 /* 
 * @Author: Phenix Cai
 * @Date:   2015-11-13 14:44:49
-* @Last Modified time: 2015-11-30 16:57:37
+* @Last Modified time: 2015-12-01 15:46:06
 */
 'use strict';
 var getUserMedia = require('getusermedia');
@@ -261,8 +261,8 @@ var localMedia;
         });
     };
     _proto.stop = function(cb){
-        if(cb)cb(this.lcStrm);
         this.mute();
+        if(cb)cb(this.lcStrm);
         this.lcStrm =  null;
     };
     _proto.getScn = function(cb){
@@ -392,9 +392,9 @@ function attachMediaStream (element, stream) {
 function hdlMyAvAdd(s){
     var ln,m;
     if(s.getVideoTracks().length>0){
-        ln = "<video id='localMed' autoplay muted></video>";
+        ln = "<video id='localMed' autoplay></video>";
     }else{
-        ln = "<audio id='localMed' autoplay muted></audio>";
+        ln = "<audio id='localMed' autoplay></audio>";
     }
 
     $('.medAreas').append(ln);
@@ -640,7 +640,8 @@ var adapter = require('webrtc-adapter-test');
 var peerConn;
 
 (function(){
-    var _proto, _dbgFlag;
+    var _proto, _dbgFlag, _browser;
+    _browser = adapter.webrtcDetectedBrowser;
 
     _dbgFlag = false;
     function _infLog(){
@@ -691,6 +692,7 @@ var peerConn;
         this.ctyp = this.config.type;
         this.rmtStrms = [];
         this.locStrms = [];
+        this.rtpTracks = [];
         this.datChans = {};
         this.ready =  false;
 
@@ -785,12 +787,34 @@ var peerConn;
     };
 
     _proto.addStream =  function(stream){
-        this.peer.addStream(stream);
+        var self = this;
+        if(_browser == 'firefox'){
+            this.rtpTracks = [];
+            stream.getTracks().forEach(function(t){
+                self.rtpTracks.push(self.peer.addTrack(t,stream));
+            });
+        }else{
+            this.peer.addStream(stream);            
+        }        
         this.locStrms.push(stream);
+
     };
 
     _proto.removeStream = function(stream){
-        this.peer.removeStream(stream);
+        var self = this;
+        if(_browser == 'firefox'){
+            stream.stop();
+            this.rtpTracks.forEach(function(t){
+                // FIXME: FF could not support mulit negotiation
+                try{
+                    self.peer.removeTrack(t);
+                }catch(err){
+                    _errLog('remove track err ', err);
+                };
+            });
+        }else{
+            this.peer.removeStream(stream);            
+        }
         this.locStrms.splice(this.locStrms.indexOf(stream),1);
     };
 
@@ -922,13 +946,14 @@ module.exports = sockConnection;
 /* 
 * @Author: Phenix
 * @Date:   2015-11-27 09:26:39
-* @Last Modified time: 2015-12-01 00:05:53
+* @Last Modified time: 2015-12-01 23:41:56
 */
 
 'use strict';
 var medCast = require('./mediacast');
 var sockConnection = require('./sockconn');
 var rtc = require('webrtcsupport');
+var adapter = require('webrtc-adapter-test');
 
 var extrChan;
 (function(){
@@ -992,8 +1017,9 @@ var extrChan;
 
 var teleCom;
 (function(){
-    var _proto, _dbgFlag;
+    var _proto, _dbgFlag, _browser;
     _dbgFlag = true;
+    _browser = adapter.webrtcDetectedBrowser;
     function _infLog(){
         if(_dbgFlag){
             console.log.apply(console, arguments);
@@ -1004,6 +1030,23 @@ var teleCom;
         console.log.apply(console, arguments);
     }
 
+    function checkCastSupport(){
+        var info, rc;
+        rc = false;
+        switch(_browser){
+            case 'firefox':
+            info = 'Firefox could only receive audio/video/screen casting';
+            break;
+            case 'chrome':
+            rc = true;
+            break;
+            default:
+            info = 'Your browser could not support media casting feature';
+            break;
+        }
+        if(!rc)alert(info);
+        return rc;
+    }
 
     function TeleCom(opts){
         var self, config, item, cn;
@@ -1186,6 +1229,7 @@ var teleCom;
         return this.avt.getMedStatus();
     };
     _proto.startSpeaking = function(c){
+        if(!checkCastSupport())return;
         this.avt.useVideo(c);
         return this.avt.start();
     };
@@ -1196,6 +1240,7 @@ var teleCom;
         return this.scn.getMedStatus();
     };
     _proto.startscnCast = function(){
+        if(!checkCastSupport())return;
         return this.scn.start();
     };
     _proto.stopscnCast = function(){
@@ -1204,7 +1249,7 @@ var teleCom;
 })();
 
 module.exports = teleCom;
-},{"./mediacast":4,"./sockconn":6,"webrtcsupport":63}],8:[function(require,module,exports){
+},{"./mediacast":4,"./sockconn":6,"webrtc-adapter-test":62,"webrtcsupport":63}],8:[function(require,module,exports){
 /* 
 * @Author: Phenix Cai
 * @Date:   2015-11-13 19:14:00

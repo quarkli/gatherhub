@@ -1,7 +1,7 @@
 /* 
 * @Author: Phenix Cai
 * @Date:   2015-11-13 14:44:49
-* @Last Modified time: 2015-11-30 16:57:37
+* @Last Modified time: 2015-12-01 15:46:06
 */
 'use strict';
 var getUserMedia = require('getusermedia');
@@ -51,8 +51,8 @@ var localMedia;
         });
     };
     _proto.stop = function(cb){
-        if(cb)cb(this.lcStrm);
         this.mute();
+        if(cb)cb(this.lcStrm);
         this.lcStrm =  null;
     };
     _proto.getScn = function(cb){

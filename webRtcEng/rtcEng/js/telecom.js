@@ -1,13 +1,14 @@
 /* 
 * @Author: Phenix
 * @Date:   2015-11-27 09:26:39
-* @Last Modified time: 2015-12-01 00:05:53
+* @Last Modified time: 2015-12-01 23:41:56
 */
 
 'use strict';
 var medCast = require('./mediacast');
 var sockConnection = require('./sockconn');
 var rtc = require('webrtcsupport');
+var adapter = require('webrtc-adapter-test');
 
 var extrChan;
 (function(){
@@ -71,8 +72,9 @@ var extrChan;
 
 var teleCom;
 (function(){
-    var _proto, _dbgFlag;
+    var _proto, _dbgFlag, _browser;
     _dbgFlag = true;
+    _browser = adapter.webrtcDetectedBrowser;
     function _infLog(){
         if(_dbgFlag){
             console.log.apply(console, arguments);
@@ -83,6 +85,23 @@ var teleCom;
         console.log.apply(console, arguments);
     }
 
+    function checkCastSupport(){
+        var info, rc;
+        rc = false;
+        switch(_browser){
+            case 'firefox':
+            info = 'Firefox could only receive audio/video/screen casting';
+            break;
+            case 'chrome':
+            rc = true;
+            break;
+            default:
+            info = 'Your browser could not support media casting feature';
+            break;
+        }
+        if(!rc)alert(info);
+        return rc;
+    }
 
     function TeleCom(opts){
         var self, config, item, cn;
@@ -265,6 +284,7 @@ var teleCom;
         return this.avt.getMedStatus();
     };
     _proto.startSpeaking = function(c){
+        if(!checkCastSupport())return;
         this.avt.useVideo(c);
         return this.avt.start();
     };
@@ -275,6 +295,7 @@ var teleCom;
         return this.scn.getMedStatus();
     };
     _proto.startscnCast = function(){
+        if(!checkCastSupport())return;
         return this.scn.start();
     };
     _proto.stopscnCast = function(){

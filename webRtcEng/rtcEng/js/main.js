@@ -96,9 +96,9 @@ function attachMediaStream (element, stream) {
 function hdlMyAvAdd(s){
     var ln,m;
     if(s.getVideoTracks().length>0){
-        ln = "<video id='localMed' autoplay muted></video>";
+        ln = "<video id='localMed' autoplay></video>";
     }else{
-        ln = "<audio id='localMed' autoplay muted></audio>";
+        ln = "<audio id='localMed' autoplay></audio>";
     }
 
     $('.medAreas').append(ln);
