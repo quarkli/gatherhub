@@ -1,7 +1,7 @@
 /* 
 * @Author: Phenix Cai
 * @Date:   2015-11-13 19:14:00
-* @Last Modified time: 2015-11-30 22:18:30
+* @Last Modified time: 2015-12-02 13:04:37
 */
 
 'use strict';
@@ -12,7 +12,7 @@ var peerConn = require('./peerconn');
 var webRtc;
 (function(){
     var _proto, _dbgFlag;
-    _dbgFlag = true;
+    _dbgFlag = false;
     function _infLog(){
         if(_dbgFlag){
             console.log.apply(console, arguments);
@@ -176,10 +176,10 @@ var webRtc;
     _proto.onRMedAdd = function(){};
     _proto.onRMedDel = function(){};
     _proto.onCrpErro = function(){};
+    _proto.onChansReady = function(){};
 
     // internal APIs
 
-    _proto._onChansReady = function(){};
     _proto._onDatRecv = function(f,d){
         this.onTextRecv(f,d);
     };
@@ -205,7 +205,7 @@ var webRtc;
         pc.onConError = function(label,id){
             var config = self.config;
             _errLog('peer',id+' connect error');
-            removePeer(id);
+            self._removePeer(id);
             config.type = 'calling';
             config.id = id;
             self.onCrpErro(config);
@@ -215,7 +215,7 @@ var webRtc;
             self.peers.forEach(function(p){
                 if(p.ready == false) ready = false;
             });
-            if(ready)self._onChansReady();
+            if(ready)self.onChansReady();
         }
     };
 
@@ -245,6 +245,11 @@ var webRtc;
         pc = this.peers[id];
         if(!pc){
             pc = new peerConn(config);
+            if(!pc || !pc.peer){
+                _errLog('erro: create pc failed');
+                this.onCrpErro(config);
+                return;
+            } // create peerconnection error
             this.peers[id] = pc;
             this._regPconnEvtCb(pc);
         }

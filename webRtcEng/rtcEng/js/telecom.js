@@ -1,7 +1,7 @@
 /* 
 * @Author: Phenix
 * @Date:   2015-11-27 09:26:39
-* @Last Modified time: 2015-12-01 23:41:56
+* @Last Modified time: 2015-12-02 12:55:49
 */
 
 'use strict';
@@ -73,7 +73,7 @@ var extrChan;
 var teleCom;
 (function(){
     var _proto, _dbgFlag, _browser;
-    _dbgFlag = true;
+    _dbgFlag = false;
     _browser = adapter.webrtcDetectedBrowser;
     function _infLog(){
         if(_dbgFlag){
@@ -225,6 +225,9 @@ var teleCom;
                 // _infLog('onTextRecv '+f,d);
                 var usr = self.usrList[f];
                 self.onTextRecv(usr,d);
+            };
+            self.avt.onCrpErro = function(c){
+                self.exChan.addPartener(c.id);
             };
         }
 

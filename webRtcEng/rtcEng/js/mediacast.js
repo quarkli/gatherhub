@@ -1,7 +1,7 @@
 /* 
 * @Author: phenix cai
 * @Date:   2015-11-19 10:08:39
-* @Last Modified time: 2015-11-30 17:44:39
+* @Last Modified time: 2015-12-02 10:04:37
 */
 var webRtc = require('./webrtc');
 var castCtrl = require('./castctrl');
@@ -83,7 +83,7 @@ var medCast;
         });
     };
 
-    _proto._onChansReady = function(){
+    _proto.onChansReady = function(){
         this._initCmdChan();
     };
 

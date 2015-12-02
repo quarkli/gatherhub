@@ -23,7 +23,14 @@ var peerConn;
         options = opts || {};
         this.config = {
             ice : {
-                iceServers : [{'url': 'stun:chi2-tftp2.starnetusa.net'}]
+                // iceServers : [{'url': 'stun:chi2-tftp2.starnetusa.net'}]
+                iceServers : [
+                    {'url': 'stun:chi2-tftp2.starnetusa.net'},
+                    {'url': 'stun:stun01.sipphone.com'},
+                    {'url': 'stun:stun.fwdnet.net'},
+                    {'url': 'stun:stun.voxgratia.org'},
+                    {'url': 'stun:stun.xten.com'}
+                ]
             },
             peerConstrs : {
                 optional : [
@@ -46,7 +53,12 @@ var peerConn;
         }
 
         self = this;
-        this.peer =  RTCPeerConnection(this.config.ice, this.config.peerConstrs);
+        try{
+            this.peer =  RTCPeerConnection(this.config.ice, this.config.peerConstrs);
+        }catch(e){
+            _errLog(e.name);
+            return;
+        };
 
         this.peer.onicecandidate = onIce;
         this.peer.onaddstream = onRStrmAdd;
@@ -75,6 +87,11 @@ var peerConn;
                     });
           } else {
             _infLog('End of candidates.');
+            setTimeout(function(){
+                if(self.ready == false){
+                    self.onConError('default',self.config.id);
+                }
+            }, 1500);
           }
         }
 
