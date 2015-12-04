@@ -97,7 +97,13 @@ $(function(){
 			$('#msg').height($(window).height() - 55);
 			$('#msgbox').height($(window).height() - parseInt($('#ts').css('height')) - 10 - (topmenu ? 55 : 0));
 			$('#msgbox').scrollTop($('#msgbox')[0].scrollHeight);
+			$('#pad').width($(window).width()).height($(window).height() - 55);
 		}
+		else {
+			$('#pad').width($(window).width() - 55).height($(window).height());
+		}
+		sp.width($('#pad').width()).height($('#pad').height()).moveto('top', 0).moveto('left', 0).zoom(sp.zrate);
+		vp.moveto('top', vp.pad.position().top).moveto('left', vp.pad.position().left);
 	});
 	$("#joinhub").on('shown.bs.modal', function(){
 		$(this).find('#peer').focus();
@@ -163,17 +169,13 @@ $(function(){
 			console.log("Message Router Connecting Error!");
 			if (svr == ws1) svr = ws2;
 			else svr = ws1;
-			connect();
 		};
 		ws.onopen = function(){
 			console.log("Message Router Connected.");
 			wsready = true;
 			dispatch({}, 'hello');
-			tsid = setTimeout(function(){ts = $.now();console.log('ts='+ts);}, 1000);
-			pulse = setInterval(function(){
-				if (wsready) ws.send('');
-				else ws = new WebSocket('ws://' + svr + ':' + port);
-			}, 30000);
+			tsid = setTimeout(function(){ts = $.now();}, 1000);
+			pulse = setInterval(function(){if (wsready) dispatch({},'hearbeat',peerid);}, 25000);
 			appendUser('#plist', peerid, peer, sp.repcolor);
 			setTimeout(function(){showpop = true;}, 5000);
 		};
@@ -237,12 +239,16 @@ $(function(){
 				case 'graph':
 					sp.appendpath(data);
 					break;
+				default:
+					//console.log(ctx);
+					break;
 			}
 		};
 		ws.onclose = function(){
 			clearInterval(pulse);
 			wsready = false;
 			showpop = false;
+			connect();
 		};
 	}
 
