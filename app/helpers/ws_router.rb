@@ -21,15 +21,15 @@ EventMachine.run {
     ws.onclose do
 	  @act_peers -= 1
       begin
-        p = @peers.find{|p| p[:socket] == ws}
-		msg = {:hub => p[:hub], :peer => p[:peer], :action => "bye"}.to_json
-        @peers.delete(p)
+        c = @peers.find{|p| p[:socket] == ws}
+		msg = {:hub => c[:hub], :peer => c[:peer], :action => "bye"}.to_json
+        @peers.delete(c)
         @peers.each do |p| 
-      	  if (p[:hub] == p[:hub]) then 
+      	  if (p[:hub] == c[:hub]) then 
       	    p[:socket].send(msg) 
           end
         end
-        puts "#{Time.now}: #{p[:peer]} has left Hub:#{p[:hub]}(#{@act_peers})"
+        puts "#{Time.now}: #{c[:peer]} has left Hub:#{c[:hub]}(#{@act_peers})"
 	  rescue StandardError => e
 	    puts "Error: #{e.message}"
 	  end
