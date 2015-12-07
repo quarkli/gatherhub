@@ -64,9 +64,8 @@ $(function(){
 		{btn: {w: w, h: h, icon: svgicon.move, tip: 'Move Canvas'}, act: function(){sp.dragmode = true;}}
 	];
 	var sizeList = [
-		{btn: {w: w, h: h, icon: svgicon.circle, resize: 0.15, tip: 'Small (5px)'},	act: function(){sp.penwidth(5)}},
-		{btn: {w: w, h: h, icon: svgicon.circle, resize: 0.05, tip: 'Tiny (1px)'}, act: function(){sp.penwidth(1)}},
-		{btn: {w: w, h: h, icon: svgicon.circle, resize: 0.35, tip: 'Midium (11px)'}, act: function(){sp.penwidth(11)}},
+		{btn: {w: w, h: h, icon: svgicon.circle, resize: 0.15, tip: 'Small (1px)'},	act: function(){sp.penwidth(1)}},
+		{btn: {w: w, h: h, icon: svgicon.circle, resize: 0.45, tip: 'Midium (11px)'}, act: function(){sp.penwidth(11)}},
 		{btn: {w: w, h: h, icon: svgicon.circle, resize: 0.65, tip: 'Large (21px)'}, act: function(){sp.penwidth(21)}}	
 	];
 	var zoomList = [
@@ -175,7 +174,7 @@ $(function(){
 			wsready = true;
 			dispatch({}, 'hello');
 			tsid = setTimeout(function(){ts = $.now();}, 1000);
-			pulse = setInterval(function(){if (wsready) dispatch({},'hearbeat',peerid);}, 25000);
+			pulse = setInterval(function(){if (wsready) dispatch({},'heartbeat',peerid);}, 25000);
 			appendUser('#plist', peerid, peer, sp.repcolor);
 			setTimeout(function(){showpop = true;}, 5000);
 		};
@@ -185,7 +184,7 @@ $(function(){
 			
 			switch (ctx.action) {
 				case 'hello':
-					console.log(data.name + ': hello!');
+					console.log(ctx.peer + ': hello!');
 					if (ts == null) {
 						clearTimeout(tsid);
 						ts = $.now();
@@ -199,7 +198,7 @@ $(function(){
 					});
 					break;
 				case 'welcome':
-					console.log(data.name + ': welcome!');
+					console.log(ctx.peer + ': welcome!');
 					if (ts == null && $.isNumeric(data.ts)) {
 						clearTimeout(tsid);
 						ts = data.ts;

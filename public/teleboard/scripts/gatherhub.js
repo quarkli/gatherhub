@@ -434,7 +434,7 @@ var Gatherhub = Gatherhub || {};
 			y = point.y;
 			
 			var self = this;
-			var pw = this.pc == 'white' ?  this.pw / this.zrate : this.pw;
+			var pw = this.pc == self.bgcolor() ?  21 / this.zrate : this.pw / this.zrate * 1.1;
 			var path =  $(document.createElementNS('http://www.w3.org/2000/svg', 'path'));
 			path.attr('id', this.gid + '-' + this.seq++);
 			path.attr('class', this.gid);
