@@ -701,7 +701,7 @@ var Gatherhub = Gatherhub || {};
 		};
 		_proto.syncgraph = function(dst) {
 			var self = this;
-			$.each($('.' + this.gid), function(i, p) {
+			$.each(this.pathholder.children(), function(i, p) {
 				self.dispatch(path2obj($(p)), 'graph', dst);
 			});
 		};

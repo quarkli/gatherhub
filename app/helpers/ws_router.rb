@@ -45,17 +45,21 @@ EventMachine.run {
 			  @peers.delete(p)
 			end
 		    @peers.push({:hub=>msg[:hub], :peer=>msg[:peer], :socket=>ws})
+			syncmsg = msg.clone
+			syncmsg[:action] = "sync"
+		    syncmsg[:data][:ts] = Time.now.getutc.to_i
+			ws.send(syncmsg.to_json)
 		    puts "#{Time.now}: #{msg[:peer]} has entered Hub:#{msg[:hub]}(#{@act_peers})"
 		  end	
           if (msg.key?(:dst)) then
             # Unicast
             p = @peers.find{|p| p[:peer] == msg[:dst]}
-            p[:socket].send(pmsg)
+            p[:socket].send(msg.to_json)
           else
             # Broadcast
             @peers.each do |p| 
 	          if (p[:socket] !=ws && p[:hub] == msg[:hub]) then 
-	            p[:socket].send(pmsg) 
+	            p[:socket].send(msg.to_json) 
 	          end
             end
           end

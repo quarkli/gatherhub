@@ -4,10 +4,10 @@ var mvp;
 var mbmenu;
 
 // global variables and functions
-var ts = null;
-var tsid = null;
+var td = 0;
 var topmenu = false;
 var showpop = false;
+var needsync = true;
 var dispatch = function(){};
 
 $(function(){
@@ -134,7 +134,7 @@ $(function(){
 		}
 	});		
 	$('#send').on('click', function(){
-		if ($('#tmsg').val().length) appendMsg('#msgbox', peerid, 'Me', $('#tmsg').val(), sp.repcolor, $.now() - ts);
+		if ($('#tmsg').val().length) appendMsg('#msgbox', peerid, 'Me', $('#tmsg').val(), sp.repcolor, $.now() - td);
 		$('#tmsg').val('').focus();
 	});
 
@@ -155,10 +155,10 @@ $(function(){
 		var wsready = false, pulse = null;
 		var ws = new WebSocket('ws://' + svr + ':' + port);
 		
-		sp.dispatch = dispatch = function(data, type, dst) {
+		sp.dispatch = dispatch = function(data, type, dst, p, c) {
 			if (wsready) {
-				data.name = peer;
-				data.color = sp.repcolor;
+				data.name = p || peer;
+				data.color = c || sp.repcolor;
 				if (dst) ws.send(JSON.stringify({hub: hub, peer: peerid, action: type, data: data, dst: dst}));
 				else ws.send(JSON.stringify({hub: hub, peer: peerid, action: type, data: data}));
 			}
@@ -173,7 +173,6 @@ $(function(){
 			console.log("Message Router Connected.");
 			wsready = true;
 			dispatch({}, 'hello');
-			tsid = setTimeout(function(){ts = $.now();}, 1000);
 			pulse = setInterval(function(){if (wsready) dispatch({},'heartbeat',peerid);}, 25000);
 			appendUser('#plist', peerid, peer, sp.repcolor);
 			setTimeout(function(){showpop = true;}, 5000);
@@ -185,29 +184,17 @@ $(function(){
 			switch (ctx.action) {
 				case 'hello':
 					console.log(ctx.peer + ': hello!');
-					if (ts == null) {
-						clearTimeout(tsid);
-						ts = $.now();
-						console.log('ts='+ts);						
-					}
 					appendUser('#plist', ctx.peer, data.name, data.color);
-					dispatch({ts: ts}, 'welcome', ctx.peer);
-					sp.syncgraph(ctx.peer);
-					$('.tmsg_' + peerid).each(function() {
-						dispatch({msg: $(this).children('.panel-body').last().html(), tid: $(this).attr('tid')}, 'message', ctx.peer);
-					});
+					dispatch({}, 'welcome', ctx.peer);
 					break;
 				case 'welcome':
 					console.log(ctx.peer + ': welcome!');
-					if (ts == null && $.isNumeric(data.ts)) {
-						clearTimeout(tsid);
-						ts = data.ts;
-						console.log('ts='+ts);
-					}
-					else if ($.isNumeric(ts) && $.isNumeric(data.ts) && ts != data.ts) {
-						ts = ts > data.ts ? ts : data.ts;
-					}
 					appendUser('#plist', ctx.peer, data.name, data.color);
+					if (needsync) {
+						dispatch({}, 'syncgraph', ctx.peer);
+						dispatch({}, 'syncmsg', ctx.peer);
+						needsync = false;
+					}
 					break;
 				case 'bye':
 					console.log(ctx.peer + ': bye!');
@@ -237,6 +224,22 @@ $(function(){
 					break;
 				case 'graph':
 					sp.appendpath(data);
+					break;
+				case 'sync':
+					td = $.now() - (data.ts * 1000);
+					break;
+				case 'syncgraph':
+					sp.syncgraph(ctx.peer);
+					break;
+				case 'syncmsg':
+					$('#msgbox').children().each(function() {
+						var mhead = $(this).children('.panel-heading').last();
+						var mbody = $(this).children('.panel-body').last();
+						var pname = mhead.html().slice(0, mhead.html().length - 1);
+						var color = rgb2hex(mbody.css('background-color'));
+						if (pname == 'Me') pname = peer;
+						dispatch({msg: mbody.html(), tid: $(this).attr('tid')}, 'message', ctx.peer, pname, color);
+					});
 					break;
 				default:
 					//console.log(ctx);
@@ -341,10 +344,12 @@ function appendMsg(elem, pid, sender, msg, color, tid) {
 	pp.attr('tid', tid);
 	ph.html(sender + ':').appendTo(pp);
 	pb.html(msg).appendTo(pp);
-	pp.appendTo(elem);
-	$(elem).children().sort(function(a,b){
-		return $(a).attr('tid')*1 > $(b).attr('tid')*1;
-	}).appendTo($(elem));
+	var tgt = $(elem).children().last();
+	while(tgt.attr('tid') > tid) {tgt = tgt.prev();}
+	console.log(tgt.attr('tid'));
+	if (tgt.length) tgt.after(pp);
+	else pp.appendTo(elem);
+
 
 	$(elem).height($(window).height() - parseInt($('#ts').css('height')) - 10 - (topmenu ? 55 : 0));
 	$(elem).scrollTop($(elem)[0].scrollHeight);
