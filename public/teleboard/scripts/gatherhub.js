@@ -39,7 +39,10 @@ var Gatherhub = Gatherhub || {};
 	
 	// Internal functions
 	function precision(num, p) {
-		return Math.round(num * Math.pow(10,p)) / Math.pow(10,p);
+		var s = 1;
+		if (num < 0) {s = -1; num *= s;}
+		var n = num < 1 ? 0 : Math.floor(Math.log10(num)) + 1;
+		return (0 | (num * Math.pow(10, p - n))) / Math.pow(10, p - n) * s;
 	}
 
 	function extend(func){
@@ -154,7 +157,7 @@ var Gatherhub = Gatherhub || {};
 				var max = (this.parent && this.parent.width()) ? this.parent.width() : $(window).width();
 				if (w > max) w = max;
 				this.canvas.attr('width', w);
-				this.canvasvbox.w = precision((this.canvas.attr('width') - this.borderpadding()) / this.zrate, 3);
+				this.canvasvbox.w = precision((this.canvas.attr('width') - this.borderpadding()) / this.zrate, 5);
 				if (this.pad.position().left + this.canvas.attr('width') * 1 + this.borderpadding() / 2 > max) this.moveto('left', 9999);
 			}
 			return this;
@@ -165,7 +168,7 @@ var Gatherhub = Gatherhub || {};
 				var max = (this.parent && this.parent.height()) ? this.parent.height() : $(window).height();
 				if (h > max) h = max;
 				this.canvas.attr('height', h);
-				this.canvasvbox.h = precision((this.canvas.attr('height') - this.borderpadding()) / this.zrate, 3);
+				this.canvasvbox.h = precision((this.canvas.attr('height') - this.borderpadding()) / this.zrate, 5);
 				if (this.pad.position().top + this.canvas.attr('height') * 1 + this.borderpadding() / 2 > max) this.moveto('top', 9999);
 			}
 			return this;
@@ -196,21 +199,21 @@ var Gatherhub = Gatherhub || {};
 			if (this.canvasvbox.w == 0) this.canvasvbox.w = this.width();
 			if (this.canvasvbox.h == 0) this.canvasvbox.h = this.height();
 
-			z = $.isNumeric(z) ? (z > 100 ? 100 : z < 0.01 ? 0.01 : precision(z, 3)) : this.zrate;
+			z = $.isNumeric(z) ? (z > 100 ? 100 : z < 0.01 ? 0.01 : precision(z, 5)) : this.zrate;
 			this.zrate = z;
 			var x = this.zcenter.x * this.canvasvbox.w + this.canvasvbox.x;
 			var y = this.zcenter.y * this.canvasvbox.h + this.canvasvbox.y;
-			this.canvasvbox.w = precision((this.width() - this.borderpadding()) / this.zrate, 3);
-			this.canvasvbox.h = precision((this.height() - this.borderpadding()) / this.zrate, 3);
-			this.canvasvbox.x = precision(x - this.zcenter.x * this.canvasvbox.w, 3);
-			this.canvasvbox.y = precision(y - this.zcenter.y * this.canvasvbox.h, 3);
+			this.canvasvbox.w = precision((this.width() - this.borderpadding()) / this.zrate, 5);
+			this.canvasvbox.h = precision((this.height() - this.borderpadding()) / this.zrate, 5);
+			this.canvasvbox.x = precision(x - this.zcenter.x * this.canvasvbox.w, 5);
+			this.canvasvbox.y = precision(y - this.zcenter.y * this.canvasvbox.h, 5);
 			this.refreshvbox();
 			return this;
 		};
 		_proto.offsetcanvas = function(axis, offset) {
 			if ($.isNumeric(offset)) {
-				if (axis == 'x') this.canvasvbox.x = precision(this.canvasvbox.x - offset / this.zrate, 3);
-				if (axis == 'y') this.canvasvbox.y = precision(this.canvasvbox.y - offset / this.zrate, 3);
+				if (axis == 'x') this.canvasvbox.x = precision(this.canvasvbox.x - offset / this.zrate, 5);
+				if (axis == 'y') this.canvasvbox.y = precision(this.canvasvbox.y - offset / this.zrate, 5);
 				this.refreshvbox();
 			}
 			return this;
@@ -415,8 +418,8 @@ var Gatherhub = Gatherhub || {};
 					y: screnXY.y - this.pad.position().top - this.borderpadding() / 2};
 		}
 		function vboxxy(canvasxy) {
-			return {x: precision(canvasxy.x / this.zrate + this.canvasvbox.x, 3),
-					y: precision(canvasxy.y / this.zrate + this.canvasvbox.y, 3)};
+			return {x: precision(canvasxy.x / this.zrate + this.canvasvbox.x, 5),
+					y: precision(canvasxy.y / this.zrate + this.canvasvbox.y, 5)};
 		}
 		function vbox2scn(vboxxy) {
 			var x = (vboxxy.x - this.canvasvbox.x) * this.zrate;
@@ -434,7 +437,7 @@ var Gatherhub = Gatherhub || {};
 			y = point.y;
 			
 			var self = this;
-			var pw = this.pc == self.bgcolor() ?  21 / this.zrate : this.pw / this.zrate * 1.1;
+			var pw = this.pc == self.bgcolor() ?  30 / this.zrate : this.pw / this.zrate * 1.1;
 			var path =  $(document.createElementNS('http://www.w3.org/2000/svg', 'path'));
 			path.attr('id', this.gid + '-' + this.seq++);
 			path.attr('class', this.gid);

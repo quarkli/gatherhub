@@ -33,7 +33,7 @@ $(function(){
 	var btnSpk = addBtnToMenu({icon: svgicon.mic, w: 40, h: 40, borderradius: 1, bgcolor: '#CCC'}, '#media');
 	
 	var sp = msp = new Gatherhub.SketchPad();
-	sp.floating('absolute').pencolor(sp.repcolor).appendto('#pad');
+	sp.floating('absolute').pencolor(sp.repcolor).penwidth(1).appendto('#pad');
 	sp.canvas.css('opacity', 0.75);	
 	sp.pad.on('mouseenter', function(){$(this).css('cursor', 'crosshair');});
 
