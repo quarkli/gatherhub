@@ -84,7 +84,7 @@ Author: quarkli@gmail.com
 		margin: 0px auto;
 		padding: 0px;
 		text-align: center;
-		background-color: #CCC;
+		background-color: #448;
 		overflow: hidden;
 		z-index: 99;
 	}
@@ -97,8 +97,8 @@ Author: quarkli@gmail.com
 	}
 	.panel {
 		position: absolute;
-		left: -250px;
-		width: 250px;
+		left: -300px;
+		width: 300px;
 		height: 100%;
 		padding: 0px;
 		margin: 0px;
@@ -124,11 +124,14 @@ Author: quarkli@gmail.com
 		margin: 0px; 
 	}
 	#plist {
+		font-size: 16px;
 		overflow-x: hidden;
 		overflow-y: auto;
 		z-index: 90;
 	}
 	#msg {
+		font-size: 16px;
+		background-color: #EED;
 		overflow: hidden;
 		z-index: 90;
 	}
@@ -139,6 +142,9 @@ Author: quarkli@gmail.com
 		width: 100%;
 		overflow-x: hidden;
 		overflow-y: auto;
+	}
+	#tmsg {
+		width: 230px;
 	}
 	#ts {
 		position: absolute;
