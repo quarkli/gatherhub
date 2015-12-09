@@ -175,7 +175,7 @@ $(function(){
 			dispatch({}, 'hello');
 			pulse = setInterval(function(){if (wsready) dispatch({},'heartbeat',peerid);}, 25000);
 			appendUser('#plist', peerid, peer + '(Me)', sp.repcolor);
-			setTimeout(function(){showpop = true;}, 5000);
+			showpop = true;
 		};
 		ws.onmessage = function(msg){
 			var ctx = JSON.parse(msg.data);
@@ -197,7 +197,8 @@ $(function(){
 					if (needsync) {
 						dispatch({}, 'syncgraph', ctx.peer);
 						dispatch({}, 'syncmsg', ctx.peer);
-						needsync = false;
+						showpop = needsync = false;
+						setTimeout(function(){showpop = true;}, 30000);
 					}
 					break;
 				case 'bye':
