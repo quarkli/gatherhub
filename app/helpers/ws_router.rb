@@ -22,14 +22,14 @@ EventMachine.run {
 	  @act_peers -= 1
       begin
         c = @peers.find{|p| p[:socket] == ws}
-		msg = {:hub => c[:hub], :peer => c[:peer], :action => "bye"}.to_json
+		msg = {:hub => c[:hub], :peer => c[:peer], :name => c[:name], :action => "bye"}.to_json
         @peers.delete(c)
         @peers.each do |p| 
       	  if (p[:hub] == c[:hub]) then 
       	    p[:socket].send(msg) 
           end
         end
-        puts "#{Time.now}: #{c[:peer]} has left Hub:#{c[:hub]}(#{@act_peers})"
+        puts "#{Time.now}: #{c[:name]} has left Hub:#{c[:hub]}(#{@act_peers})"
 	  rescue StandardError => e
 	    puts "Error: #{e.message}"
 	  end
@@ -44,12 +44,12 @@ EventMachine.run {
             if (p)  then
 			  @peers.delete(p)
 			end
-		    @peers.push({:hub=>msg[:hub], :peer=>msg[:peer], :socket=>ws})
+		    @peers.push({:hub=>msg[:hub], :peer=>msg[:peer], :socket=>ws, :name=>msg[:data]['name']})
 			syncmsg = msg.clone
 			syncmsg[:action] = "sync"
 		    syncmsg[:data][:ts] = Time.now.getutc.to_i
 			ws.send(syncmsg.to_json)
-		    puts "#{Time.now}: #{msg[:peer]} has entered Hub:#{msg[:hub]}(#{@act_peers})"
+		    puts "#{Time.now}: #{msg[:data]['name']} has entered Hub:#{msg[:hub]}(#{@act_peers})"
 		  end	
           if (msg.key?(:dst)) then
             # Unicast
