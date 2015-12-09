@@ -1,0 +1,181 @@
+<!--
+teleboard.html is distributed under the permissive MIT License:
+
+Copyright (c) 2015, Quark Li, quarkli@gmail.com
+All rights reserved.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. 
+
+Author: quarkli@gmail.com
+-->
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Gatherhub</title>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1">
+	<link rel="icon" href="images/ghub-logo.png">
+    <link rel="stylesheet" href="css/bootstrap.min.css">
+    <script src="scripts/jquery.min.js"></script>
+    <script src="scripts/md5.min.js"></script>
+    <script src="js/bootstrap.min.js"></script>
+	<script>
+	$(function(){
+		$('input').each(function(){
+			if ($(this).attr('type') == 'text' || $(this).attr('type') == 'email') {
+				if (getCookie($(this).attr('id'))) {
+					$(this).val(getCookie($(this).attr('id')));
+					$('#cacheOn').attr('checked', true);
+				}
+			}
+		});	
+		$("#setuphub").on('shown.bs.modal', function(){
+			$(this).find('#peer').focus();
+		});
+	});
+	
+	function setCookie(key, value) {
+		var expires = new Date();
+		expires.setTime(expires.getTime() + (180 * 24 * 60 * 60 * 1000));
+		document.cookie = key + '=' + value + ';expires=' + expires.toUTCString();
+	}
+
+	function getCookie(key) {
+		var keyValue = document.cookie.match('(^|;) ?' + key + '=([^;]*)(;|$)');
+		return keyValue ? keyValue[2] : null;
+	}
+	
+	function validEmail(str) {
+	  var reg = /^([\w-\.]+@([\w-]+\.)+[\w-]{2,4})?$/;
+	  return reg.test(str);
+	}
+
+	function validateInput(){
+		if ($('#peer').val().trim().length == 0 || $('#email').val().trim().length == 0 || !validEmail($('#email').val())) {
+			alert('Please enter your name and valid email address!');
+			return false;
+		}
+
+		var hub = md5($('#email').val());
+		$('#hub').val(eval('0x' + hub.slice(hub.length/2)).toString().slice(0,10));
+		$('#newHub').attr('action', 'teleboard.php?hub=' + $('#hub').val());
+		
+		if ($('#cacheOn').is(':checked')) {
+			$('input').each(function(){
+				if ($(this).attr('type') == 'text' || $(this).attr('type') == 'email') {
+					if ($(this).val().length > 0) setCookie($(this).attr('id'), $(this).val());
+				}
+			});
+		}
+		else {
+			$('input').each(function(){
+				if ($(this).attr('type') == 'text' || $(this).attr('type') == 'email') {
+					setCookie($(this).attr('id'), '');
+				}
+			});
+		}
+
+		return true;
+	}
+	</script>
+	<style>
+	.banner {
+		font-size: 32px;
+		text-align: center;
+	}
+	.center {
+		text-align: center;
+	}
+	</style>
+  </head>
+  <body>
+  <div class="container-fluid">
+	<div class="row banner"><br/><img src="images/ghub-logo.png" width="50px"/></div>
+    <div class="row center"><img src="images/ghub-banner.png" width="300px"/>
+	<p>Based on HTML5 best supported with <a href="https://www.google.com/chrome/browser/desktop/index.html">Google Chrome</a></p>
+	</div>
+	<div class="row banner">
+	  <button type="button" class="btn btn-lg btn-default" data-toggle="modal" data-target="#setuphub">Create Your Hub Now!</button>
+	</div><br/>
+    <div class="row center">
+      <div class="col-sm-3"></div>
+      <div class="col-sm-2">
+	    <img src="images/screen-chat.svg" width="100px"/><br/>
+		<span>Discussion</span>
+	  </div>
+      <div class="col-sm-2">
+	    <img src="images/screen-paint.svg" width="100px"/><br/>
+		<span>Exchange Ideas</span>
+	  </div>
+      <div class="col-sm-2">
+	    <img src="images/screen-sharescn.svg" width="100px"/><br/>
+		<span>Screen-cast</span>
+	  </div>
+      <div class="col-sm-2"></div>
+    </div>
+    <div class="row center">
+      <div class="col-sm-3"></div>
+      <div class="col-sm-2">
+	    <img src="images/screen-vchat.svg" width="100px"/><br/>
+		<span>Video-cast</span>
+	  </div>
+      <div class="col-sm-2">
+	    <img src="images/screen-conf.svg" width="100px"/><br/>
+		<span>P2P Conference</span>
+	  </div>
+      <div class="col-sm-2">
+	    <img src="images/screen-responsive.svg" width="100px"/><br/>
+		<span>Rsponsive</span>
+	  </div>
+      <div class="col-sm-2"></div>
+    </div>
+	<div class="row center">
+	  <br/>Communication And Collaboration Advance Team (CACAT)
+	  <br/><a href="mailto:qli@gatherhub.com" style="text-decoration: none">Contact us</a>
+	</div>
+  </div>
+
+  <div id="setuphub" class="modal fade" role="dialog">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <button type="button" class="close" data-dismiss="modal">&times;</button>
+          <h4 class="modal-title">Create a hub</h4>
+        </div>
+        <div class="modal-body">
+			<form id="newHub" role="form" method="post" action="teleboard.php">
+			  <div class="form-group">
+				<label for="text">Your Name:</label>
+				<input type="text" class="form-control" id="peer" name="peer">
+			  </div>
+			  <div class="form-group">
+				<label for="email">Your Email:</label>
+				<input type="email" class="form-control" id="email" name="email">
+				<input type="hidden" class="form-control" id="hub" name="hub">
+			  </div>
+			  <div class="form-group" style="text-align: right;">
+				  <div class="checkbox">
+					<label><input type="checkbox" id="cacheOn">Remember me</label>
+				  </div>
+				  <div class="checkbox">
+					<label><input type="checkbox" name="sendMail">Send email notification</label>
+				  </div>
+				  <button type="submit" class="btn btn-default" onclick="return validateInput()">Submit</button>
+			  </div>
+			</form>
+        </div>
+      </div>
+    </div>
+  </div>
+  </body>
+</html>
