@@ -511,13 +511,19 @@ var Gatherhub = Gatherhub || {};
 		}
 		function randcolor() {
 			var c = '#';
-			while (c.length < 7) {
-				if (c.length % 2) {
-					c += ((0 | Math.random() * 8) + 7).toString(16);
+			var rc = [];
+			for (var i = 0;i < 6;i++) {
+				rc[i] = 0 | Math.random() * 16;
+				if (i == 4) {
+					if (Math.abs(rc[0] - rc[2]) > 4) {
+						rc[4] = Math.max(rc[0], rc[2]) + Math.abs(rc[0] - rc[2]);
+					}
+					else {
+						rc[4] = 0 | ((rc[0] + rc[2]) / 2 + Math.random() * 8);
+					}
+					if (rc[4] > 15) rc[4] -= 15;
 				}
-				else {
-					c += (0 | Math.random() * 16).toString(16);					
-				}
+				c += rc[i].toString(16);
 			}
 			return c.toUpperCase();
 		}
