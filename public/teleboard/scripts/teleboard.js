@@ -28,9 +28,9 @@ $(function(){
 		return btn;
 	}
 	
-	var btnUser = addBtnToMenu({icon: svgicon.user, w: 40, h: 40, borderradius: 1, bgcolor: '#CCC'}, '#plist');
-	var btnMsg = addBtnToMenu({icon: svgicon.chat, w: 40, h: 40, resize: .7, borderradius: 1, bgcolor: '#CCC'}, '#msg');
-	var btnSpk = addBtnToMenu({icon: svgicon.mic, w: 40, h: 40, borderradius: 1, bgcolor: '#CCC'}, '#media');
+	var btnUser = addBtnToMenu({icon: svgicon.user, iconcolor: '#FFF', w: 40, h: 40, borderwidth: 2, bordercolor: '#FFF', borderradius: 1, bgcolor: '#448'}, '#plist');
+	var btnMsg = addBtnToMenu({icon: svgicon.chat, iconcolor: '#FFF', w: 40, h: 40, resize: .7, borderwidth: 2, bordercolor: '#FFF', borderradius: 1, bgcolor: '#448'}, '#msg');
+	var btnSpk = addBtnToMenu({icon: svgicon.mic, iconcolor: '#FFF', w: 40, h: 40, borderwidth: 2, bordercolor: '#FFF', borderradius: 1, bgcolor: '#448'}, '#media');
 	
 	var sp = msp = new Gatherhub.SketchPad();
 	sp.floating('absolute').pencolor(sp.repcolor).penwidth(1).appendto('#pad');
@@ -174,7 +174,7 @@ $(function(){
 			wsready = true;
 			dispatch({}, 'hello');
 			pulse = setInterval(function(){if (wsready) dispatch({},'heartbeat',peerid);}, 25000);
-			appendUser('#plist', peerid, peer, sp.repcolor);
+			appendUser('#plist', peerid, peer + '(Me)', sp.repcolor);
 			setTimeout(function(){showpop = true;}, 5000);
 		};
 		ws.onmessage = function(msg){
@@ -185,11 +185,15 @@ $(function(){
 				case 'hello':
 					console.log(ctx.peer + ': hello!');
 					appendUser('#plist', ctx.peer, data.name, data.color);
+					popupMsg(data.name + ' has entered this hub.', data.color);
 					dispatch({}, 'welcome', ctx.peer);
 					break;
 				case 'welcome':
 					console.log(ctx.peer + ': welcome!');
 					appendUser('#plist', ctx.peer, data.name, data.color);
+					setTimeout(function(){
+						popupMsg(data.name + ' has entered this hub.', data.color);
+					}, Math.random() * 2500);
 					if (needsync) {
 						dispatch({}, 'syncgraph', ctx.peer);
 						dispatch({}, 'syncmsg', ctx.peer);
@@ -197,7 +201,8 @@ $(function(){
 					}
 					break;
 				case 'bye':
-					console.log(ctx.peer + ': bye!');
+					console.log(ctx.name + ': bye!');
+					popupMsg(ctx.name + ' has left this hub.', 'grey');
 					$('#plist').children().each(function(){
 						if ($(this).attr('id') == ctx.peer) $(this).remove();
 					});
@@ -205,12 +210,7 @@ $(function(){
 				case 'message':
 					appendMsg('#msgbox', ctx.peer, data.name, data.msg, data.color, data.tid);
 					if (showpop && ($('#msg').position().top < 0 || $('#msg').position().left < 0)) {
-						var x = 0 | (Math.random() * $(window).width() * .5) + $(window).width() * .25;
-						var y = 0 | (Math.random() * $(window).height() * .5) + $(window).height() * .25;
-						var popmsg = $('<div class="panel-body" style="width: 150px; border-radius: 5px; margin: 5px; font-weight: bold; border-style: solid; border-color: ' + data.color + ';">');
-						popmsg.css({position: 'absolute', top: y, left: x});
-						popmsg.html(data.name + ': ' + data.msg).appendTo('body');
-						setTimeout(function(){popmsg.fadeOut(500, function(){$(this).remove()})}, 2000);
+						popupMsg(data.name + ': ' + data.msg, data.color);
 					}
 					break;
 				case 'undo':
@@ -300,12 +300,12 @@ function toggleexp(exp) {
 	else {
 		if ($(exp).position().left == 55) {
 			$('#tmsg').blur();
-			$(exp).animate({left: -250});
+			$(exp).animate({left: -300});
 		}
 		else {
 			if (parseInt($(exp).css('top')) != 0) $(exp).css({top: 0});
 			$(exp).parent().children().each(function(){
-				if ($(this).position().left > 0) $(this).animate({left: -250});
+				if ($(this).position().left > 0) $(this).animate({left: -300});
 				$('#tmsg').blur();
 			});
 			$(exp).find('#tmsg').focus();
@@ -323,6 +323,17 @@ function rgb2hex(rgb) {
 	return '#' + hex(rgb[1]) + hex(rgb[2]) + hex(rgb[3]);
 }
 
+function popupMsg(msg, color) {
+	var x = 0 | (Math.random() * $(window).width() * .5) + $(window).width() * .25;
+	var y = 0 | (Math.random() * $(window).height() * .5) + $(window).height() * .25;
+	var popmsg = $('<div class="panel-body" style="max-width: 300px; border-radius: 5px; margin: 5px; font-weight: bold; border-style: solid; border-color: ' + color + ';">');
+	popmsg.css({position: 'absolute', top: y, left: x, opacity: 0});
+	popmsg.html(msg).appendTo('body');
+	popmsg.animate({opacity: 0.8, top: y - 80}, 1500);
+	popmsg.animate({opacity: 0.8}, 1000);
+	popmsg.animate({opacity: 0}, 1000, function(){popmsg.remove();});
+}
+
 function appendUser(elem, peerid, uname, color) {
 	var ph = '<div class="panel-heading" style="text-shadow: 1px 2px #444; color: #FFF; font-weight: bold; background-color:' + color + '" id="' + peerid + '" uname="' + uname + '">';
 	$(ph).html(uname).appendTo(elem);
@@ -338,15 +349,14 @@ function appendMsg(elem, pid, sender, msg, color, tid) {
 	var prev = $(elem).children().last();
 	var prevlr = prev.length ? prev.children().last().css('float') : '';
 	var pp = $('<div class="tmsg_' + pid + '" style="clear: ' + prevlr + '">'); 
-	var ph = $('<div class="panel-heading" style="text-shadow: 1px 2px #CCC; color: #000; margin: 0; padding: 0; text-align: ' + lr + '">');
-	var pb = $('<div class="panel-body" style="float: ' + lr + '; width: auto; border-radius: 5px; margin: 5px; font-weight: bold; background-color: ' + color + ';">');
+	var ph = $('<div class="panel-heading" style="color: #000; margin: 0; padding: 0; text-align: ' + lr + '">');
+	var pb = $('<div class="panel-body" style="float: ' + lr + '; width: auto; border-radius: 5px; margin: 5px; font-weight: bold; background-color: #FFF; border-width: 2px; border-style: solid; border-color: ' + color + ';">');
 	
 	pp.attr('tid', tid);
 	ph.html(sender + ':').appendTo(pp);
 	pb.html(msg).appendTo(pp);
 	var tgt = $(elem).children().last();
 	while(tgt.attr('tid') > tid) {tgt = tgt.prev();}
-	console.log(tgt.attr('tid'));
 	if (tgt.length) tgt.after(pp);
 	else pp.appendTo(elem);
 
