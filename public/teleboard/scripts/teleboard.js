@@ -351,7 +351,7 @@ function appendMsg(elem, pid, sender, msg, color, tid) {
 	var prevlr = prev.length ? prev.children().last().css('float') : '';
 	var pp = $('<div class="tmsg_' + pid + '" style="clear: ' + prevlr + '">'); 
 	var ph = $('<div class="panel-heading" style="color: #000; margin: 0; padding: 0; text-align: ' + lr + '">');
-	var pb = $('<div class="panel-body" style="float: ' + lr + '; width: auto; border-radius: 5px; margin: 5px; font-weight: bold; background-color: #FFF; border-width: 2px; border-style: solid; border-color: ' + color + ';">');
+	var pb = $('<div class="panel-body" style="float: ' + lr + '; max-width: 290px; word-break: break-all; border-radius: 5px; margin: 5px; font-weight: bold; background-color: #FFF; border-width: 2px; border-style: solid; border-color: ' + color + ';">');
 	
 	pp.attr('tid', tid);
 	ph.html(sender + ':').appendTo(pp);
