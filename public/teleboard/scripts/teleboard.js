@@ -28,14 +28,13 @@ $(function(){
 		return btn;
 	}
 	
-	var btnUser = addBtnToMenu({icon: svgicon.user, iconcolor: '#FFF', w: 40, h: 40, borderwidth: 2, bordercolor: '#FFF', borderradius: 1, bgcolor: '#448'}, '#plist');
-	var btnMsg = addBtnToMenu({icon: svgicon.chat, iconcolor: '#FFF', w: 40, h: 40, resize: .7, borderwidth: 2, bordercolor: '#FFF', borderradius: 1, bgcolor: '#448'}, '#msg');
-	var btnSpk = addBtnToMenu({icon: svgicon.mic, iconcolor: '#FFF', w: 40, h: 40, borderwidth: 2, bordercolor: '#FFF', borderradius: 1, bgcolor: '#448'}, '#media');
+	var btnUser = addBtnToMenu({icon: svgicon.user, iconcolor: '#448', w: 40, h: 40, borderwidth: 2, bordercolor: '#448', borderradius: 1, bgcolor: '#FFF'}, '#plist');
+	var btnMsg = addBtnToMenu({icon: svgicon.chat, iconcolor: '#448', w: 40, h: 40, resize: .7, borderwidth: 2, bordercolor: '#448', borderradius: 1, bgcolor: '#FFF'}, '#msg');
+	var btnSpk = addBtnToMenu({icon: svgicon.mic, iconcolor: '#448', w: 40, h: 40, borderwidth: 2, bordercolor: '#448', borderradius: 1, bgcolor: '#FFF'}, '#media');
 	
 	var sp = msp = new Gatherhub.SketchPad();
 	sp.floating('absolute').pencolor(sp.repcolor).penwidth(1).appendto('#pad');
-	sp.canvas.css('opacity', 0.75);	
-	sp.pad.on('mouseenter', function(){$(this).css('cursor', 'crosshair');});
+	sp.canvas.css('opacity', 0.75);
 
 	var vp = mvp = new Gatherhub.VisualPad().moveto('left', 9999);
 	vp.draggable = true;
@@ -55,18 +54,19 @@ $(function(){
 	}
 	if (w < 40) w = h = 40;
 	var penList = [
-		{btn: {w: w, h: h, icon: svgicon.pen, iconcolor: sp.repcolor, tip: 'User Pen'}, act: function(){sp.dragmode = false;sp.pencolor(sp.repcolor);}},
-		{btn: {w: w, h: h, icon: svgicon.pen, tip: 'Black Pen'}, act: function(){sp.dragmode = false;sp.pencolor('black');}},
-		{btn: {w: w, h: h, icon: svgicon.pen, iconcolor: 'red', tip: 'Red Pen'}, act: function(){sp.dragmode = false;sp.pencolor('red');}},
-		{btn: {w: w, h: h, icon: svgicon.pen, iconcolor: 'green', tip: 'Green Pen'}, act: function(){sp.dragmode = false;sp.pencolor('green');}},
-		{btn: {w: w, h: h, icon: svgicon.pen, iconcolor: 'blue', tip: 'Blue Pen'}, act: function(){sp.dragmode = false;sp.pencolor('blue');}},
-		{btn: {w: w, h: h, icon: svgicon.eraser, tip: 'Eraser'}, act: function(){sp.dragmode = false;;sp.pencolor(sp.bgcolor());}},
-		{btn: {w: w, h: h, icon: svgicon.move, tip: 'Move Canvas'}, act: function(){sp.dragmode = true;}}
+		{btn: {w: w, h: h, icon: svgicon.pen, iconcolor: sp.repcolor, tip: 'User Pen'}, act: function(){sp.drag(0);sp.pencolor(sp.repcolor);}},
+		{btn: {w: w, h: h, icon: svgicon.pen, tip: 'Black Pen'}, act: function(){sp.drag(0);sp.pencolor('black');}},
+		{btn: {w: w, h: h, icon: svgicon.pen, iconcolor: 'red', tip: 'Red Pen'}, act: function(){sp.drag(0);sp.pencolor('red');}},
+		{btn: {w: w, h: h, icon: svgicon.pen, iconcolor: 'green', tip: 'Green Pen'}, act: function(){sp.drag(0);sp.pencolor('green');}},
+		{btn: {w: w, h: h, icon: svgicon.pen, iconcolor: 'blue', tip: 'Blue Pen'}, act: function(){sp.drag(0);sp.pencolor('blue');}},
+		{btn: {w: w, h: h, icon: svgicon.eraser, tip: 'Eraser'}, act: function(){sp.drag(0);;sp.pencolor(sp.bgcolor());}},
+		{btn: {w: w, h: h, icon: svgicon.move, tip: 'Move Canvas'}, act: function(){sp.drag(1);}}
 	];
 	var sizeList = [
-		{btn: {w: w, h: h, icon: svgicon.circle, resize: 0.15, tip: 'Small (1px)'},	act: function(){sp.penwidth(1)}},
-		{btn: {w: w, h: h, icon: svgicon.circle, resize: 0.45, tip: 'Midium (11px)'}, act: function(){sp.penwidth(11)}},
-		{btn: {w: w, h: h, icon: svgicon.circle, resize: 0.65, tip: 'Large (21px)'}, act: function(){sp.penwidth(21)}}	
+		{btn: {w: w, h: h, icon: svgicon.circle, resize: 0.15, tip: 'Small (1px)'},	act: function(){sp.txtedit(0);sp.penwidth(1)}},
+		{btn: {w: w, h: h, icon: svgicon.circle, resize: 0.45, tip: 'Midium (11px)'}, act: function(){sp.txtedit(0);sp.penwidth(11)}},
+		{btn: {w: w, h: h, icon: svgicon.circle, resize: 0.65, tip: 'Large (21px)'}, act: function(){sp.txtedit(0);sp.penwidth(21)}},
+		{btn: {w: w, h: h, icon: svgicon.textinput, resize: 1, tip: 'Text Input'},	act: function(){sp.txtedit(1);}}
 	];
 	var zoomList = [
 		{btn: {w: w, h: h, icon: svgicon.zoomout, tip: 'Zoom Out'},	act: function(){sp.zoom(sp.zrate / 1.1);}},
@@ -198,7 +198,8 @@ $(function(){
 						dispatch({}, 'syncgraph', ctx.peer);
 						dispatch({}, 'syncmsg', ctx.peer);
 						showpop = needsync = false;
-						setTimeout(function(){showpop = true;}, 30000);
+						sp.pad.css('cursor', 'wait');
+						setTimeout(function(){showpop = true;sp.pad.css('cursor', 'auto');}, 20000);
 					}
 					break;
 				case 'bye':
@@ -237,7 +238,7 @@ $(function(){
 						var mhead = $(this).children('.panel-heading').last();
 						var mbody = $(this).children('.panel-body').last();
 						var pname = mhead.html().slice(0, mhead.html().length - 1);
-						var color = rgb2hex(mbody.css('background-color'));
+						var color = rgb2hex(mbody.css('border-color'));
 						if (pname == 'Me') pname = peer;
 						dispatch({msg: mbody.html(), tid: $(this).attr('tid')}, 'message', ctx.peer, pname, color);
 					});
@@ -349,9 +350,12 @@ function appendMsg(elem, pid, sender, msg, color, tid) {
 	var lr = sender == 'Me' ? 'right' : 'left';
 	var prev = $(elem).children().last();
 	var prevlr = prev.length ? prev.children().last().css('float') : '';
-	var pp = $('<div class="tmsg_' + pid + '" style="clear: ' + prevlr + '">'); 
+	var pp = $('<div>'); 
+	if (prevlr.length) pp.css('clear', prevlr);
 	var ph = $('<div class="panel-heading" style="color: #000; margin: 0; padding: 0; text-align: ' + lr + '">');
 	var pb = $('<div class="panel-body" style="float: ' + lr + '; max-width: 290px; word-break: break-all; border-radius: 5px; margin: 5px; font-weight: bold; background-color: #FFF; border-width: 2px; border-style: solid; border-color: ' + color + ';">');
+	if (lr == 'left') pb.addClass('leftbubble');
+	else pb.addClass('rightbubble');
 	
 	pp.attr('tid', tid);
 	ph.html(sender + ':').appendTo(pp);

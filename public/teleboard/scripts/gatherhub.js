@@ -501,6 +501,7 @@ var Gatherhub = Gatherhub || {};
 			$.each(p[0].attributes, function(i, attr) {
 				obj[attr.name] = attr.value;
 			});
+			if (p.html().length) obj['html'] = p.html();
 			return obj;
 		}
 		function flush(sp) {
@@ -539,6 +540,23 @@ var Gatherhub = Gatherhub || {};
 			this.nocontext();
 			this.repcolor = randcolor();
 			this.gid = this.repcolor.slice(1,7);
+			this.tibox = $('<input type="text" id="tibox">');
+			this.txtedit(0);
+			
+			this.tibox.on('keyup', function(e){
+				if(e.keyCode == 13){
+					$(this).blur();
+				}				
+			});
+			this.tibox.on('blur', function(){
+				if ($(this).val().length > 0) {
+					var point = vboxxy.call(self, canvasxy.call(self, screenxy(self.tibox.x, self.tibox.y + $(this).height()-8)));
+					var t =  $(document.createElementNS('http://www.w3.org/2000/svg', 'text'));
+					t.attr({id: self.gid + '-' + self.seq++, class: self.gid, x: point.x * self.zrate, y: point.y * self.zrate, transform: 'scale(' + 1 / self.zrate + ')'}).css({'font-size': 24, fill: self.pc}).html($(this).val()).appendTo(self.pathholder);
+					if (self.dispatch) self.dispatch(path2obj(t), 'graph');
+				}
+				$(this).val('').hide();
+			});
 
 			this.pad.on('mousedown touchstart', function(evt){
 				var e = evt.originalEvent;
@@ -644,9 +662,34 @@ var Gatherhub = Gatherhub || {};
 		_proto.pw = 5;
 		_proto.ps = 'round';
 		_proto.activepath = null;
+		_proto.tibox = null;
 		_proto.pinchlevel = 7;
 		_proto.dragging = false;
 		_proto.dragmode = false;
+		_proto.timode = false;
+		_proto.drag = function(on) {
+			if (on) {
+				_proto.dragmode = true;
+				this.pad.css('cursor', 'move');
+			}
+			else {
+				_proto.dragmode = false;
+				this.pad.css('cursor', 'crosshair');
+			}
+			return this;
+		};
+		_proto.txtedit = function(on) {
+			if (on) {
+				_proto.timode = true;
+				this.pad.css('cursor', 'text');
+			}
+			else {
+				_proto.timode = false;
+				this.tibox.blur();
+				this.pad.css('cursor', 'crosshair');
+			}
+			return this;
+		};
 		_proto.attachvp = function(vp) {
 			if (Object.getPrototypeOf(vp) === g.VisualPad.prototype) {
 				vp.src(this.pathholder.attr('id'));
@@ -695,6 +738,9 @@ var Gatherhub = Gatherhub || {};
 			$.each(p, function(k, v){
 				if (k == 'tagName') {
 					path = $(document.createElementNS('http://www.w3.org/2000/svg', v));
+				}
+				else if (k == 'html') {
+					path.html(v);
 				}
 				else {
 					path.attr(k, v);
@@ -749,16 +795,17 @@ var Gatherhub = Gatherhub || {};
 			return this;
 		};
 		_proto.mousedownHdl = function(x, y) {
-			//trace(L4, this.constructor.name + '.mousedownHdl' +
-			//	'(' + Array.prototype.slice.call(arguments) + ')');
 			if (this.dragmode) {
 				this.dragging = true;
 				return;
 			}
-			drawStart.call(this, x, y);
-			//trace(L4, 'window=' + $(window).width() + 'x' + $(window).height());
-			//trace(L4, 'cavasvbox=' + this.canvasvbox.x + ' ' + this.canvasvbox.y + ' ' + this.canvasvbox.w + ' ' + this.canvasvbox.h);
-			//trace(L4, 'viewBox=' + this.canvas[0].getAttribute('viewBox'));
+			if (this.timode) {
+				this.tibox.css({top: y - 6, left: x, color: this.pc}).appendTo(this.pad.parent()).show().focus();
+				this.tibox.x = x;
+				this.tibox.y = y - 6;
+				return;
+			}
+ 			drawStart.call(this, x, y);
 			trace(L4, 'screenXY=' + x + ', ' + y);
 			trace(L4, 'canvasxy=' + canvasxy.call(this, screenxy(x,y)).x + ', ' + canvasxy.call(this, screenxy(x,y)).y);
 			trace(L4, 'vboxxy=' + vboxxy.call(this, canvasxy.call(this, screenxy(x, y))).x + ', ' + vboxxy.call(this, canvasxy.call(this, screenxy(x, y))).y);
