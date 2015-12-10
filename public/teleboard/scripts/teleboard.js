@@ -198,8 +198,6 @@ $(function(){
 						dispatch({}, 'syncgraph', ctx.peer);
 						dispatch({}, 'syncmsg', ctx.peer);
 						showpop = needsync = false;
-						sp.pad.css('cursor', 'wait');
-						setTimeout(function(){showpop = true;sp.pad.css('cursor', 'auto');}, 20000);
 					}
 					break;
 				case 'bye':
@@ -210,9 +208,14 @@ $(function(){
 					});
 					break;
 				case 'message':
-					appendMsg('#msgbox', ctx.peer, data.name, data.msg, data.color, data.tid);
-					if (showpop && ($('#msg').position().top < 0 || $('#msg').position().left < 0)) {
-						popupMsg(data.name + ': ' + data.msg, data.color);
+					if (data.msg === undefined) {
+						showpop = true;
+					}
+					else {
+						appendMsg('#msgbox', ctx.peer, data.name, data.msg, data.color, data.tid);
+						if (showpop && ($('#msg').position().top < 0 || $('#msg').position().left < 0)) {
+							popupMsg(data.name + ': ' + data.msg, data.color);
+						}
 					}
 					break;
 				case 'undo':
@@ -242,6 +245,7 @@ $(function(){
 						if (pname == 'Me') pname = peer;
 						dispatch({msg: mbody.html(), tid: $(this).attr('tid')}, 'message', ctx.peer, pname, color);
 					});
+					dispatch({}, 'message', ctx.peer);
 					break;
 				default:
 					//console.log(ctx);
