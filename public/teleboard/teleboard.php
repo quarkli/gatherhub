@@ -143,6 +143,54 @@ Author: quarkli@gmail.com
 		overflow-x: hidden;
 		overflow-y: auto;
 	}
+	.leftbubble {
+		max-width: 290px;
+		position: relative;
+		margin: 5px; 
+		font-weight: bold;
+		border-style: solid;
+		-moz-border-radius: 10px;
+		-webkit-border-radius: 10px;
+		border-radius: 5px;
+	} 
+	.leftbubble:before {
+		position: absolute;
+		bottom: 100%; 
+		left: 5; 
+		width: 0; 
+		height: 0; 
+		border-bottom: 13px solid #F70; 
+		border-right: 13px solid transparent; 
+		border-left: 0px solid transparent;
+	}
+	.rightbubble {
+		max-width: 290px;
+		position: relative;
+		margin: 5px; 
+		font-weight: bold;
+		border-style: solid;
+		-moz-border-radius: 10px;
+		-webkit-border-radius: 10px;
+		border-radius: 5px;
+	} 
+	.rightbubble:before {
+		position: absolute;
+		bottom: 100%; 
+		right: 0; 
+		width: 0; 
+		height: 0; 
+		border-bottom: 13px solid #F70; 
+		border-right: 0px solid transparent; 
+		border-left: 13px solid transparent;
+	}
+	#tibox {
+		position: absolute;
+		top: 0;
+		left: 0;
+		display: none;
+		font-size: 24px;
+		border-style: none;
+	}
 	#tmsg {
 		width: 230px;
 	}
