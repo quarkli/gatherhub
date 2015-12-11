@@ -922,10 +922,9 @@ var Gatherhub = Gatherhub || {};
 
 			function togglesub(){	
 				var w = $(this).width();
-				var hbtns = $(this).parent().children().filter(':hidden').length;
+				var hbtns = $(this).parent().children().slice(0, $(this).index()).filter(':hidden').length;
 				var sub = $('#' + $(this).children().last().attr('class'));
 				if (sub.length == 0) sub = $('.' + $(this).attr('id'));
-				else if (hbtns) hbtns--;
 
 				var top = $(this).parent().position().top + ($(this).index() - hbtns) * w;
 				var left = $(this).parent().position().left;

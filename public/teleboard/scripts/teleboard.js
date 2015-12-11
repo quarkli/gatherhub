@@ -74,6 +74,11 @@ $(function(){
 		{btn: {w: w, h: h, icon: svgicon.brushl, tip: 'Thicker Paint'}, act: function(){sp.penwidth(21)}},
 		{btn: {w: w, h: h, icon: svgicon.brushl, resize: .65, tip: 'Regular Paint'}, act: function(){sp.penwidth(11)}}
 	];
+	var geoshape = [
+		{btn: {w: w, h: h, icon: svgicon.square, tip: 'Rectangle'},	act: function(){}},
+		{btn: {w: w, h: h, icon: svgicon.circle, tip: 'Circle'}, act: function(){}},
+		{btn: {w: w, h: h, icon: svgicon.triangle, tip: 'Triangle'}, act: function(){}}
+	];
 	var zoomctrl = [
 		{btn: {w: w, h: h, icon: svgicon.zoomin, tip: 'Zoom In'}, act: function(){sp.zoom(sp.zrate * 1.1);}},
 		{btn: {w: w, h: h, icon: svgicon.fit, tip: 'Fit Content'}, act: function(){sp.fitcontent();}},
@@ -87,15 +92,17 @@ $(function(){
 		{btn: {w: w, h: h, icon: svgicon.undo, tip: 'Undo'}, act: function(){sp.undo();}}
 	];	
 	var mainBtn = [
-		{sublist: colorpalette, direction: subdir},
-		{sublist: pensz, direction: subdir},
+		{btn: {w: w, h: h, icon: svgicon.setting, tip: 'Settings'},	sublist: canvasedit, direction: subdir},
 		{btn: {w: w, h: h, icon: svgicon.zoom, tip: 'Zoom'}, sublist: zoomctrl, direction: subdir},
-		{btn: {w: w, h: h, icon: svgicon.setting, tip: 'Settings'},	sublist: canvasedit, direction: subdir}
+		{sublist: pensz, direction: subdir},
+		{sublist: colorpalette, direction: subdir},
+		{sublist: geoshape, direction: subdir}
 	];
 	var rootList = {rootlist: mainBtn, direction: rootdir};
 	var toolBar = mbmenu = new Gatherhub.BtnMenu(rootList);
 	if (topmenu) toolBar.root.css({'position': 'absolute', 'bottom': 0, 'right': 80});
 	else toolBar.root.css({'position': 'absolute', 'bottom': 80, 'right': 0});
+	toolBar.root.children().eq(4).hide();
 	
 	var actBtns = [
 		{btn: {w: w, h: h, icon: svgicon.pen, iconcolor: 'white', borderwidth: 3, bordercolor: 'white', borderradius: 2, bgcolor: 'red', resize: .6, tip: 'Free Hand Writing'}, act: function(){
@@ -103,6 +110,7 @@ $(function(){
 			sp.txtedit(0);
 			toolBar.collapseall();
 			toolBar.root.children().show();
+			toolBar.root.children().eq(4).hide();
 			setPenColor(selcolor);
 		}},
 		{btn: {w: w, h: h, icon: svgicon.eraser, iconcolor: 'white', borderwidth: 3, bordercolor: 'white', borderradius: 2, bgcolor: 'red', resize: .6, tip: 'Eraser'}, act: function(){
@@ -110,29 +118,32 @@ $(function(){
 			sp.txtedit(0);
 			sp.pencolor(sp.bgcolor());
 			toolBar.collapseall();
-			toolBar.root.children().eq(0).hide();
-			toolBar.root.children().eq(1).hide();
+			toolBar.root.children().hide();
+			toolBar.root.children().eq(0).show();
+			toolBar.root.children().eq(1).show();
 		}},
 		{btn: {w: w, h: h, icon: svgicon.textinput, iconcolor: 'white', borderwidth: 3, bordercolor: 'white', borderradius: 2, bgcolor: 'red', resize: .6, tip: 'Text Input'},	act: function(){
 			sp.drag(0);
 			sp.txtedit(1);
 			toolBar.collapseall();
 			toolBar.root.children().show();
-			toolBar.root.children().eq(1).hide();
+			toolBar.root.children().eq(2).hide();
+			toolBar.root.children().eq(4).hide();
 		}},
 		{btn: {w: w, h: h, icon: svgicon.move, iconcolor: 'white', borderwidth: 3, bordercolor: 'white', borderradius: 2, bgcolor: 'red', resize: .6, tip: 'Move Canvas'}, act: function(){
 			sp.drag(0);
 			sp.drag(1);
 			toolBar.collapseall();
-			toolBar.root.children().eq(0).hide();
-			toolBar.root.children().eq(1).hide();
+			toolBar.root.children().hide();
+			toolBar.root.children().eq(0).show();
+			toolBar.root.children().eq(1).show();
 		}},
 		{btn: {w: w, h: h, icon: svgicon.geometrical, iconcolor: 'white', borderwidth: 3, bordercolor: 'white', borderradius: 2, bgcolor: 'red', resize: .6, tip: 'Draw Geometrics'}, act: function(){
 			sp.drag(0);
 			sp.drag(0);
 			toolBar.collapseall();
 			toolBar.root.children().show();
-			toolBar.root.children().eq(1).hide()
+			toolBar.root.children().eq(2).hide()
 		}}
 	];
 	var mainActBtn = [{sublist: actBtns, direction: subdir}];
