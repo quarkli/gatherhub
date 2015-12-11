@@ -977,4 +977,6 @@ var Gatherhub = Gatherhub || {};
 	})();
 })();
 
-module.exports = Gatherhub;
+if (typeof module !== 'undefined') {
+	module.exports = Gatherhub;
+}

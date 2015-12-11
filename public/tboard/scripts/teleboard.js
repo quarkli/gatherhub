@@ -1,6 +1,6 @@
-var svgicon = require('./svgicons');
 var Gatherhub = require('./gatherhub');
-
+var svgicon = require('./svgicons');
+var RtcCom = require('../rtc/rtccom');
 // for debug use
 var msp;
 var mvp;
@@ -12,7 +12,6 @@ var topmenu = false;
 var showpop = false;
 var needsync = true;
 var dispatch = function(){};
-console.log('hi i am phenix');
 
 $(function(){
 	var peerid;
@@ -20,6 +19,7 @@ $(function(){
 	var ws2 = '52.69.118.100';
 	var port = 55688;
 
+	$('#clist').niceScroll();
 	$('#plist').niceScroll();
 	$('#msgbox').niceScroll();
 	$('#pad').width($(window).width() - 55);
@@ -32,9 +32,20 @@ $(function(){
 		return btn;
 	}
 	
-	var btnUser = addBtnToMenu({icon: svgicon.user, iconcolor: '#FFF', w: 40, h: 40, borderwidth: 2, bordercolor: '#FFF', borderradius: 1, bgcolor: '#448'}, '#plist');
+	var btnUser = addBtnToMenu({icon: svgicon.user, iconcolor: '#FFF', w: 40, h: 40, borderwidth: 2, bordercolor: '#FFF', borderradius: 1, bgcolor: '#448'}, '#mlist');
 	var btnMsg = addBtnToMenu({icon: svgicon.chat, iconcolor: '#FFF', w: 40, h: 40, resize: .7, borderwidth: 2, bordercolor: '#FFF', borderradius: 1, bgcolor: '#448'}, '#msg');
-	var btnSpk = addBtnToMenu({icon: svgicon.mic, iconcolor: '#FFF', w: 40, h: 40, borderwidth: 2, bordercolor: '#FFF', borderradius: 1, bgcolor: '#448'}, '#media');
+
+	function addBtnToList(config,func,param){
+		var btn = new Gatherhub.SvgButton(config);
+		btn.pad.css('padding', '5px');
+		if (func) btn.onclick = function(){func(parm);};
+		btn.appendto('#bm');
+		return btn;
+	}
+	var btnSpk = addBtnToList({icon: svgicon.mic, iconcolor: '#FFF', w: 40, h: 40, borderwidth: 2, bordercolor: '#FFF', borderradius: 1, bgcolor: '#448'}, null,0);
+	var btnVC = addBtnToList({icon: svgicon.vchat, iconcolor: '#FFF', w: 40, h: 40, borderwidth: 2, bordercolor: '#FFF', borderradius: 1, bgcolor: '#448'}, null,0);
+	var btnSC = addBtnToList({icon: svgicon.scncast, iconcolor: '#FFF', w: 40, h: 40, borderwidth: 2, bordercolor: '#FFF', borderradius: 1, bgcolor: '#448'}, null,0);
+
 	
 	var sp = msp = new Gatherhub.SketchPad();
 	sp.floating('absolute').pencolor(sp.repcolor).penwidth(1).appendto('#pad');
@@ -155,11 +166,13 @@ $(function(){
 		connect();
 	}	
 
+	var rtc = new RtcCom();
+
 	function connect() {
 		var wsready = false, pulse = null;
 		var ws = new WebSocket('ws://' + svr + ':' + port);
 		
-		sp.dispatch = dispatch = function(data, type, dst, p, c) {
+		rtc.dispatch = sp.dispatch = dispatch = function(data, type, dst, p, c) {
 			if (wsready) {
 				data.name = p || peer;
 				data.color = c || sp.repcolor;
@@ -176,7 +189,7 @@ $(function(){
 		ws.onopen = function(){
 			console.log("Message Router Connected.");
 			wsready = true;
-			dispatch({}, 'hello');
+			dispatch({rtc:rtc.support}, 'hello');
 			pulse = setInterval(function(){if (wsready) dispatch({},'heartbeat',peerid);}, 25000);
 			appendUser('#plist', peerid, peer + '(Me)', sp.repcolor);
 			showpop = true;
@@ -191,6 +204,7 @@ $(function(){
 					appendUser('#plist', ctx.peer, data.name, data.color);
 					popupMsg(data.name + ' has entered this hub.', data.color);
 					dispatch({}, 'welcome', ctx.peer);
+					rtc.addPeer(ctx.peer);
 					break;
 				case 'welcome':
 					console.log(ctx.peer + ': welcome!');
@@ -246,6 +260,9 @@ $(function(){
 						dispatch({msg: mbody.html(), tid: $(this).attr('tid')}, 'message', ctx.peer, pname, color);
 					});
 					break;
+				case 'rtc':
+					rtc.hdlMsg(ctx.peer,data);
+					break;
 				default:
 					//console.log(ctx);
 					break;
@@ -267,6 +284,7 @@ function arrangemenu () {
 		$('#bgroup').css({height: 55, width: '100%'});
 		$('#exp').children().css({left: 0, top: -$(window).height(), height: $(window).height() - 55});
 		$('#pad').height($(window).height() - 55).width($(window).width()).css({top: 55, left: 0});
+		$('#bm').children().css({float: 'left', clear: ''});
 		msp.height(9999);
 		msp.width(9999);
 		mvp.moveto('top', 0);
@@ -278,6 +296,7 @@ function arrangemenu () {
 		$('#bgroup').css({height: '100%', width: 55});
 		$('#exp').children().css({top: 0, left: -$('#exp').children().width(), height: '100%'});
 		$('#pad').height($(window).height()).width($(window).width() - 55).css({top: 0, left: 55});
+		$('#bm').children().css({float: 'left', clear: ''});
 		msp.height(9999);
 		msp.width(9999);
 		mvp.moveto('top', 0);

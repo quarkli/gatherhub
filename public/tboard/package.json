@@ -1,0 +1,27 @@
+{
+  "name": "rtcCom",
+  "version": "0.1.0",
+  "description": "gatherhub rtc engine",
+  "main": "rtccom.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/quarkli/gatherhub"
+  },
+  "keywords": [
+    "rtccom",
+    "webrtc",
+    "gatherhub"
+  ],
+  "author": "phenix",
+  "license": "MIT",
+  "dependencies": {
+    "webrtcsupport":"~2.2.0",
+    "getscreenmedia":"^1.5.1",
+    "getusermedia":"^1.3.5",
+    "webrtc-adapter-test": "^0.2.5"
+  }
+
+}

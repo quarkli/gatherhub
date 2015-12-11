@@ -55,6 +55,7 @@ Author: quarkli@gmail.com
     <script src="scripts/jquery.nicescroll.min.js"></script>
     <!-- <script src="scripts/svgicons.js"></script> -->
     <!-- <script src="scripts/gatherhub.js"></script> -->
+    <!-- <script src="scripts/rtccom.js"></script> -->
     <!-- <script src="scripts/teleboard.js"></script> -->
     <script src="scripts/tbb.js"></script>
 	<script>
@@ -124,7 +125,7 @@ Author: quarkli@gmail.com
 		padding: 6px;
 		margin: 0px; 
 	}
-	#plist {
+	#mlist {
 		font-size: 16px;
 		overflow-x: hidden;
 		overflow-y: auto;
@@ -159,12 +160,28 @@ Author: quarkli@gmail.com
 		border-top-color: #CCC;
 		overflow: hidden;
 	}
+	#bm {
+		position: absolute;
+		bottom: 0;
+		margin: 2px;
+		padding: 2px;
+		height: 48px;
+		width: 100%;
+		border-top-style: solid;
+		border-top-width: 1px;
+		border-top-color: #CCC;
+		overflow: hidden;
+	}
 	</style>
   </head>
   <body>
 	<div id="pad"></div>
 	<div id="exp">
-		<div id="plist" class="panel"></div>
+		<div id="mlist" class="panel">
+			<div id="clist"></div>
+			<div id="plist"></div>
+			<div id="bm"></div>
+		</div>
 		<div id="msg" class="panel">
 			<div id="msgbox"></div>
 			<div id="ts">
