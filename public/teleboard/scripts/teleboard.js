@@ -37,6 +37,7 @@ $(function(){
 	var sp = msp = new Gatherhub.SketchPad();
 	sp.floating('absolute').pencolor(sp.repcolor).penwidth(1).appendto('#pad');
 	sp.canvas.css('opacity', 0.75);
+	sp.geo = 'rect';
 	var selcolor = sp.repcolor;
 
 	var vp = mvp = new Gatherhub.VisualPad();
@@ -75,9 +76,10 @@ $(function(){
 		{btn: {w: w, h: h, icon: svgicon.brushl, resize: .65, tip: 'Regular Paint'}, act: function(){sp.penwidth(11)}}
 	];
 	var geoshape = [
-		{btn: {w: w, h: h, icon: svgicon.square, tip: 'Rectangle'},	act: function(){}},
-		{btn: {w: w, h: h, icon: svgicon.circle, tip: 'Circle'}, act: function(){}},
-		{btn: {w: w, h: h, icon: svgicon.triangle, tip: 'Triangle'}, act: function(){}}
+		{btn: {w: w, h: h, icon: svgicon.square, tip: 'Rectangle'},	act: function(){sp.geo = 'rect';}},
+		{btn: {w: w, h: h, icon: svgicon.line, tip: 'Line'}, act: function(){sp.geo = 'line';}},
+		{btn: {w: w, h: h, icon: svgicon.circle, tip: 'Circle'}, act: function(){sp.geo = 'ellipse';}},
+		{btn: {w: w, h: h, icon: svgicon.triangle, tip: 'Triangle'}, act: function(){sp.geo = 'polygon';}}
 	];
 	var zoomctrl = [
 		{btn: {w: w, h: h, icon: svgicon.zoomin, tip: 'Zoom In'}, act: function(){sp.zoom(sp.zrate * 1.1);}},
@@ -108,6 +110,7 @@ $(function(){
 		{btn: {w: w, h: h, icon: svgicon.pen, iconcolor: 'white', borderwidth: 3, bordercolor: 'white', borderradius: 2, bgcolor: 'red', resize: .6, tip: 'Free Hand Writing'}, act: function(){
 			sp.drag(0);
 			sp.txtedit(0);
+			sp.drawgeo(0);
 			toolBar.collapseall();
 			toolBar.root.children().show();
 			toolBar.root.children().eq(4).hide();
@@ -116,6 +119,7 @@ $(function(){
 		{btn: {w: w, h: h, icon: svgicon.eraser, iconcolor: 'white', borderwidth: 3, bordercolor: 'white', borderradius: 2, bgcolor: 'red', resize: .6, tip: 'Eraser'}, act: function(){
 			sp.drag(0);
 			sp.txtedit(0);
+			sp.drawgeo(0);
 			sp.pencolor(sp.bgcolor());
 			toolBar.collapseall();
 			toolBar.root.children().hide();
@@ -124,14 +128,17 @@ $(function(){
 		}},
 		{btn: {w: w, h: h, icon: svgicon.textinput, iconcolor: 'white', borderwidth: 3, bordercolor: 'white', borderradius: 2, bgcolor: 'red', resize: .6, tip: 'Text Input'},	act: function(){
 			sp.drag(0);
+			sp.drawgeo(0);
 			sp.txtedit(1);
+			setPenColor(selcolor);
 			toolBar.collapseall();
 			toolBar.root.children().show();
 			toolBar.root.children().eq(2).hide();
 			toolBar.root.children().eq(4).hide();
 		}},
 		{btn: {w: w, h: h, icon: svgicon.move, iconcolor: 'white', borderwidth: 3, bordercolor: 'white', borderradius: 2, bgcolor: 'red', resize: .6, tip: 'Move Canvas'}, act: function(){
-			sp.drag(0);
+			sp.txtedit(0);
+			sp.drawgeo(0);
 			sp.drag(1);
 			toolBar.collapseall();
 			toolBar.root.children().hide();
@@ -140,7 +147,9 @@ $(function(){
 		}},
 		{btn: {w: w, h: h, icon: svgicon.geometrical, iconcolor: 'white', borderwidth: 3, bordercolor: 'white', borderradius: 2, bgcolor: 'red', resize: .6, tip: 'Draw Geometrics'}, act: function(){
 			sp.drag(0);
-			sp.drag(0);
+			sp.txtedit(0);
+			sp.drawgeo(1);
+			setPenColor(selcolor);
 			toolBar.collapseall();
 			toolBar.root.children().show();
 			toolBar.root.children().eq(2).hide()
