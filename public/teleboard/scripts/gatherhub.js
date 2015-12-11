@@ -857,6 +857,7 @@ var Gatherhub = Gatherhub || {};
 			this.iconcolor(opt.iconcolor || 'black');
 			this.icon(opt.icon || '');
 			this.pad.attr('title', opt.tip || '');
+			this.pad.css('cursor', 'pointer');
 			if (opt === undefined) opt = {};
 			if ($.isNumeric(opt.w)) this.defaultWidth = opt.w;
 			if ($.isNumeric(opt.h)) this.defaultHeight = opt.h;
@@ -921,13 +922,16 @@ var Gatherhub = Gatherhub || {};
 
 			function togglesub(){	
 				var w = $(this).width();
+				var hbtns = $(this).parent().children().filter(':hidden').length;
 				var sub = $('#' + $(this).children().last().attr('class'));
 				if (sub.length == 0) sub = $('.' + $(this).attr('id'));
-				var top = $(this).parent().position().top + $(this).index() * w;
+				else if (hbtns) hbtns--;
+
+				var top = $(this).parent().position().top + ($(this).index() - hbtns) * w;
 				var left = $(this).parent().position().left;
 				if ($(this).parent().attr('dir') == 'h0' || $(this).parent().attr('dir') == 'h1') {
 					top = $(this).parent().position().top;
-					left = $(this).parent().position().left + $(this).index() * w;
+					left = $(this).parent().position().left + ($(this).index() - hbtns) * w;
 				}
 				
 				if (sub.attr('dir') == 'h0' || sub.attr('dir') == 'h1') {
@@ -991,6 +995,7 @@ var Gatherhub = Gatherhub || {};
 										if ($(btngrp[i]).parent().attr('id') != $(this).attr('class')) {
 											$(this).appendTo($(btngrp[i]).parent());
 											$(btngrp[i]).appendTo($('#' + $(this).attr('class')));
+											$(this).click();
 											break;
 										}
 									}
