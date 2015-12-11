@@ -53,6 +53,7 @@ Author: quarkli@gmail.com
     <script src="scripts/jquery.min.js"></script>
     <script src="js/bootstrap.min.js"></script>
     <script src="scripts/jquery.nicescroll.min.js"></script>
+    <script src="scripts/Autolinker.min.js"></script>
     <script src="scripts/svgicons.js"></script>
     <script src="scripts/gatherhub.js"></script>
     <script src="scripts/teleboard.js"></script>
@@ -159,7 +160,7 @@ Author: quarkli@gmail.com
 		left: 5; 
 		width: 0; 
 		height: 0; 
-		border-bottom: 13px solid #F70; 
+		border-bottom: 13px solid black; 
 		border-right: 13px solid transparent; 
 		border-left: 0px solid transparent;
 	}
@@ -179,7 +180,7 @@ Author: quarkli@gmail.com
 		right: 0; 
 		width: 0; 
 		height: 0; 
-		border-bottom: 13px solid #F70; 
+		border-bottom: 13px solid black; 
 		border-right: 0px solid transparent; 
 		border-left: 13px solid transparent;
 	}
