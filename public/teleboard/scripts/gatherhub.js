@@ -41,7 +41,7 @@ var Gatherhub = Gatherhub || {};
 	function precision(num, p) {
 		var s = 1;
 		if (num < 0) {s = -1; num *= s;}
-		var n = num < 1 ? 0 : Math.floor(Math.log10(num)) + 1;
+		var n = num < 1 ? 0 : Math.floor(Math.log(num)/Math.log(10)) + 1;
 		return (0 | (num * Math.pow(10, p - n))) / Math.pow(10, p - n) * s;
 	}
 
