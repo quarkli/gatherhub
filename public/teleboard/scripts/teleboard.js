@@ -33,7 +33,7 @@ $(function(){
 	var btnSpk = addBtnToMenu({tip: 'Speaker Control Panel', icon: svgicon.mic, iconcolor: '#448', w: 40, h: 40, borderwidth: 2, bordercolor: '#448', borderradius: 1, bgcolor: '#FFF'}, '#media');
 	var btnVP = addBtnToMenu({tip: 'Show/Hide View-window', icon: svgicon.picture, iconcolor: '#448', w: 40, h: 40, borderwidth: 2, bordercolor: '#448', borderradius: 1, bgcolor: '#FFF'}, '');
 	btnVP.onclick = function(){vp.pad.toggle();sp.attachvp(vp);};
-	
+		
 	var sp = msp = new Gatherhub.SketchPad();
 	sp.floating('absolute').pencolor(sp.repcolor).penwidth(1).appendto('#pad');
 	sp.canvas.css('opacity', 0.75);
@@ -458,4 +458,16 @@ function setCookie(key, value) {
 function getCookie(key) {
 	var keyValue = document.cookie.match('(^|;) ?' + key + '=([^;]*)(;|$)');
 	return keyValue ? keyValue[2] : null;
+}
+
+function buildfile() {
+	var xmlhead = '<?xml version="1.0" encoding="iso-8859-1"?><!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd"><svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" xml:space="preserve">';
+	var svgfile = btoa(unescape(encodeURIComponent(xmlhead+$('#pad').find('svg').get(0).outerHTML+'</svg>')));
+	$('#svgsave').attr('href', 'data:image/svg+xml;base64,\n' + svgfile);
+}
+
+function saveSVG(fname) {
+	var xmlhead = '<?xml version="1.0" encoding="iso-8859-1"?><!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd"><svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" xml:space="preserve">';
+	var svgfile = btoa(unescape(encodeURIComponent(xmlhead+$('#pad').find('svg').get(0).outerHTML+'</svg>')));
+	($("<a href-lang='image/svg+xml' href='data:image/svg+xml;base64,\n"+svgfile+"' title='"+fname+".svg' download target='_blank'>Save SVG to file</a>")).appendTo('#media')
 }
