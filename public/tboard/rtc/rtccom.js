@@ -1,7 +1,7 @@
 /* 
 * @Author: Phenix
 * @Date:   2015-12-10 14:29:47
-* @Last Modified time: 2015-12-11 16:19:37
+* @Last Modified time: 2015-12-12 15:17:00
 */
 
 'use strict';
@@ -11,8 +11,10 @@ var adapter = require('webrtc-adapter-test');
 
 var rtcCom;
 (function(){
-    var _proto, _dbgFlag;
+    var _proto, _dbgFlag, _browser;
     _dbgFlag = true;
+    _browser = adapter.webrtcDetectedBrowser;
+
     function _infLog(){
         if(_dbgFlag){
             console.log.apply(console, arguments);
@@ -23,6 +25,23 @@ var rtcCom;
         console.log.apply(console, arguments);
     }
 
+    function checkCastSupport(){
+        var info, rc;
+        rc = false;
+        switch(_browser){
+            case 'firefox':
+            info = 'Firefox could only receive audio/video/screen casting';
+            break;
+            case 'chrome':
+            rc = true;
+            break;
+            default:
+            info = 'Your browser could not support media casting feature';
+            break;
+        }
+        if(!rc)alert(info);
+        return rc;
+    }
 
     function RtcCom(){
         var self,config;
@@ -54,17 +73,9 @@ var rtcCom;
                     self.dispatch(data,type,dst);
                 };
                 m.onCastList = function(list){
-                    var spkrs = [];
                     hdl = (m.config.scnCast)? self.onScnList.bind(self) 
                         : self.onSpkrList.bind(self);
-                    list.forEach(function(p){
-                        if(p == self.avt.myId()){
-                            spkrs.push(self.config.user);
-                        }else{
-                            spkrs.push(self.usrList[p]);
-                        }
-                    });
-                    hdl(spkrs);
+                    hdl(list);
                 };
                 m.onLMedAdd = function(s){
                     hdl = (m.config.scnCast)? self.onMyScnAdd.bind(self)
@@ -95,9 +106,11 @@ var rtcCom;
             self.avt.onCrpErro = function(c){
                 // self.exChan.addPartener(c.id);
             };
+            self.avt.onReady = function(){
+                self.onReady();
+            };
         }
         regMedCallback();
-
 
     }
     function getPeerId(peer){
@@ -122,6 +135,11 @@ var rtcCom;
     }
     _proto = RtcCom.prototype;
     rtcCom = RtcCom;
+    _proto.setMyPeer = function(peer){
+        this.medias.forEach(function(m){
+            m.myId(peer);
+        });
+    };
 
     _proto.addPeer = function(peer){
         var id;
@@ -134,6 +152,16 @@ var rtcCom;
         return id;
     };
 
+    _proto.removePeer = function(peer){
+        var id = getPeerId.call(this,peer);
+        if(id!=undefined){
+            this.medias.forEach(function(m){
+                m.rmPartener(id);
+            });
+            delete this.users[id];
+        }
+    }
+
     _proto.hdlMsg = function(peer,data){
         var id,msg,mid;
         if(!rtc.support) return id;
@@ -145,6 +173,16 @@ var rtcCom;
         return id;
     };
 
+    _proto.startSpeaking = function(c){
+        if(!checkCastSupport())return;
+        this.avt.useVideo(c);
+        return this.avt.start();
+    };
+    _proto.stopSpeaking = function(){
+        return this.avt.stop();
+    };
+
+    _proto.onReady = function(){};
     _proto.onUsrList = function(){};
     _proto.onTextRecv = function(){};
     _proto.onSpkrList = function(){};

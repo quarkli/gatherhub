@@ -1147,7 +1147,7 @@ module.exports = localMedia;
 /* 
 * @Author: phenix cai
 * @Date:   2015-11-19 10:08:39
-* @Last Modified time: 2015-12-02 10:04:37
+* @Last Modified time: 2015-12-12 12:22:08
 */
 var webRtc = require('./webrtc');
 var castCtrl = require('./castctrl');
@@ -1205,6 +1205,7 @@ var medCast;
 
     _proto.onCastList = function(){};
     _proto.onMediaAct = function(){};
+    _proto.onReady = function(){};
 
     //internal APIs
     _proto._initCmdChan = function(){
@@ -1231,6 +1232,7 @@ var medCast;
 
     _proto.onChansReady = function(){
         this._initCmdChan();
+        this.onReady();
     };
 
     _proto._setMedState = function(state){
@@ -1545,7 +1547,7 @@ module.exports = peerConn;
 /* 
 * @Author: Phenix
 * @Date:   2015-12-10 14:29:47
-* @Last Modified time: 2015-12-11 16:19:37
+* @Last Modified time: 2015-12-12 15:17:00
 */
 
 'use strict';
@@ -1555,8 +1557,10 @@ var adapter = require('webrtc-adapter-test');
 
 var rtcCom;
 (function(){
-    var _proto, _dbgFlag;
+    var _proto, _dbgFlag, _browser;
     _dbgFlag = true;
+    _browser = adapter.webrtcDetectedBrowser;
+
     function _infLog(){
         if(_dbgFlag){
             console.log.apply(console, arguments);
@@ -1567,6 +1571,23 @@ var rtcCom;
         console.log.apply(console, arguments);
     }
 
+    function checkCastSupport(){
+        var info, rc;
+        rc = false;
+        switch(_browser){
+            case 'firefox':
+            info = 'Firefox could only receive audio/video/screen casting';
+            break;
+            case 'chrome':
+            rc = true;
+            break;
+            default:
+            info = 'Your browser could not support media casting feature';
+            break;
+        }
+        if(!rc)alert(info);
+        return rc;
+    }
 
     function RtcCom(){
         var self,config;
@@ -1598,17 +1619,9 @@ var rtcCom;
                     self.dispatch(data,type,dst);
                 };
                 m.onCastList = function(list){
-                    var spkrs = [];
                     hdl = (m.config.scnCast)? self.onScnList.bind(self) 
                         : self.onSpkrList.bind(self);
-                    list.forEach(function(p){
-                        if(p == self.avt.myId()){
-                            spkrs.push(self.config.user);
-                        }else{
-                            spkrs.push(self.usrList[p]);
-                        }
-                    });
-                    hdl(spkrs);
+                    hdl(list);
                 };
                 m.onLMedAdd = function(s){
                     hdl = (m.config.scnCast)? self.onMyScnAdd.bind(self)
@@ -1639,9 +1652,11 @@ var rtcCom;
             self.avt.onCrpErro = function(c){
                 // self.exChan.addPartener(c.id);
             };
+            self.avt.onReady = function(){
+                self.onReady();
+            };
         }
         regMedCallback();
-
 
     }
     function getPeerId(peer){
@@ -1666,6 +1681,11 @@ var rtcCom;
     }
     _proto = RtcCom.prototype;
     rtcCom = RtcCom;
+    _proto.setMyPeer = function(peer){
+        this.medias.forEach(function(m){
+            m.myId(peer);
+        });
+    };
 
     _proto.addPeer = function(peer){
         var id;
@@ -1678,6 +1698,16 @@ var rtcCom;
         return id;
     };
 
+    _proto.removePeer = function(peer){
+        var id = getPeerId.call(this,peer);
+        if(id!=undefined){
+            this.medias.forEach(function(m){
+                m.rmPartener(id);
+            });
+            delete this.users[id];
+        }
+    }
+
     _proto.hdlMsg = function(peer,data){
         var id,msg,mid;
         if(!rtc.support) return id;
@@ -1689,6 +1719,16 @@ var rtcCom;
         return id;
     };
 
+    _proto.startSpeaking = function(c){
+        if(!checkCastSupport())return;
+        this.avt.useVideo(c);
+        return this.avt.start();
+    };
+    _proto.stopSpeaking = function(){
+        return this.avt.stop();
+    };
+
+    _proto.onReady = function(){};
     _proto.onUsrList = function(){};
     _proto.onTextRecv = function(){};
     _proto.onSpkrList = function(){};
@@ -3024,7 +3064,10 @@ var svgicon = {
 	zoomin: '<g><path d="M136.081,83.753h-22.326V61.427c0-8.284-6.716-15-15-15s-15,6.716-15,15v22.326H61.429c-8.284,0-15,6.716-15,15s6.716,15,15,15h22.326v22.326c0,8.284,6.716,15,15,15s15-6.716,15-15v-22.326h22.326c8.284,0,15-6.716,15-15S144.365,83.753,136.081,83.753z"/><path d="M267.306,230.535l-82.772-82.772c8.465-14.758,12.976-31.536,12.976-49.009C197.508,44.175,153.343,0,98.755,0C44.177,0,0.002,44.167,0,98.754c0,75.801,82.21,123.374,147.765,85.778l82.772,82.773c10.153,10.153,26.614,10.153,36.768,0C277.459,257.151,277.459,240.688,267.306,230.535z M30,98.755C30,60.756,60.751,30,98.755,30c37.997,0,68.755,30.749,68.755,68.754c0,18.365-7.151,35.631-20.138,48.616C103.897,190.846,30,159.43,30,98.755z"/></g>',
 	zoomout: '<g><path d="M136.081,83.753H61.429c-8.284,0-15,6.716-15,15c0,8.284,6.716,15,15,15h74.652c8.284,0,15-6.716,15-15C151.081,90.469,144.365,83.753,136.081,83.753z"/><path d="M267.306,230.535l-82.771-82.771c8.465-14.76,12.976-31.537,12.976-49.01C197.508,44.175,153.343,0,98.755,0C44.177,0,0.002,44.166,0,98.754c0,54.58,44.167,98.755,98.755,98.755c17.473,0,34.25-4.512,49.01-12.976l82.772,82.772c10.153,10.153,26.614,10.153,36.768,0C277.459,257.151,277.459,240.689,267.306,230.535z M30,98.755C30,60.756,60.751,30,98.755,30c37.997,0,68.755,30.75,68.755,68.754c0,37.998-30.751,68.755-68.755,68.755C60.757,167.509,30,136.759,30,98.755z"/></g>',
 	vchat: '<g><path d="M459,0H51C22.95,0,0,22.95,0,51v459l102-102h357c28.05,0,51-22.95,51-51V51C510,22.95,487.05,0,459,0z M408,306l-102-81.6 V306H102V102h204v81.6L408,102V306z"/></g>',
-	scncast: '<g><path d="M236.391,345.439c0-1.559-1.275-2.834-2.835-2.834h-60.473c-1.559,0-2.834,1.275-2.834,2.834v9.52 c0,1.559-1.275,2.834-2.834,2.834h-43.22c-1.559,0-2.834,1.275-2.834,2.834v12.168c0,1.561,1.275,2.834,2.834,2.834h158.249 c1.561,0,2.836-1.273,2.836-2.834v-12.168c0-1.559-1.275-2.834-2.836-2.834h-43.217c-1.561,0-2.835-1.275-2.835-2.834 L236.391,345.439L236.391,345.439z"/><path d="M383.855,31.01H22.783C10.22,31.01,0,41.231,0,53.794v250.921c0,12.562,10.221,22.783,22.783,22.783h361.073 c12.562,0,22.783-10.221,22.783-22.783V53.795C406.639,41.231,396.418,31.01,383.855,31.01z M22.783,48.255h361.073 c3.002,0,5.541,2.537,5.541,5.54v222.449H17.242V53.795C17.242,50.792,19.779,48.255,22.783,48.255z M193.054,297.561 c0-5.67,4.596-10.266,10.264-10.266c5.67,0,10.268,4.596,10.268,10.266s-4.598,10.266-10.268,10.266    C197.65,307.826,193.054,303.23,193.054,297.561z"/></g>'
+	scncast: '<g><path d="m228.101,288.368c0,-0.839 -0.685,-1.526 -1.524,-1.526l-32.514,0c-0.838,0 -1.523,0.686 -1.523,1.526l0,5.127c0,0.839 -0.685,1.526 -1.523,1.526l-23.238,0c-0.838,0 -1.523,0.686 -1.523,1.526l0,6.553c0,0.840 0.685,1.526 1.523,1.526l85.086,0c0.839,0 1.524,-0.685 1.524,-1.526l0,-6.553c0,-0.839 -0.685,-1.526 -1.524,-1.526l-23.236,0c-0.839,0 -1.524,-0.686 -1.524,-1.526l-0.000,-5.127l0,0z"/><path d="m307.388,119.010l-194.138,0c-6.754,0 -12.249,5.505 -12.249,12.271l0,135.151c0,6.766 5.495,12.271 12.249,12.271l194.139,0c6.754,0 12.249,-5.505 12.249,-12.271l0,-135.150c0,-6.767 -5.495,-12.272 -12.250,-12.272zm-194.138,9.288l194.139,0c1.614,0 2.979,1.366 2.979,2.983l0,119.815l-200.097,0l0,-119.815c0,-1.617 1.364,-2.983 2.979,-2.983zm91.550,134.281c0,-3.053 2.471,-5.529 5.518,-5.529c3.048,0 5.520,2.475 5.520,5.529s-2.472,5.529 -5.520,5.529c-3.047,-0.000 -5.518,-2.476 -5.518,-5.529z"/></g>',
+	stopmic: '<g><path d="m65.896,35.197c-3.972,-0.688 -7.732,-2.514 -10.727,-5.420c-2.991,-2.909 -4.867,-6.562 -5.573,-10.423c4.021,-2.448 9.851,-1.581 13.890,2.342c4.035,3.923 4.927,9.591 2.410,13.502zm-2.775,2.698c-3.814,-1.036 -7.391,-2.959 -10.327,-5.809c-2.932,-2.853 -4.911,-6.329 -5.972,-10.036c-2.516,3.910 -1.623,9.575 2.409,13.499c4.038,3.922 9.864,4.790 13.889,2.346zm-15.973,17.378c-5.017,0 -8.604,3.047 -11.770,5.735c-3.497,2.971 -6.528,5.548 -10.988,4.212c-0.882,-0.631 -0.908,-1.147 -0.918,-1.323c-0.062,-1.173 1.400,-2.748 2.119,-3.329c0.088,-0.070 0.139,-0.165 0.208,-0.251c1.177,0.398 2.530,0.168 3.474,-0.746l22.846,-18.279c-1.889,-0.779 -3.690,-1.908 -5.259,-3.435c-1.572,-1.527 -2.729,-3.279 -3.530,-5.112l-18.804,22.207c-0.836,0.813 -1.079,1.938 -0.851,2.983c-0.070,0.041 -0.149,0.060 -0.215,0.112c-0.359,0.286 -3.498,2.882 -3.342,6.003c0.055,1.097 0.548,2.681 2.586,4.008l0.402,0.190c1.307,0.424 2.526,0.609 3.671,0.609c4.468,0 7.801,-2.831 10.814,-5.391c2.983,-2.535 5.803,-4.929 9.559,-4.929c8.658,0 15.359,9.017 15.428,9.106c0.534,0.743 1.588,0.908 2.339,0.386c0.757,-0.520 0.934,-1.537 0.400,-2.273c-0.311,-0.427 -7.761,-10.484 -18.168,-10.484z"/><path d="m1.916,45.163l0,0c0,-23.403 19.083,-42.374 42.624,-42.374l0,0c11.304,0 22.146,4.464 30.140,12.411c7.993,7.946 12.484,18.725 12.484,29.963l0,0c0,23.403 -19.083,42.374 -42.624,42.374l0,0c-23.541,0 -42.624,-18.971 -42.624,-42.374l0,0zm68.829,18.956l0,0c9.384,-12.821 7.989,-30.525 -3.288,-41.737c-11.278,-11.212 -29.086,-12.599 -41.983,-3.269l45.272,45.007l0,0zm-52.409,-37.912c-9.384,12.821 -7.989,30.525 3.288,41.737c11.278,11.212 29.086,12.599 41.983,3.269l-45.272,-45.006l0,0z"/></g>',
+	stopvchat:'<g><path d="m353.300,129l-197.600,0c-13.584,0 -24.699,11.924 -24.699,26.5l0,238.5l49.400,-53l172.900,0c13.584,0 24.699,-11.925 24.699,-26.5l0,-159c0,-14.575 -11.115,-26.5 -24.699,-26.5zm-24.700,159l-49.399,-42.400l0,42.400l-98.800,0l0,-106l98.800,0l0,42.399l49.399,-42.399l0,106z"/><path d="m2.322,254.847l0,0c0,-139.451 113.047,-252.499 252.499,-252.499l0,0c66.967,0 131.192,26.601 178.544,73.955c47.354,47.353 73.955,111.578 73.955,178.544l0,0c0,139.452 -113.047,252.500 -252.499,252.500l0,0c-139.452,0 -252.499,-113.047 -252.499,-252.500l0,0zm407.730,112.955l0,0c55.591,-76.401 47.328,-181.892 -19.482,-248.702c-66.812,-66.811 -172.303,-75.074 -248.702,-19.481l268.185,268.184l0,0zm-310.460,-225.909c-55.591,76.399 -47.327,181.891 19.482,248.700c66.811,66.812 172.302,75.074 248.700,19.483l-268.183,-268.184l0,0z"/></g>',
+	stopscn:'<g><path d="m2.715,204.184l0,0c0,-111.284 89.542,-201.499 199.999,-201.499l0,0c53.044,0 103.915,21.229 141.421,59.018c37.508,37.788 58.579,89.040 58.579,142.481l0,0c0,111.285 -89.542,201.500 -200.000,201.500l0,0c-110.456,0 -199.999,-90.214 -199.999,-201.500l0,0zm322.954,90.141l0,0c44.033,-60.969 37.488,-145.153 -15.431,-198.469c-52.919,-53.316 -136.477,-59.910 -196.990,-15.546l212.422,214.016l0,0zm-245.907,-180.280c-44.034,60.968 -37.488,145.153 15.430,198.468c52.919,53.316 136.476,59.911 196.990,15.547l-212.421,-214.015l0,0z"/><path d="m228.101,288.368c0,-0.839 -0.685,-1.526 -1.524,-1.526l-32.514,0c-0.838,0 -1.523,0.686 -1.523,1.526l0,5.127c0,0.839 -0.685,1.526 -1.523,1.526l-23.238,0c-0.838,0 -1.523,0.686 -1.523,1.526l0,6.553c0,0.840 0.685,1.526 1.523,1.526l85.086,0c0.839,0 1.524,-0.685 1.524,-1.526l0,-6.553c0,-0.839 -0.685,-1.526 -1.524,-1.526l-23.236,0c-0.839,0 -1.524,-0.686 -1.524,-1.526l-0.000,-5.127l0,0z"/><path d="m307.388,119.010l-194.138,0c-6.754,0 -12.249,5.505 -12.249,12.271l0,135.151c0,6.766 5.495,12.271 12.249,12.271l194.139,0c6.754,0 12.249,-5.505 12.249,-12.271l0,-135.150c0,-6.767 -5.495,-12.272 -12.250,-12.272zm-194.138,9.288l194.139,0c1.614,0 2.979,1.366 2.979,2.983l0,119.815l-200.097,0l0,-119.815c0,-1.617 1.364,-2.983 2.979,-2.983zm91.550,134.281c0,-3.053 2.471,-5.529 5.518,-5.529c3.048,0 5.520,2.475 5.520,5.529s-2.472,5.529 -5.520,5.529c-3.047,-0.000 -5.518,-2.476 -5.518,-5.529z"/></g>'
 };
 if (typeof module !== 'undefined') {
 	module.exports = svgicon;
@@ -3067,16 +3110,7 @@ $(function(){
 	var btnUser = addBtnToMenu({icon: svgicon.user, iconcolor: '#FFF', w: 40, h: 40, borderwidth: 2, bordercolor: '#FFF', borderradius: 1, bgcolor: '#448'}, '#mlist');
 	var btnMsg = addBtnToMenu({icon: svgicon.chat, iconcolor: '#FFF', w: 40, h: 40, resize: .7, borderwidth: 2, bordercolor: '#FFF', borderradius: 1, bgcolor: '#448'}, '#msg');
 
-	function addBtnToList(config,func,param){
-		var btn = new Gatherhub.SvgButton(config);
-		btn.pad.css('padding', '5px');
-		if (func) btn.onclick = function(){func(parm);};
-		btn.appendto('#bm');
-		return btn;
-	}
-	var btnSpk = addBtnToList({icon: svgicon.mic, iconcolor: '#FFF', w: 40, h: 40, borderwidth: 2, bordercolor: '#FFF', borderradius: 1, bgcolor: '#448'}, null,0);
-	var btnVC = addBtnToList({icon: svgicon.vchat, iconcolor: '#FFF', w: 40, h: 40, borderwidth: 2, bordercolor: '#FFF', borderradius: 1, bgcolor: '#448'}, null,0);
-	var btnSC = addBtnToList({icon: svgicon.scncast, iconcolor: '#FFF', w: 40, h: 40, borderwidth: 2, bordercolor: '#FFF', borderradius: 1, bgcolor: '#448'}, null,0);
+
 
 	
 	var sp = msp = new Gatherhub.SketchPad();
@@ -3198,11 +3232,92 @@ $(function(){
 		connect();
 	}	
 
+	// add code for media casting feature
 	var rtc = new RtcCom();
+
+	function attachMediaStream (element, stream) {
+	  element.srcObject = stream;
+	}
+
+	rtc.onMyAvAdd = function(s){
+		var ln,m;
+		if(s.getVideoTracks().length>0){
+		    ln = "<video id='localMed' autoplay></video>";
+		}else{
+		    ln = "<audio id='localMed' autoplay></audio>";
+		}
+
+		$('#audio').append(ln);
+		m = document.querySelector('#localMed');
+		attachMediaStream(m,s);
+	};
+
+	function rmMyAv(){
+		$('#localMed').remove();
+	}
+
+	rtc.onFrAvAdd = function(s){
+		var ln,m;
+		if(s.getVideoTracks().length>0){
+		    ln = "<video id='remoteMed' autoplay></video>";
+		}else{
+		    ln = "<audio id='remoteMed' autoplay></audio>";
+		}
+
+		$('#audio').append(ln);
+		m = document.querySelector('#remoteMed');
+		attachMediaStream(m,s);
+	};
+
+	rtc.onFrAvRm = function(){
+		$('#remoteMed').remove();
+	};
+
+	rtc.onReady = function(){
+		console.log('rtc on Ready')
+		$('#btnSpk').show();	
+		// btnSpk.show();
+		// btnVchat.show();
+		// btnScn.show();
+	};
+
+
+	function addBtnToList(icon,id,func){
+		var config = {iconcolor: '#FFF', w: 40, h: 40, borderwidth: 2, bordercolor: '#FFF', borderradius: 1, bgcolor: sp.repcolor};
+		config.icon = icon;
+		var btn = new Gatherhub.SvgButton(config);
+		btn.pad.css('padding', '5px');
+		btn.pad.attr('id', id);
+		if (func) btn.onclick = func;
+		btn.appendto('#bm');
+		$('#'+id).hide();
+		return btn;
+	}
+	var btnSpk = addBtnToList(svgicon.mic, 'btnSpk',function(){
+		$('#btnSpk').hide();
+		$('#btnVchat').hide();
+		$('#btnMute').show();
+		rtc.startSpeaking(false);
+	});
+	var btnMute = addBtnToList(svgicon.stopmic,'btnMute',function(){
+		$('#btnMute').hide();
+		$('#btnSpk').show();
+		$('#btnVchat').show();
+		rtc.stopSpeaking();
+		rmMyAv();
+	});
+	var btnVchat = addBtnToList(svgicon.vchat,'btnVchat',null);
+	var btnMuteV = addBtnToList(svgicon.stopvchat,'btnMuteV',null);
+	// var btnScn = addBtnToList(svgicon.scncast,null,0);
+	// var btnMuteS = addBtnToList(svgicon.stopscn,null,0);
+
+	$('#bm').children().css({float: 'left', clear: ''});
+
+
 
 	function connect() {
 		var wsready = false, pulse = null;
-		var ws = new WebSocket('ws://' + svr + ':' + port);
+		var ws = new WebSocket('wss://' + svr + ':' + port);
 		
 		rtc.dispatch = sp.dispatch = dispatch = function(data, type, dst, p, c) {
 			if (wsready) {
@@ -3224,6 +3339,7 @@ $(function(){
 			dispatch({rtc:rtc.support}, 'hello');
 			pulse = setInterval(function(){if (wsready) dispatch({},'heartbeat',peerid);}, 25000);
 			appendUser('#plist', peerid, peer + '(Me)', sp.repcolor);
+			rtc.setMyPeer(peerid);
 			showpop = true;
 		};
 		ws.onmessage = function(msg){
@@ -3316,7 +3432,6 @@ function arrangemenu () {
 		$('#bgroup').css({height: 55, width: '100%'});
 		$('#exp').children().css({left: 0, top: -$(window).height(), height: $(window).height() - 55});
 		$('#pad').height($(window).height() - 55).width($(window).width()).css({top: 55, left: 0});
-		$('#bm').children().css({float: 'left', clear: ''});
 		msp.height(9999);
 		msp.width(9999);
 		mvp.moveto('top', 0);
@@ -3328,7 +3443,6 @@ function arrangemenu () {
 		$('#bgroup').css({height: '100%', width: 55});
 		$('#exp').children().css({top: 0, left: -$('#exp').children().width(), height: '100%'});
 		$('#pad').height($(window).height()).width($(window).width() - 55).css({top: 0, left: 55});
-		$('#bm').children().css({float: 'left', clear: ''});
 		msp.height(9999);
 		msp.width(9999);
 		mvp.moveto('top', 0);

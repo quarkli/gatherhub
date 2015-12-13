@@ -180,6 +180,7 @@ Author: quarkli@gmail.com
 		<div id="mlist" class="panel">
 			<div id="clist"></div>
 			<div id="plist"></div>
+			<div id="audio"></div>
 			<div id="bm"></div>
 		</div>
 		<div id="msg" class="panel">

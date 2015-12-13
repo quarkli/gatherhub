@@ -5,11 +5,22 @@ require 'json'
 require 'erb'
 include ERB::Util
 
+wssCfg = {
+
+  :host => "0.0.0.0",
+  :port => 55688,
+  :secure => true,
+  :tls_options => {
+    :private_key_file => "/etc/nginx/ssl/server.key",
+    :cert_chain_file => "/etc/nginx/ssl/server.crt"
+  }
+};
+
 EventMachine.run {
   @peers = Array.new
   @act_peers = 0
     
-  EventMachine::WebSocket.start(:host => '0.0.0.0', :port => '55688') do |ws|
+  EventMachine::WebSocket.start(wssCfg) do |ws|
     ws.onopen do
 	  begin
         @act_peers += 1

@@ -35,16 +35,7 @@ $(function(){
 	var btnUser = addBtnToMenu({icon: svgicon.user, iconcolor: '#FFF', w: 40, h: 40, borderwidth: 2, bordercolor: '#FFF', borderradius: 1, bgcolor: '#448'}, '#mlist');
 	var btnMsg = addBtnToMenu({icon: svgicon.chat, iconcolor: '#FFF', w: 40, h: 40, resize: .7, borderwidth: 2, bordercolor: '#FFF', borderradius: 1, bgcolor: '#448'}, '#msg');
 
-	function addBtnToList(config,func,param){
-		var btn = new Gatherhub.SvgButton(config);
-		btn.pad.css('padding', '5px');
-		if (func) btn.onclick = function(){func(parm);};
-		btn.appendto('#bm');
-		return btn;
-	}
-	var btnSpk = addBtnToList({icon: svgicon.mic, iconcolor: '#FFF', w: 40, h: 40, borderwidth: 2, bordercolor: '#FFF', borderradius: 1, bgcolor: '#448'}, null,0);
-	var btnVC = addBtnToList({icon: svgicon.vchat, iconcolor: '#FFF', w: 40, h: 40, borderwidth: 2, bordercolor: '#FFF', borderradius: 1, bgcolor: '#448'}, null,0);
-	var btnSC = addBtnToList({icon: svgicon.scncast, iconcolor: '#FFF', w: 40, h: 40, borderwidth: 2, bordercolor: '#FFF', borderradius: 1, bgcolor: '#448'}, null,0);
+
 
 	
 	var sp = msp = new Gatherhub.SketchPad();
@@ -166,11 +157,92 @@ $(function(){
 		connect();
 	}	
 
+	// add code for media casting feature
 	var rtc = new RtcCom();
+
+	function attachMediaStream (element, stream) {
+	  element.srcObject = stream;
+	}
+
+	rtc.onMyAvAdd = function(s){
+		var ln,m;
+		if(s.getVideoTracks().length>0){
+		    ln = "<video id='localMed' autoplay></video>";
+		}else{
+		    ln = "<audio id='localMed' autoplay></audio>";
+		}
+
+		$('#audio').append(ln);
+		m = document.querySelector('#localMed');
+		attachMediaStream(m,s);
+	};
+
+	function rmMyAv(){
+		$('#localMed').remove();
+	}
+
+	rtc.onFrAvAdd = function(s){
+		var ln,m;
+		if(s.getVideoTracks().length>0){
+		    ln = "<video id='remoteMed' autoplay></video>";
+		}else{
+		    ln = "<audio id='remoteMed' autoplay></audio>";
+		}
+
+		$('#audio').append(ln);
+		m = document.querySelector('#remoteMed');
+		attachMediaStream(m,s);
+	};
+
+	rtc.onFrAvRm = function(){
+		$('#remoteMed').remove();
+	};
+
+	rtc.onReady = function(){
+		console.log('rtc on Ready')
+		$('#btnSpk').show();	
+		// btnSpk.show();
+		// btnVchat.show();
+		// btnScn.show();
+	};
+
+
+	function addBtnToList(icon,id,func){
+		var config = {iconcolor: '#FFF', w: 40, h: 40, borderwidth: 2, bordercolor: '#FFF', borderradius: 1, bgcolor: sp.repcolor};
+		config.icon = icon;
+		var btn = new Gatherhub.SvgButton(config);
+		btn.pad.css('padding', '5px');
+		btn.pad.attr('id', id);
+		if (func) btn.onclick = func;
+		btn.appendto('#bm');
+		$('#'+id).hide();
+		return btn;
+	}
+	var btnSpk = addBtnToList(svgicon.mic, 'btnSpk',function(){
+		$('#btnSpk').hide();
+		$('#btnVchat').hide();
+		$('#btnMute').show();
+		rtc.startSpeaking(false);
+	});
+	var btnMute = addBtnToList(svgicon.stopmic,'btnMute',function(){
+		$('#btnMute').hide();
+		$('#btnSpk').show();
+		$('#btnVchat').show();
+		rtc.stopSpeaking();
+		rmMyAv();
+	});
+	var btnVchat = addBtnToList(svgicon.vchat,'btnVchat',null);
+	var btnMuteV = addBtnToList(svgicon.stopvchat,'btnMuteV',null);
+	// var btnScn = addBtnToList(svgicon.scncast,null,0);
+	// var btnMuteS = addBtnToList(svgicon.stopscn,null,0);
+
+	$('#bm').children().css({float: 'left', clear: ''});
+
+
 
 	function connect() {
 		var wsready = false, pulse = null;
-		var ws = new WebSocket('ws://' + svr + ':' + port);
+		var ws = new WebSocket('wss://' + svr + ':' + port);
 		
 		rtc.dispatch = sp.dispatch = dispatch = function(data, type, dst, p, c) {
 			if (wsready) {
@@ -192,6 +264,7 @@ $(function(){
 			dispatch({rtc:rtc.support}, 'hello');
 			pulse = setInterval(function(){if (wsready) dispatch({},'heartbeat',peerid);}, 25000);
 			appendUser('#plist', peerid, peer + '(Me)', sp.repcolor);
+			rtc.setMyPeer(peerid);
 			showpop = true;
 		};
 		ws.onmessage = function(msg){
@@ -284,7 +357,6 @@ function arrangemenu () {
 		$('#bgroup').css({height: 55, width: '100%'});
 		$('#exp').children().css({left: 0, top: -$(window).height(), height: $(window).height() - 55});
 		$('#pad').height($(window).height() - 55).width($(window).width()).css({top: 55, left: 0});
-		$('#bm').children().css({float: 'left', clear: ''});
 		msp.height(9999);
 		msp.width(9999);
 		mvp.moveto('top', 0);
@@ -296,7 +368,6 @@ function arrangemenu () {
 		$('#bgroup').css({height: '100%', width: 55});
 		$('#exp').children().css({top: 0, left: -$('#exp').children().width(), height: '100%'});
 		$('#pad').height($(window).height()).width($(window).width() - 55).css({top: 0, left: 55});
-		$('#bm').children().css({float: 'left', clear: ''});
 		msp.height(9999);
 		msp.width(9999);
 		mvp.moveto('top', 0);

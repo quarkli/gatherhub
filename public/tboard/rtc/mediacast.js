@@ -1,7 +1,7 @@
 /* 
 * @Author: phenix cai
 * @Date:   2015-11-19 10:08:39
-* @Last Modified time: 2015-12-02 10:04:37
+* @Last Modified time: 2015-12-12 12:22:08
 */
 var webRtc = require('./webrtc');
 var castCtrl = require('./castctrl');
@@ -59,6 +59,7 @@ var medCast;
 
     _proto.onCastList = function(){};
     _proto.onMediaAct = function(){};
+    _proto.onReady = function(){};
 
     //internal APIs
     _proto._initCmdChan = function(){
@@ -85,6 +86,7 @@ var medCast;
 
     _proto.onChansReady = function(){
         this._initCmdChan();
+        this.onReady();
     };
 
     _proto._setMedState = function(state){
