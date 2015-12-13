@@ -276,9 +276,7 @@ $(function(){
 				case 'bye':
 					console.log(ctx.name + ': bye!');
 					popupMsg(ctx.name + ' has left this hub.', 'grey');
-					$('#plist').children().each(function(){
-						if ($(this).attr('id') == ctx.peer) $(this).remove();
-					});
+					$('#' + ctx.peer).remove();
 					break;
 				case 'message':
 					if (data.msg === undefined) {
@@ -326,6 +324,7 @@ $(function(){
 			}
 		};
 		ws.onclose = function(){
+			$('#plist').empty();
 			clearInterval(pulse);
 			wsready = false;
 			showpop = false;
