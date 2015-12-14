@@ -221,9 +221,6 @@ Author: quarkli@gmail.com
 			</div>
 		</div>
 		<div id="media" class="panel"><div class="alert alert-info">Screen-cast, Video-cast, and Audio speech features will be available soon!</div>
-		<p>
-		<a id="svgsave" href-lang="image/svg+xml" href="" download target="_blank" onclick="buildfile()">Save SVG to file</a>
-		</p>
 		</div>
 	</div>
 	<div id="bgroup"></div>
