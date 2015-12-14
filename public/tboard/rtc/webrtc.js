@@ -1,7 +1,7 @@
 /* 
 * @Author: Phenix Cai
 * @Date:   2015-11-13 19:14:00
-* @Last Modified time: 2015-12-14 09:31:46
+* @Last Modified time: 2015-12-14 14:28:57
 */
 
 'use strict';
@@ -99,10 +99,10 @@ var webRtc;
     _proto.useVideo =function(b){
         this.config.videoCast = b;
     };
-    _proto.startMedia =  function(onSuc,onErr){
+    _proto.startMedia =  function(onSuc,onErr,param){
         var self, cs;
         self = this;
-        if(this.config.videoCast) cs = {video: true, audio: true};
+        if(param.video) cs = {video: true, audio: true};
         this.media.start(cs, function(err,s){
             if(!err){
                 if(onSuc)onSuc(s);

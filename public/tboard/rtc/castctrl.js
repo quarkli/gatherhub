@@ -1,7 +1,7 @@
 /* 
 * @Author: Phenix Cai
 * @Date:   2015-11-22 10:02:34
-* @Last Modified time: 2015-12-14 10:01:20
+* @Last Modified time: 2015-12-14 15:12:41
 */
 
 
@@ -56,8 +56,9 @@ var castCtrl;
         this.recvMsg({from:id, to:this.id, cmd:'rls'});
     };
 
-    _proto.start = function(cb){
+    _proto.start = function(cb,type){
         this._startCb = cb;
+        this.type = type;
         this._startCastReq();
     };
 
@@ -65,6 +66,17 @@ var castCtrl;
         this._stopCb  = cb;
         this._stopCastReq();
     };
+
+    function getCastIdx(id){
+        var idx = -1;
+        for(var i=0;i<this.castList.length;i++){
+            if(this.castList[i].id == id){
+                idx = i;
+                break;
+            }
+        }
+        return idx;
+    }
 
     _proto.hdlMsg =  function (msg){
         var myself, rid, delay, idx;
@@ -74,32 +86,32 @@ var castCtrl;
         switch(msg.cmd)
         {
             case 'req':
-                if(this.castList[0] == myself){
-                    this.castList.push(rid);
+                if(this.castList[0] && this.castList[0].id == myself){
+                    this.castList.push({id:rid,type:msg.type});
                     this._infCastList();
                 }else{
                     this.pendList.push(rid);
                 }
             break;
             case 'rls':
-                if(this.castList[0] == myself){
-                    idx = this.castList.indexOf(rid);
+                if(this.castList[0] && this.castList[0].id == myself){
+                    idx = getCastIdx.call(this,rid); 
                     if(idx >= 0){
                         this.castList.splice(idx,1);
                         this._infCastList();
-                    }else{
-                        idx = this.pendList.indexOf(rid);
-                        if(idx >=0 )this.pendList.splice(idx,1);
                     }
+                }else{
+                    idx = this.pendList.indexOf(rid);
+                    if(idx >=0 )this.pendList.splice(idx,1);
                 }
             break;
             case 'list':
                 this.pendList = [];
                 this.castList = msg.list;
                 this.onCastList(this.castList);
-                _infLog('cmp ',this.castList[0] + ' vs '+myself);
+                _infLog('cmp '+ myself + ' vs ',this.castList[0]);
 
-                if(this.castList[0] == myself){
+                if(this.castList[0] && this.castList[0].id == myself){
                     if(this._startCb)this._startCb();
                 }else{
                     if(this.reqCnt > 0){
@@ -114,8 +126,8 @@ var castCtrl;
                 }
             break;
             case 'hello':
-                _infLog('cmp ',this.castList[0] + ' vs ',+myself);
-                if(this.castList[0] == myself){
+                _infLog('hello cmp '+ myself + ' vs ',this.castList[0]);
+                if(this.castList[0] && this.castList[0].id == myself){
                     this._infCastList();
                 }
             break;
@@ -139,10 +151,11 @@ var castCtrl;
     };
 
     _proto._sendCastReq = function(){
-        var from, to;
+        var from, to, type;
         from = this.id;
         to = 'All';
-        this.onSend({from:from, to:to, cmd:'req'});
+        type = this.type;
+        this.onSend({from:from, to:to, cmd:'req', type:type});
     };
 
     _proto._cancelCastReq = function(){
@@ -167,9 +180,9 @@ var castCtrl;
                 return;
             }
             if(this.castList.length > 0)this.castList.shift();
-            this.castList.push(this.id);
+            this.castList.push({id:this.id,type:this.type});
             this._infCastList();
-            if(this.castList[0] == this.id){
+            if(this.castList[0].id == this.id){
                 if(this._startCb)this._startCb();
             }
         }
@@ -180,7 +193,6 @@ var castCtrl;
 
     _proto._startCastReq = function(){
         var self = this;
-
         if(this.pendList.length > 0){
             _infLog(this.id + ' warn: there is some un-handled reqs here. ',this.pendList);
             this.reqWait = 1; 
@@ -192,7 +204,7 @@ var castCtrl;
     };
 
     _proto._stopCastReq = function(){
-        if(this.castList[0] == this.id){
+        if(this.castList[0] && this.castList[0].id == this.id){
             if(this._stopCb )this._stopCb();
             this.castList.shift();
             this._infCastList();

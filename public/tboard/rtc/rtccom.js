@@ -1,7 +1,7 @@
 /* 
 * @Author: Phenix
 * @Date:   2015-12-10 14:29:47
-* @Last Modified time: 2015-12-14 09:42:40
+* @Last Modified time: 2015-12-14 14:29:08
 */
 
 'use strict';
@@ -176,8 +176,7 @@ var rtcCom;
 
     _proto.startSpeaking = function(c){
         if(!checkCastSupport())return;
-        this.avt.useVideo(c);
-        return this.avt.start();
+        return this.avt.start({video:c});
     };
     _proto.stopSpeaking = function(){
         return this.avt.stop();

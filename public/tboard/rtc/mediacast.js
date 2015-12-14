@@ -1,7 +1,7 @@
 /* 
 * @Author: phenix cai
 * @Date:   2015-11-19 10:08:39
-* @Last Modified time: 2015-12-14 09:31:43
+* @Last Modified time: 2015-12-14 14:37:57
 */
 var webRtc = require('./webrtc');
 var castCtrl = require('./castctrl');
@@ -30,19 +30,20 @@ var medCast;
         return this.mState;
     };
 
-    _proto.start = function(){
-        var self, hdl;
+    _proto.start = function(cs){
+        var self, hdl, type;
         self = this;
         hdl = (this.config.scnCast) ? this.startScreen.bind(this) 
             : this.startMedia.bind(this);
+        type = (this.config.scnCast)? 'scn': ((cs.video)? 'video': 'audio');
         if(this.ctrl)this.ctrl.start(function(){
             hdl(function(){
                 self._setMedState('active');
             }, function(err){
                 console.log('Error', err);
                 self._setMedState('idle');
-            });
-        });
+            },cs);
+        },type);
         this._setMedState('pending');
     };
 
