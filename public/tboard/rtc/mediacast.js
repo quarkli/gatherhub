@@ -1,7 +1,7 @@
 /* 
 * @Author: phenix cai
 * @Date:   2015-11-19 10:08:39
-* @Last Modified time: 2015-12-12 12:22:08
+* @Last Modified time: 2015-12-14 09:31:43
 */
 var webRtc = require('./webrtc');
 var castCtrl = require('./castctrl');
@@ -66,7 +66,7 @@ var medCast;
         var self;
         self = this;
         if(this.initFlag == false){
-            this.ctrl = new castCtrl(this.myId());
+            this.ctrl = new castCtrl(this.myPeer());
             this.ctrl.onSend = function(cmd){
                 var data = JSON.stringify(cmd);
                 // console.log('castcmd send ',data);
@@ -92,6 +92,9 @@ var medCast;
     _proto._setMedState = function(state){
         this.mState = state;
         this.onMediaAct(state);
+    };
+    _proto.myPeer = function(v){
+        return (v==undefined)? this._myPeer : this._myPeer = v;
     };
 
 

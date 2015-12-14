@@ -6,7 +6,7 @@ var peerConn;
     var _proto, _dbgFlag, _browser;
     _browser = adapter.webrtcDetectedBrowser;
 
-    _dbgFlag = true;
+    _dbgFlag = false;
     function _infLog(){
         if(_dbgFlag){
             console.log.apply(console, arguments);

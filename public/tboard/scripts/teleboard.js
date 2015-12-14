@@ -32,24 +32,31 @@ $(function(){
 		return btn;
 	}
 	
-	var btnUser = addBtnToMenu({icon: svgicon.user, iconcolor: '#FFF', w: 40, h: 40, borderwidth: 2, bordercolor: '#FFF', borderradius: 1, bgcolor: '#448'}, '#mlist');
-	var btnMsg = addBtnToMenu({icon: svgicon.chat, iconcolor: '#FFF', w: 40, h: 40, resize: .7, borderwidth: 2, bordercolor: '#FFF', borderradius: 1, bgcolor: '#448'}, '#msg');
+	var btnUser = addBtnToMenu({tip: 'Peer List', icon: svgicon.user, iconcolor: '#448', w: 40, h: 40, borderwidth: 2, bordercolor: '#448', borderradius: 1, bgcolor: '#FFF'}, '#mlist');
+	var btnMsg = addBtnToMenu({tip: 'Text Chatroom', icon: svgicon.chat, iconcolor: '#448', w: 40, h: 40, resize: .7, borderwidth: 2, bordercolor: '#448', borderradius: 1, bgcolor: '#FFF'}, '#msg');
 
-
-
-	
+	var btnVP = addBtnToMenu({tip: 'Show/Hide View-window', icon: svgicon.picture, iconcolor: '#448', w: 40, h: 40, borderwidth: 2, bordercolor: '#448', borderradius: 1, bgcolor: '#FFF'}, '');
+	btnVP.onclick = function(){vp.pad.toggle();sp.attachvp(vp);};
+		
 	var sp = msp = new Gatherhub.SketchPad();
 	sp.floating('absolute').pencolor(sp.repcolor).penwidth(1).appendto('#pad');
-	sp.canvas.css('opacity', 0.75);	
-	sp.pad.on('mouseenter', function(){$(this).css('cursor', 'crosshair');});
+	sp.canvas.css('opacity', 0.75);
+	sp.geo = 'rect';
+	var selcolor = sp.repcolor;
 
-	var vp = mvp = new Gatherhub.VisualPad().moveto('left', 9999);
+	var vp = mvp = new Gatherhub.VisualPad();
 	vp.draggable = true;
 	vp.floating('absolute').bgcolor('#FFF').bordercolor('#888').borderwidth(3);
 	vp.defsize(sp.width()/4, sp.height()/4).minimize().appendto('#pad');
 
 	sp.attachvp(vp);
 	arrangemenu();
+	
+	function setPenColor(c) {
+		selcolor = c;
+		sp.pencolor(c);
+		if (sp.timode) sp.tibox.css('color', c);
+	}
 
 	var w = h = parseInt($(window).height() / 24) * 2;
 	var rootdir = 'v0';
@@ -60,26 +67,30 @@ $(function(){
 		w = h = parseInt($(window).width() / 24) * 2;
 	}
 	if (w < 40) w = h = 40;
-	var penList = [
-		{btn: {w: w, h: h, icon: svgicon.pen, iconcolor: sp.repcolor, tip: 'User Pen'}, act: function(){sp.dragmode = false;sp.pencolor(sp.repcolor);}},
-		{btn: {w: w, h: h, icon: svgicon.pen, tip: 'Black Pen'}, act: function(){sp.dragmode = false;sp.pencolor('black');}},
-		{btn: {w: w, h: h, icon: svgicon.pen, iconcolor: 'red', tip: 'Red Pen'}, act: function(){sp.dragmode = false;sp.pencolor('red');}},
-		{btn: {w: w, h: h, icon: svgicon.pen, iconcolor: 'green', tip: 'Green Pen'}, act: function(){sp.dragmode = false;sp.pencolor('green');}},
-		{btn: {w: w, h: h, icon: svgicon.pen, iconcolor: 'blue', tip: 'Blue Pen'}, act: function(){sp.dragmode = false;sp.pencolor('blue');}},
-		{btn: {w: w, h: h, icon: svgicon.eraser, tip: 'Eraser'}, act: function(){sp.dragmode = false;;sp.pencolor(sp.bgcolor());}},
-		{btn: {w: w, h: h, icon: svgicon.move, tip: 'Move Canvas'}, act: function(){sp.dragmode = true;}}
+	var colorpalette = [
+		{btn: {w: w, h: h, icon: svgicon.cpalette, iconcolor: sp.repcolor, tip: 'Peer Color'}, act: function(){setPenColor(sp.repcolor);}},
+		{btn: {w: w, h: h, icon: svgicon.cpalette, tip: 'Black'}, act: function(){setPenColor('black');}},
+		{btn: {w: w, h: h, icon: svgicon.cpalette, iconcolor: 'red', tip: 'Red'}, act: function(){setPenColor('red');}},
+		{btn: {w: w, h: h, icon: svgicon.cpalette, iconcolor: 'green', tip: 'Green'}, act: function(){setPenColor('green');}},
+		{btn: {w: w, h: h, icon: svgicon.cpalette, iconcolor: 'blue', tip: 'Blue'}, act: function(){setPenColor('blue');}}
 	];
-	var sizeList = [
-		{btn: {w: w, h: h, icon: svgicon.circle, resize: 0.15, tip: 'Small (1px)'},	act: function(){sp.penwidth(1)}},
-		{btn: {w: w, h: h, icon: svgicon.circle, resize: 0.45, tip: 'Midium (11px)'}, act: function(){sp.penwidth(11)}},
-		{btn: {w: w, h: h, icon: svgicon.circle, resize: 0.65, tip: 'Large (21px)'}, act: function(){sp.penwidth(21)}}	
+	var pensz = [
+		{btn: {w: w, h: h, icon: svgicon.brushl, resize: .45, tip: 'Thinner Paint'},	act: function(){sp.penwidth(1)}},
+		{btn: {w: w, h: h, icon: svgicon.brushl, tip: 'Thicker Paint'}, act: function(){sp.penwidth(21)}},
+		{btn: {w: w, h: h, icon: svgicon.brushl, resize: .65, tip: 'Regular Paint'}, act: function(){sp.penwidth(11)}}
 	];
-	var zoomList = [
-		{btn: {w: w, h: h, icon: svgicon.zoomout, tip: 'Zoom Out'},	act: function(){sp.zoom(sp.zrate / 1.1);}},
+	var geoshape = [
+		{btn: {w: w, h: h, icon: svgicon.square, tip: 'Rectangle'},	act: function(){sp.geo = 'rect';}},
+		{btn: {w: w, h: h, icon: svgicon.line, tip: 'Line'}, act: function(){sp.geo = 'line';}},
+		{btn: {w: w, h: h, icon: svgicon.circle, tip: 'Circle'}, act: function(){sp.geo = 'ellipse';}},
+		{btn: {w: w, h: h, icon: svgicon.triangle, tip: 'Triangle'}, act: function(){sp.geo = 'polygon';}}
+	];
+	var zoomctrl = [
+		{btn: {w: w, h: h, icon: svgicon.zoomin, tip: 'Zoom In'}, act: function(){sp.zoom(sp.zrate * 1.1);}},
 		{btn: {w: w, h: h, icon: svgicon.fit, tip: 'Fit Content'}, act: function(){sp.fitcontent();}},
-		{btn: {w: w, h: h, icon: svgicon.zoomin, tip: 'Zoom In'}, act: function(){sp.zoom(sp.zrate * 1.1);}}
+		{btn: {w: w, h: h, icon: svgicon.zoomout, tip: 'Zoom Out'},	act: function(){sp.zoom(sp.zrate / 1.1);}}
 	];
-	var settingList = [
+	var canvasedit = [
 		{btn: {w: w, h: h, icon: svgicon.clear, tip: 'Clear Canvas'}, act: function(){
 			if (confirm('This will clear everything on the whiteboard of all peers. Are you sure?')) sp.clearall();
 		}},
@@ -87,15 +98,75 @@ $(function(){
 		{btn: {w: w, h: h, icon: svgicon.undo, tip: 'Undo'}, act: function(){sp.undo();}}
 	];	
 	var mainBtn = [
-		{sublist: penList, direction: subdir},
-		{sublist: sizeList, direction: subdir},
-		{btn: {w: w, h: h, icon: svgicon.zoom, tip: 'Zoom'}, sublist: zoomList, direction: subdir},
-		{btn: {w: w, h: h, icon: svgicon.setting, tip: 'Settings'},	sublist: settingList, direction: subdir}
+		{btn: {w: w, h: h, icon: svgicon.setting, tip: 'Settings'},	sublist: canvasedit, direction: subdir},
+		{btn: {w: w, h: h, icon: svgicon.zoom, tip: 'Zoom'}, sublist: zoomctrl, direction: subdir},
+		{sublist: pensz, direction: subdir},
+		{sublist: colorpalette, direction: subdir},
+		{sublist: geoshape, direction: subdir}
 	];
 	var rootList = {rootlist: mainBtn, direction: rootdir};
 	var toolBar = mbmenu = new Gatherhub.BtnMenu(rootList);
-	toolBar.root.css({'position': 'absolute', 'bottom': 0, 'right': 0});
-
+	if (topmenu) toolBar.root.css({'position': 'absolute', 'bottom': 0, 'right': 80});
+	else toolBar.root.css({'position': 'absolute', 'bottom': 80, 'right': 0});
+	toolBar.root.children().eq(4).hide();
+	
+	var actBtns = [
+		{btn: {w: w, h: h, icon: svgicon.pen, iconcolor: 'white', borderwidth: 3, bordercolor: 'white', borderradius: 2, bgcolor: 'red', resize: .6, tip: 'Free Hand Writing'}, act: function(){
+			sp.drag(0);
+			sp.txtedit(0);
+			sp.drawgeo(0);
+			toolBar.collapseall();
+			toolBar.root.children().show();
+			toolBar.root.children().eq(4).hide();
+			setPenColor(selcolor);
+		}},
+		{btn: {w: w, h: h, icon: svgicon.eraser, iconcolor: 'white', borderwidth: 3, bordercolor: 'white', borderradius: 2, bgcolor: 'red', resize: .6, tip: 'Eraser'}, act: function(){
+			sp.drag(0);
+			sp.txtedit(0);
+			sp.drawgeo(0);
+			sp.pencolor(sp.bgcolor());
+			toolBar.collapseall();
+			toolBar.root.children().hide();
+			toolBar.root.children().eq(0).show();
+			toolBar.root.children().eq(1).show();
+		}},
+		{btn: {w: w, h: h, icon: svgicon.textinput, iconcolor: 'white', borderwidth: 3, bordercolor: 'white', borderradius: 2, bgcolor: 'red', resize: .6, tip: 'Text Input'},	act: function(){
+			sp.drag(0);
+			sp.drawgeo(0);
+			sp.txtedit(1);
+			setPenColor(selcolor);
+			toolBar.collapseall();
+			toolBar.root.children().show();
+			toolBar.root.children().eq(2).hide();
+			toolBar.root.children().eq(4).hide();
+		}},
+		{btn: {w: w, h: h, icon: svgicon.move, iconcolor: 'white', borderwidth: 3, bordercolor: 'white', borderradius: 2, bgcolor: 'red', resize: .6, tip: 'Move Canvas'}, act: function(){
+			sp.txtedit(0);
+			sp.drawgeo(0);
+			sp.drag(1);
+			toolBar.collapseall();
+			toolBar.root.children().hide();
+			toolBar.root.children().eq(0).show();
+			toolBar.root.children().eq(1).show();
+		}},
+		{btn: {w: w, h: h, icon: svgicon.geometrical, iconcolor: 'white', borderwidth: 3, bordercolor: 'white', borderradius: 2, bgcolor: 'red', resize: .6, tip: 'Draw Geometrics'}, act: function(){
+			sp.drag(0);
+			sp.txtedit(0);
+			sp.drawgeo(1);
+			setPenColor(selcolor);
+			toolBar.collapseall();
+			toolBar.root.children().show();
+			toolBar.root.children().eq(2).hide()
+		}}
+	];
+	var mainActBtn = [{sublist: actBtns, direction: subdir}];
+	var actList = {rootlist: mainActBtn, direction: rootdir};
+	var actMenu = new Gatherhub.BtnMenu(actList);
+	actMenu.autocollapse = true;
+	if (topmenu) actMenu.root.css({'position': 'absolute', 'bottom': 0, 'right': 5});
+	else actMenu.root.css({'position': 'absolute', 'bottom': 5, 'right': 0});
+	
+	
 	$(window).on('resize', function(){
 		toolBar.collapseall();
 		if (topmenu) {
@@ -143,7 +214,10 @@ $(function(){
 		if ($('#tmsg').val().length) appendMsg('#msgbox', peerid, 'Me', $('#tmsg').val(), sp.repcolor, $.now() - td);
 		$('#tmsg').val('').focus();
 	});
-
+	// init webrtc module -- media casting feature
+	var rtc = new RtcCom();
+	
+	// start to connect
 	if (hub.length == 0) hub = 1000;
 	if (peer.length == 0) {
 		if (getCookie('peer') && getCookie('peer').length > 0) {
@@ -157,9 +231,7 @@ $(function(){
 		connect();
 	}	
 
-	// add code for media casting feature
-	var rtc = new RtcCom();
-
+	// implement for webrtc
 	function attachMediaStream (element, stream) {
 	  element.srcObject = stream;
 	}
@@ -238,7 +310,7 @@ $(function(){
 
 	$('#bm').children().css({float: 'left', clear: ''});
 
-
+	//end of implement of webrtc
 
 	function connect() {
 		var wsready = false, pulse = null;
@@ -289,20 +361,23 @@ $(function(){
 						dispatch({}, 'syncgraph', ctx.peer);
 						dispatch({}, 'syncmsg', ctx.peer);
 						showpop = needsync = false;
-						setTimeout(function(){showpop = true;}, 30000);
 					}
 					break;
 				case 'bye':
 					console.log(ctx.name + ': bye!');
 					popupMsg(ctx.name + ' has left this hub.', 'grey');
-					$('#plist').children().each(function(){
-						if ($(this).attr('id') == ctx.peer) $(this).remove();
-					});
+					$('#' + ctx.peer).remove();
+					rtc.removePeer(ctx.peer);
 					break;
 				case 'message':
-					appendMsg('#msgbox', ctx.peer, data.name, data.msg, data.color, data.tid);
-					if (showpop && ($('#msg').position().top < 0 || $('#msg').position().left < 0)) {
-						popupMsg(data.name + ': ' + data.msg, data.color);
+					if (data.msg === undefined) {
+						showpop = true;
+					}
+					else {
+						appendMsg('#msgbox', ctx.peer, data.name, data.msg, data.color, data.tid);
+						if (showpop && ($('#msg').position().top < 0 || $('#msg').position().left < 0)) {
+							popupMsg(data.name + ': ' + data.msg, data.color);
+						}
 					}
 					break;
 				case 'undo':
@@ -328,10 +403,11 @@ $(function(){
 						var mhead = $(this).children('.panel-heading').last();
 						var mbody = $(this).children('.panel-body').last();
 						var pname = mhead.html().slice(0, mhead.html().length - 1);
-						var color = rgb2hex(mbody.css('background-color'));
+						var color = rgb2hex(mbody.css('border-color'));
 						if (pname == 'Me') pname = peer;
 						dispatch({msg: mbody.html(), tid: $(this).attr('tid')}, 'message', ctx.peer, pname, color);
 					});
+					dispatch({}, 'message', ctx.peer);
 					break;
 				case 'rtc':
 					rtc.hdlMsg(ctx.peer,data);
@@ -342,6 +418,7 @@ $(function(){
 			}
 		};
 		ws.onclose = function(){
+			$('#plist').empty();
 			clearInterval(pulse);
 			wsready = false;
 			showpop = false;
@@ -440,14 +517,18 @@ function appendUser(elem, peerid, uname, color) {
 
 function appendMsg(elem, pid, sender, msg, color, tid) {
 	console.log(sender + '(' + tid + '): ' + msg);
+	var msg = Autolinker.link(msg, {newWindo: true, stripPrefix: false});
 	var lr = sender == 'Me' ? 'right' : 'left';
 	var prev = $(elem).children().last();
 	var prevlr = prev.length ? prev.children().last().css('float') : '';
-	var pp = $('<div class="tmsg_' + pid + '" style="clear: ' + prevlr + '">'); 
+	var pp = $('<div>'); 
+	if (prevlr.length) pp.css('clear', prevlr);
 	var ph = $('<div class="panel-heading" style="color: #000; margin: 0; padding: 0; text-align: ' + lr + '">');
-	var pb = $('<div class="panel-body" style="float: ' + lr + '; width: auto; border-radius: 5px; margin: 5px; font-weight: bold; background-color: #FFF; border-width: 2px; border-style: solid; border-color: ' + color + ';">');
+	var pb = $('<div class="panel-body" style="float: ' + lr + '; max-width: 290px; word-break: break-all; border-radius: 5px; margin: 5px; font-weight: bold; background-color: #FFF;">');
+	if (lr == 'left') pb.addClass('leftbubble');
+	else pb.addClass('rightbubble');
 	
-	pp.attr('tid', tid);
+	pp.attr('tid', tid).append($('<br>'));
 	ph.html(sender + ':').appendTo(pp);
 	pb.html(msg).appendTo(pp);
 	var tgt = $(elem).children().last();
@@ -470,4 +551,16 @@ function setCookie(key, value) {
 function getCookie(key) {
 	var keyValue = document.cookie.match('(^|;) ?' + key + '=([^;]*)(;|$)');
 	return keyValue ? keyValue[2] : null;
+}
+
+function buildfile() {
+	var xmlhead = '<?xml version="1.0" encoding="iso-8859-1"?><!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd"><svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" xml:space="preserve">';
+	var svgfile = btoa(unescape(encodeURIComponent(xmlhead+$('#pad').find('svg').get(0).outerHTML+'</svg>')));
+	$('#svgsave').attr('href', 'data:image/svg+xml;base64,\n' + svgfile);
+}
+
+function saveSVG(fname) {
+	var xmlhead = '<?xml version="1.0" encoding="iso-8859-1"?><!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd"><svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" xml:space="preserve">';
+	var svgfile = btoa(unescape(encodeURIComponent(xmlhead+$('#pad').find('svg').get(0).outerHTML+'</svg>')));
+	($("<a href-lang='image/svg+xml' href='data:image/svg+xml;base64,\n"+svgfile+"' title='"+fname+".svg' download target='_blank'>Save SVG to file</a>")).appendTo('#media')
 }

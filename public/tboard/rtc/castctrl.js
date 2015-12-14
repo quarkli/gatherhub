@@ -1,7 +1,7 @@
 /* 
 * @Author: Phenix Cai
 * @Date:   2015-11-22 10:02:34
-* @Last Modified time: 2015-11-30 11:27:04
+* @Last Modified time: 2015-12-14 10:01:20
 */
 
 
@@ -15,7 +15,7 @@ var castCtrl;
     t1 = 150;
     t2 = 250;
     t3 = (t1+t2)*2;
-    _dbgFlag = false;
+    _dbgFlag = true;
     function _infLog(){
         if(_dbgFlag){
             console.log.apply(console, arguments);
@@ -97,7 +97,7 @@ var castCtrl;
                 this.pendList = [];
                 this.castList = msg.list;
                 this.onCastList(this.castList);
-                _infLog('cmp ',this.castList[0] + ' vs ',+myself);
+                _infLog('cmp ',this.castList[0] + ' vs '+myself);
 
                 if(this.castList[0] == myself){
                     if(this._startCb)this._startCb();

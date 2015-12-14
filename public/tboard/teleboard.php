@@ -53,6 +53,7 @@ Author: quarkli@gmail.com
     <script src="scripts/jquery.min.js"></script>
     <script src="js/bootstrap.min.js"></script>
     <script src="scripts/jquery.nicescroll.min.js"></script>
+    <script src="scripts/Autolinker.min.js"></script>
     <!-- <script src="scripts/svgicons.js"></script> -->
     <!-- <script src="scripts/gatherhub.js"></script> -->
     <!-- <script src="scripts/rtccom.js"></script> -->
@@ -145,6 +146,54 @@ Author: quarkli@gmail.com
 		overflow-x: hidden;
 		overflow-y: auto;
 	}
+	.leftbubble {
+		max-width: 290px;
+		position: relative;
+		margin: 5px; 
+		font-weight: bold;
+		border-style: solid;
+		-moz-border-radius: 10px;
+		-webkit-border-radius: 10px;
+		border-radius: 5px;
+	} 
+	.leftbubble:before {
+		position: absolute;
+		bottom: 100%; 
+		left: 5; 
+		width: 0; 
+		height: 0; 
+		border-bottom: 13px solid black; 
+		border-right: 13px solid transparent; 
+		border-left: 0px solid transparent;
+	}
+	.rightbubble {
+		max-width: 290px;
+		position: relative;
+		margin: 5px; 
+		font-weight: bold;
+		border-style: solid;
+		-moz-border-radius: 10px;
+		-webkit-border-radius: 10px;
+		border-radius: 5px;
+	} 
+	.rightbubble:before {
+		position: absolute;
+		bottom: 100%; 
+		right: 0; 
+		width: 0; 
+		height: 0; 
+		border-bottom: 13px solid black; 
+		border-right: 0px solid transparent; 
+		border-left: 13px solid transparent;
+	}
+	#tibox {
+		position: absolute;
+		top: 0;
+		left: 0;
+		display: none;
+		font-size: 24px;
+		border-style: none;
+	}
 	#tmsg {
 		width: 230px;
 	}
@@ -190,7 +239,11 @@ Author: quarkli@gmail.com
 				<button id="send" type="button">Send</button>
 			</div>
 		</div>
-		<div id="media" class="panel"><div class="alert alert-info">Screen-cast, Video-cast, and Audio speech features will be available soon!</div></div>
+		<div id="media" class="panel"><div class="alert alert-info">Screen-cast, Video-cast, and Audio speech features will be available soon!</div>
+		<p>
+		<a id="svgsave" href-lang="image/svg+xml" href="" download target="_blank" onclick="buildfile()">Save SVG to file</a>
+		</p>
+		</div>
 	</div>
 	<div id="bgroup"></div>
 	<div id="joinhub" class="modal fade" role="dialog">

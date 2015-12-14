@@ -1,7 +1,7 @@
 /* 
 * @Author: Phenix Cai
 * @Date:   2015-11-13 19:14:00
-* @Last Modified time: 2015-12-11 11:52:05
+* @Last Modified time: 2015-12-14 09:31:46
 */
 
 'use strict';
@@ -165,9 +165,6 @@ var webRtc;
 
     };
 
-    _proto.myId = function(v){
-        return (v==undefined)? this._myId : this._myId = v;
-    };
 
     /*some callback fuctions*/
     _proto.onCmdSend = function(){};

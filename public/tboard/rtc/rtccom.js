@@ -1,7 +1,7 @@
 /* 
 * @Author: Phenix
 * @Date:   2015-12-10 14:29:47
-* @Last Modified time: 2015-12-12 15:17:00
+* @Last Modified time: 2015-12-14 09:42:40
 */
 
 'use strict';
@@ -75,6 +75,7 @@ var rtcCom;
                 m.onCastList = function(list){
                     hdl = (m.config.scnCast)? self.onScnList.bind(self) 
                         : self.onSpkrList.bind(self);
+                    _infLog('rtc update ',list);
                     hdl(list);
                 };
                 m.onLMedAdd = function(s){
@@ -137,7 +138,7 @@ var rtcCom;
     rtcCom = RtcCom;
     _proto.setMyPeer = function(peer){
         this.medias.forEach(function(m){
-            m.myId(peer);
+            m.myPeer(peer);
         });
     };
 

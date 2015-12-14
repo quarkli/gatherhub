@@ -41,7 +41,7 @@ var Gatherhub = Gatherhub || {};
 	function precision(num, p) {
 		var s = 1;
 		if (num < 0) {s = -1; num *= s;}
-		var n = num < 1 ? 0 : Math.floor(Math.log10(num)) + 1;
+		var n = num < 1 ? 0 : Math.floor(Math.log(num)/Math.log(10)) + 1;
 		return (0 | (num * Math.pow(10, p - n))) / Math.pow(10, p - n) * s;
 	}
 
@@ -157,7 +157,7 @@ var Gatherhub = Gatherhub || {};
 				var max = (this.parent && this.parent.width()) ? this.parent.width() : $(window).width();
 				if (w > max) w = max;
 				this.canvas.attr('width', w);
-				this.canvasvbox.w = precision((this.canvas.attr('width') - this.borderpadding()) / this.zrate, 5);
+				this.canvasvbox.w = precision((this.canvas.attr('width') - this.borderpadding()) / this.zrate, 6);
 				if (this.pad.position().left + this.canvas.attr('width') * 1 + this.borderpadding() / 2 > max) this.moveto('left', 9999);
 			}
 			return this;
@@ -168,7 +168,7 @@ var Gatherhub = Gatherhub || {};
 				var max = (this.parent && this.parent.height()) ? this.parent.height() : $(window).height();
 				if (h > max) h = max;
 				this.canvas.attr('height', h);
-				this.canvasvbox.h = precision((this.canvas.attr('height') - this.borderpadding()) / this.zrate, 5);
+				this.canvasvbox.h = precision((this.canvas.attr('height') - this.borderpadding()) / this.zrate, 6);
 				if (this.pad.position().top + this.canvas.attr('height') * 1 + this.borderpadding() / 2 > max) this.moveto('top', 9999);
 			}
 			return this;
@@ -199,21 +199,21 @@ var Gatherhub = Gatherhub || {};
 			if (this.canvasvbox.w == 0) this.canvasvbox.w = this.width();
 			if (this.canvasvbox.h == 0) this.canvasvbox.h = this.height();
 
-			z = $.isNumeric(z) ? (z > 100 ? 100 : z < 0.01 ? 0.01 : precision(z, 5)) : this.zrate;
+			z = $.isNumeric(z) ? (z > 100 ? 100 : z < 0.01 ? 0.01 : precision(z, 6)) : this.zrate;
 			this.zrate = z;
 			var x = this.zcenter.x * this.canvasvbox.w + this.canvasvbox.x;
 			var y = this.zcenter.y * this.canvasvbox.h + this.canvasvbox.y;
-			this.canvasvbox.w = precision((this.width() - this.borderpadding()) / this.zrate, 5);
-			this.canvasvbox.h = precision((this.height() - this.borderpadding()) / this.zrate, 5);
-			this.canvasvbox.x = precision(x - this.zcenter.x * this.canvasvbox.w, 5);
-			this.canvasvbox.y = precision(y - this.zcenter.y * this.canvasvbox.h, 5);
+			this.canvasvbox.w = precision((this.width() - this.borderpadding()) / this.zrate, 6);
+			this.canvasvbox.h = precision((this.height() - this.borderpadding()) / this.zrate, 6);
+			this.canvasvbox.x = precision(x - this.zcenter.x * this.canvasvbox.w, 6);
+			this.canvasvbox.y = precision(y - this.zcenter.y * this.canvasvbox.h, 6);
 			this.refreshvbox();
 			return this;
 		};
 		_proto.offsetcanvas = function(axis, offset) {
 			if ($.isNumeric(offset)) {
-				if (axis == 'x') this.canvasvbox.x = precision(this.canvasvbox.x - offset / this.zrate, 5);
-				if (axis == 'y') this.canvasvbox.y = precision(this.canvasvbox.y - offset / this.zrate, 5);
+				if (axis == 'x') this.canvasvbox.x = precision(this.canvasvbox.x - offset / this.zrate, 6);
+				if (axis == 'y') this.canvasvbox.y = precision(this.canvasvbox.y - offset / this.zrate, 6);
 				this.refreshvbox();
 			}
 			return this;
@@ -418,8 +418,8 @@ var Gatherhub = Gatherhub || {};
 					y: screnXY.y - this.pad.position().top - this.borderpadding() / 2};
 		}
 		function vboxxy(canvasxy) {
-			return {x: precision(canvasxy.x / this.zrate + this.canvasvbox.x, 5),
-					y: precision(canvasxy.y / this.zrate + this.canvasvbox.y, 5)};
+			return {x: precision(canvasxy.x / this.zrate + this.canvasvbox.x, 6),
+					y: precision(canvasxy.y / this.zrate + this.canvasvbox.y, 6)};
 		}
 		function vbox2scn(vboxxy) {
 			var x = (vboxxy.x - this.canvasvbox.x) * this.zrate;
@@ -429,8 +429,7 @@ var Gatherhub = Gatherhub || {};
 			return {x: x, y: y};
 		}
 		function drawStart(x, y){
-			//trace(L4, this.constructor.name + '.drawStart' +
-			//	'(' + Array.prototype.slice.call(arguments) + ')');
+			var path;
 			this.zoom(this.zrate);
 			var point = vboxxy.call(this, canvasxy.call(this, screenxy(x, y)));
 			x = point.x;
@@ -438,14 +437,33 @@ var Gatherhub = Gatherhub || {};
 			
 			var self = this;
 			var pw = this.pc == self.bgcolor() ?  30 / this.zrate : this.pw / this.zrate * 1.1;
-			var path =  $(document.createElementNS('http://www.w3.org/2000/svg', 'path'));
-			path.attr('id', this.gid + '-' + this.seq++);
-			path.attr('class', this.gid);
-			path.attr('stroke-width', pw);
-			path.attr('stroke-linecap', this.ps);
-			path.attr('stroke', this.pc);
-			path.attr('fill', 'none');
-			path.attr('d', 'M' + x + ',' + y);
+			if (this.geomode) {
+				pw = 5 / this.zrate;
+				path = $(document.createElementNS('http://www.w3.org/2000/svg', this.geo));
+				path.attr('id', this.gid + '-' + this.seq++);
+				path.attr('class', this.gid);
+				path.attr('stroke-width', pw);
+				path.attr('stroke-linecap', this.ps);
+				path.attr('stroke', this.pc);
+				path.attr('fill', 'none');
+				path.attr({x0: x, y0: y});
+				if (this.geo == 'rect') {
+					path.attr({x: x, y: y});
+				}
+				else if (this.geo == 'ellipse') {
+					path.attr({cx: x, cy: y});
+				}
+			}
+			else {
+				path =  $(document.createElementNS('http://www.w3.org/2000/svg', 'path'));
+				path.attr('id', this.gid + '-' + this.seq++);
+				path.attr('class', this.gid);
+				path.attr('stroke-width', pw);
+				path.attr('stroke-linecap', this.ps);
+				path.attr('stroke', this.pc);
+				path.attr('fill', 'none');
+				path.attr('d', 'M' + x + ',' + y);
+			}
 			path.on('click touchstart', function(){
 				if (self.pc == self.bgcolor()) 
 					$(this).clone().attr('stroke', self.bgcolor()).attr('stroke-width', 1 + $(this).attr('stroke-width') * 1).appendTo(self.pathholder);
@@ -469,10 +487,35 @@ var Gatherhub = Gatherhub || {};
 			//trace(L4, this.constructor.name + '.drawPath' +
 			//	'(' + Array.prototype.slice.call(arguments) + ')');
 			if (this.activepath) {
+				var path = this.activepath;
 				var point = vboxxy.call(this, canvasxy.call(this, screenxy(x, y)));
 				x = point.x;
 				y = point.y;
-				this.activepath.attr('d', this.activepath.attr('d') + 'L' + x + ',' + y);
+				if (this.geomode) {
+					var x0 = path.attr('x0') * 1;
+					var y0 = path.attr('y0') * 1;
+					if (this.geo == 'rect') {
+						if (x > x0) path.attr({width: x - x0});
+						else path.attr({x: x, width: x0 - x});
+						if (y > y0) path.attr({height: y - y0});
+						else path.attr({y: y, height: y0 - y});
+					}
+					else if (this.geo == 'ellipse') {
+						path.attr('rx', Math.abs(x - x0));
+						path.attr('ry', Math.abs(y - y0));
+						path.attr('cx', x);
+						path.attr('cy', y);
+					}
+					else if (this.geo == 'line') {
+						path.attr({x1: x0, y1: y0, x2: x, y2: y});
+					}
+					else {
+						path.attr('points', x0 + ',' + y + ' ' + x + ',' + y + ' ' + (x + x0)/2 + ',' + y0);
+					}
+				}
+				else {
+					path.attr('d', this.activepath.attr('d') + 'L' + x + ',' + y);
+				}
 			}
 		}
 		function drawEnd(){
@@ -480,7 +523,7 @@ var Gatherhub = Gatherhub || {};
 			//	'(' + Array.prototype.slice.call(arguments) + ')');
 			if (this.activepath) {
 				var path = this.activepath;
-				var move = path.attr('d').split('L').length;
+				var move = this.geomode ? 2 : path.attr('d').split('L').length;
 				this.activepath = null;
 				
 				if (move < 2 || (falseTouch && move < 3)) {
@@ -501,6 +544,7 @@ var Gatherhub = Gatherhub || {};
 			$.each(p[0].attributes, function(i, attr) {
 				obj[attr.name] = attr.value;
 			});
+			if (p.html().length) obj['html'] = p.html();
 			return obj;
 		}
 		function flush(sp) {
@@ -539,6 +583,23 @@ var Gatherhub = Gatherhub || {};
 			this.nocontext();
 			this.repcolor = randcolor();
 			this.gid = this.repcolor.slice(1,7);
+			this.tibox = $('<input type="text" id="tibox">');
+			this.txtedit(0);
+			
+			this.tibox.on('keyup', function(e){
+				if(e.keyCode == 13){
+					$(this).blur();
+				}				
+			});
+			this.tibox.on('blur', function(){
+				if ($(this).val().length > 0) {
+					var point = vboxxy.call(self, canvasxy.call(self, screenxy(self.tibox.x, self.tibox.y + $(this).height()-8)));
+					var t =  $(document.createElementNS('http://www.w3.org/2000/svg', 'text'));
+					t.attr({id: self.gid + '-' + self.seq++, class: self.gid, x: point.x * self.zrate, y: point.y * self.zrate, transform: 'scale(' + 1 / self.zrate + ')'}).css({'font-size': 24, fill: self.pc}).html($(this).val()).appendTo(self.pathholder);
+					if (self.dispatch) self.dispatch(path2obj(t), 'graph');
+				}
+				$(this).val('').hide();
+			});
 
 			this.pad.on('mousedown touchstart', function(evt){
 				var e = evt.originalEvent;
@@ -644,9 +705,41 @@ var Gatherhub = Gatherhub || {};
 		_proto.pw = 5;
 		_proto.ps = 'round';
 		_proto.activepath = null;
+		_proto.tibox = null;
 		_proto.pinchlevel = 7;
+		_proto.geo = 'rect';
+		_proto.geomode = false;
 		_proto.dragging = false;
 		_proto.dragmode = false;
+		_proto.timode = false;
+		_proto.drag = function(on) {
+			if (on) {
+				_proto.dragmode = true;
+				this.pad.css('cursor', 'move');
+			}
+			else {
+				_proto.dragmode = false;
+				this.pad.css('cursor', 'crosshair');
+			}
+			return this;
+		};
+		_proto.txtedit = function(on) {
+			if (on) {
+				_proto.timode = true;
+				this.pad.css('cursor', 'text');
+			}
+			else {
+				_proto.timode = false;
+				this.tibox.blur();
+				this.pad.css('cursor', 'crosshair');
+			}
+			return this;
+		};
+		_proto.drawgeo = function(on) {
+			if (on) _proto.geomode = true;
+			else _proto.geomode = false;
+			return this;
+		};
 		_proto.attachvp = function(vp) {
 			if (Object.getPrototypeOf(vp) === g.VisualPad.prototype) {
 				vp.src(this.pathholder.attr('id'));
@@ -695,6 +788,9 @@ var Gatherhub = Gatherhub || {};
 			$.each(p, function(k, v){
 				if (k == 'tagName') {
 					path = $(document.createElementNS('http://www.w3.org/2000/svg', v));
+				}
+				else if (k == 'html') {
+					path.html(v);
 				}
 				else {
 					path.attr(k, v);
@@ -749,16 +845,17 @@ var Gatherhub = Gatherhub || {};
 			return this;
 		};
 		_proto.mousedownHdl = function(x, y) {
-			//trace(L4, this.constructor.name + '.mousedownHdl' +
-			//	'(' + Array.prototype.slice.call(arguments) + ')');
 			if (this.dragmode) {
 				this.dragging = true;
-				return;
 			}
-			drawStart.call(this, x, y);
-			//trace(L4, 'window=' + $(window).width() + 'x' + $(window).height());
-			//trace(L4, 'cavasvbox=' + this.canvasvbox.x + ' ' + this.canvasvbox.y + ' ' + this.canvasvbox.w + ' ' + this.canvasvbox.h);
-			//trace(L4, 'viewBox=' + this.canvas[0].getAttribute('viewBox'));
+			else if (this.timode) {
+				this.tibox.css({top: y - 6, left: x, color: this.pc}).appendTo(this.pad.parent()).show().focus();
+				this.tibox.x = x;
+				this.tibox.y = y - 6;
+			}
+			else {
+				drawStart.call(this, x, y);
+			}
 			trace(L4, 'screenXY=' + x + ', ' + y);
 			trace(L4, 'canvasxy=' + canvasxy.call(this, screenxy(x,y)).x + ', ' + canvasxy.call(this, screenxy(x,y)).y);
 			trace(L4, 'vboxxy=' + vboxxy.call(this, canvasxy.call(this, screenxy(x, y))).x + ', ' + vboxxy.call(this, canvasxy.call(this, screenxy(x, y))).y);
@@ -810,6 +907,7 @@ var Gatherhub = Gatherhub || {};
 			this.iconcolor(opt.iconcolor || 'black');
 			this.icon(opt.icon || '');
 			this.pad.attr('title', opt.tip || '');
+			this.pad.css('cursor', 'pointer');
 			if (opt === undefined) opt = {};
 			if ($.isNumeric(opt.w)) this.defaultWidth = opt.w;
 			if ($.isNumeric(opt.h)) this.defaultHeight = opt.h;
@@ -874,13 +972,15 @@ var Gatherhub = Gatherhub || {};
 
 			function togglesub(){	
 				var w = $(this).width();
+				var hbtns = $(this).parent().children().slice(0, $(this).index()).filter(':hidden').length;
 				var sub = $('#' + $(this).children().last().attr('class'));
 				if (sub.length == 0) sub = $('.' + $(this).attr('id'));
-				var top = $(this).parent().position().top + $(this).index() * w;
+
+				var top = $(this).parent().position().top + ($(this).index() - hbtns) * w;
 				var left = $(this).parent().position().left;
 				if ($(this).parent().attr('dir') == 'h0' || $(this).parent().attr('dir') == 'h1') {
 					top = $(this).parent().position().top;
-					left = $(this).parent().position().left + $(this).index() * w;
+					left = $(this).parent().position().left + ($(this).index() - hbtns) * w;
 				}
 				
 				if (sub.attr('dir') == 'h0' || sub.attr('dir') == 'h1') {
@@ -944,6 +1044,7 @@ var Gatherhub = Gatherhub || {};
 										if ($(btngrp[i]).parent().attr('id') != $(this).attr('class')) {
 											$(this).appendTo($(btngrp[i]).parent());
 											$(btngrp[i]).appendTo($('#' + $(this).attr('class')));
+											$(this).click();
 											break;
 										}
 									}
