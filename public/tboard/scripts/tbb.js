@@ -1563,7 +1563,7 @@ module.exports = peerConn;
 /* 
 * @Author: Phenix
 * @Date:   2015-12-10 14:29:47
-* @Last Modified time: 2015-12-14 14:29:08
+* @Last Modified time: 2015-12-15 11:56:30
 */
 
 'use strict';
@@ -1615,9 +1615,33 @@ var rtcCom;
         this.medias = [];
         config.mid = 0;
         this.avt = this.medias[0] = new medCast(config);
+        this.avt.list = [];
         config.mid = 1;
         config.scnCast = true;
         this.scn = this.medias[1] = new medCast(config);
+        this.scn.list = [];
+
+        function updateCastList(){
+            var list = [];
+            var iflag = true;
+            var video;
+
+            self.avt.list.forEach(function(p){
+                list.push({id:p.id,av:p.type,scn:false});
+            });
+
+            self.scn.list.forEach(function(p){
+                for(var i=0;i<list.length;i++){
+                    if(list[i].id == p.id){
+                        list[i].scn = true;
+                        return;
+                    }
+                }
+                list.push({id:p.id,av:'none',scn:true});
+            });
+            _infLog('update list ',list);
+            self.onCastList(list);
+        }
 
         function regMedCallback(){
             var hdl;
@@ -1635,10 +1659,8 @@ var rtcCom;
                     self.dispatch(data,type,dst);
                 };
                 m.onCastList = function(list){
-                    hdl = (m.config.scnCast)? self.onScnList.bind(self) 
-                        : self.onSpkrList.bind(self);
-                    _infLog('rtc update ',list);
-                    hdl(list);
+                    m.list = list;
+                    updateCastList();
                 };
                 m.onLMedAdd = function(s){
                     hdl = (m.config.scnCast)? self.onMyScnAdd.bind(self)
@@ -1737,22 +1759,21 @@ var rtcCom;
     };
 
     _proto.startSpeaking = function(c){
-        if(!checkCastSupport())return;
-        return this.avt.start({video:c});
+        if(!checkCastSupport())return false;
+        this.avt.start({video:c});
+        return true;
     };
     _proto.stopSpeaking = function(){
-        return this.avt.stop();
+        this.avt.stop();
     };
 
     _proto.onReady = function(){};
-    _proto.onUsrList = function(){};
+    _proto.onCastList = function(){};
     _proto.onTextRecv = function(){};
-    _proto.onSpkrList = function(){};
     _proto.onMyAvAdd = function(){};
     _proto.onFrAvAdd = function(){};
     _proto.onFrAvRm = function(){};
     _proto.onAvState = function(){};
-    _proto.onScnList = function(){};
     _proto.onMyScnAdd = function(){};
     _proto.onFrScnAdd = function(){};
     _proto.onFrScnRm = function(){};
@@ -3438,12 +3459,12 @@ $(function(){
 	rtc.onMyAvAdd = function(s){
 		var ln,m;
 		if(s.getVideoTracks().length>0){
-		    ln = "<video id='localMed' autoplay></video>";
+		    ln = '<video id="localMed"  width="292" height="220" autoplay></video>';
 		}else{
 		    ln = "<audio id='localMed' autoplay></audio>";
 		}
 
-		$('#audio').append(ln);
+		$('#media').append(ln);
 		m = document.querySelector('#localMed');
 		attachMediaStream(m,s);
 	};
@@ -3455,12 +3476,12 @@ $(function(){
 	rtc.onFrAvAdd = function(s){
 		var ln,m;
 		if(s.getVideoTracks().length>0){
-		    ln = "<video id='remoteMed' autoplay></video>";
+		    ln = '<video id="remoteMed" width="292" height="220" autoplay></video>';
 		}else{
 		    ln = "<audio id='remoteMed' autoplay></audio>";
 		}
 
-		$('#audio').append(ln);
+		$('#media').append(ln);
 		m = document.querySelector('#remoteMed');
 		attachMediaStream(m,s);
 	};
@@ -3471,10 +3492,38 @@ $(function(){
 
 	rtc.onReady = function(){
 		console.log('rtc on Ready')
-		$('#btnSpk').show();	
-		// btnSpk.show();
-		// btnVchat.show();
+		$('#btnSpk').show();
+		$('#btnVchat').show();
 		// btnScn.show();
+	};
+
+
+	function appendCList(peerid,type,scn){
+		var icon,icnCfg;
+		icnCfg = {iconcolor: '#FFF', w: 32, h: 32, borderwidth: 0, bgcolor: sp.repcolor, type: 'flat'};
+
+		$('#'+peerid).appendTo('#clist');
+		$('<div id="cl-ih-'+peerid+'">').appendTo('#'+peerid);
+		if(type != 'none'){
+			if(type == 'video'){
+				icnCfg.icon = svgicon.vchat;
+			}else{
+				icnCfg.icon = svgicon.mic;
+			}
+			icon = new Gatherhub.SvgButton(icnCfg);
+			icon.canvas.css('border-style', 'none');
+			icon.pad.css('cursor', 'auto');
+			icon.appendto('#cl-ih-'+peerid);
+			$('#cl-ih-'+peerid).css({float: 'right', clear: ''});
+
+		}
+	}
+	rtc.onCastList = function(list){
+		$('#clist').children().children().last().remove();
+		$('#clist').children().appendTo('#plist');
+		list.forEach(function(it){
+			appendCList(it.id,it.av,it.scn);
+		});
 	};
 
 
@@ -3490,10 +3539,11 @@ $(function(){
 		return btn;
 	}
 	var btnSpk = addBtnToList(svgicon.mic, 'btnSpk',function(){
-		$('#btnSpk').hide();
-		$('#btnVchat').hide();
-		$('#btnMute').show();
-		rtc.startSpeaking(false);
+		if(rtc.startSpeaking(false)){
+			$('#btnSpk').hide();
+			$('#btnVchat').hide();
+			$('#btnMute').show();
+		}
 	});
 	var btnMute = addBtnToList(svgicon.stopmic,'btnMute',function(){
 		$('#btnMute').hide();
@@ -3502,8 +3552,22 @@ $(function(){
 		rtc.stopSpeaking();
 		rmMyAv();
 	});
-	var btnVchat = addBtnToList(svgicon.vchat,'btnVchat',null);
-	var btnMuteV = addBtnToList(svgicon.stopvchat,'btnMuteV',null);
+
+	var btnVchat = addBtnToList(svgicon.vchat,'btnVchat',function(){
+		if(rtc.startSpeaking(true)){
+			$('#btnSpk').hide();
+			$('#btnVchat').hide();
+			$('#btnMuteV').show();
+		}
+	});
+	var btnMuteV = addBtnToList(svgicon.stopvchat,'btnMuteV',function(){
+		$('#btnMuteV').hide();
+		$('#btnSpk').show();
+		$('#btnVchat').show();
+		rtc.stopSpeaking();
+		rmMyAv();
+	});
+
 	// var btnScn = addBtnToList(svgicon.scncast,null,0);
 	// var btnMuteS = addBtnToList(svgicon.stopscn,null,0);
 
@@ -3713,6 +3777,7 @@ function appendUser(elem, peerid, uname, color) {
 	}).appendTo($(elem));
 	$(elem).scrollTop($(elem)[0].scrollHeight);
 }
+
 
 function appendMsg(elem, pid, sender, msg, color, tid) {
 	console.log(sender + '(' + tid + '): ' + msg);

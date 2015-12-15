@@ -239,12 +239,12 @@ $(function(){
 	rtc.onMyAvAdd = function(s){
 		var ln,m;
 		if(s.getVideoTracks().length>0){
-		    ln = "<video id='localMed' autoplay></video>";
+		    ln = '<video id="localMed"  width="292" height="220" autoplay></video>';
 		}else{
 		    ln = "<audio id='localMed' autoplay></audio>";
 		}
 
-		$('#audio').append(ln);
+		$('#media').append(ln);
 		m = document.querySelector('#localMed');
 		attachMediaStream(m,s);
 	};
@@ -256,12 +256,12 @@ $(function(){
 	rtc.onFrAvAdd = function(s){
 		var ln,m;
 		if(s.getVideoTracks().length>0){
-		    ln = "<video id='remoteMed' autoplay></video>";
+		    ln = '<video id="remoteMed" width="292" height="220" autoplay></video>';
 		}else{
 		    ln = "<audio id='remoteMed' autoplay></audio>";
 		}
 
-		$('#audio').append(ln);
+		$('#media').append(ln);
 		m = document.querySelector('#remoteMed');
 		attachMediaStream(m,s);
 	};
@@ -272,10 +272,38 @@ $(function(){
 
 	rtc.onReady = function(){
 		console.log('rtc on Ready')
-		$('#btnSpk').show();	
-		// btnSpk.show();
-		// btnVchat.show();
+		$('#btnSpk').show();
+		$('#btnVchat').show();
 		// btnScn.show();
+	};
+
+
+	function appendCList(peerid,type,scn){
+		var icon,icnCfg;
+		icnCfg = {iconcolor: '#FFF', w: 32, h: 32, borderwidth: 0, bgcolor: sp.repcolor, type: 'flat'};
+
+		$('#'+peerid).appendTo('#clist');
+		$('<div id="cl-ih-'+peerid+'">').appendTo('#'+peerid);
+		if(type != 'none'){
+			if(type == 'video'){
+				icnCfg.icon = svgicon.vchat;
+			}else{
+				icnCfg.icon = svgicon.mic;
+			}
+			icon = new Gatherhub.SvgButton(icnCfg);
+			icon.canvas.css('border-style', 'none');
+			icon.pad.css('cursor', 'auto');
+			icon.appendto('#cl-ih-'+peerid);
+			$('#cl-ih-'+peerid).css({float: 'right', clear: ''});
+
+		}
+	}
+	rtc.onCastList = function(list){
+		$('#clist').children().children().last().remove();
+		$('#clist').children().appendTo('#plist');
+		list.forEach(function(it){
+			appendCList(it.id,it.av,it.scn);
+		});
 	};
 
 
@@ -291,10 +319,11 @@ $(function(){
 		return btn;
 	}
 	var btnSpk = addBtnToList(svgicon.mic, 'btnSpk',function(){
-		$('#btnSpk').hide();
-		$('#btnVchat').hide();
-		$('#btnMute').show();
-		rtc.startSpeaking(false);
+		if(rtc.startSpeaking(false)){
+			$('#btnSpk').hide();
+			$('#btnVchat').hide();
+			$('#btnMute').show();
+		}
 	});
 	var btnMute = addBtnToList(svgicon.stopmic,'btnMute',function(){
 		$('#btnMute').hide();
@@ -303,8 +332,22 @@ $(function(){
 		rtc.stopSpeaking();
 		rmMyAv();
 	});
-	var btnVchat = addBtnToList(svgicon.vchat,'btnVchat',null);
-	var btnMuteV = addBtnToList(svgicon.stopvchat,'btnMuteV',null);
+
+	var btnVchat = addBtnToList(svgicon.vchat,'btnVchat',function(){
+		if(rtc.startSpeaking(true)){
+			$('#btnSpk').hide();
+			$('#btnVchat').hide();
+			$('#btnMuteV').show();
+		}
+	});
+	var btnMuteV = addBtnToList(svgicon.stopvchat,'btnMuteV',function(){
+		$('#btnMuteV').hide();
+		$('#btnSpk').show();
+		$('#btnVchat').show();
+		rtc.stopSpeaking();
+		rmMyAv();
+	});
+
 	// var btnScn = addBtnToList(svgicon.scncast,null,0);
 	// var btnMuteS = addBtnToList(svgicon.stopscn,null,0);
 
@@ -514,6 +557,7 @@ function appendUser(elem, peerid, uname, color) {
 	}).appendTo($(elem));
 	$(elem).scrollTop($(elem)[0].scrollHeight);
 }
+
 
 function appendMsg(elem, pid, sender, msg, color, tid) {
 	console.log(sender + '(' + tid + '): ' + msg);

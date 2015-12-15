@@ -221,6 +221,14 @@ Author: quarkli@gmail.com
 		border-top-color: #CCC;
 		overflow: hidden;
 	}
+	#media{
+		position: absolute;
+		bottom: 40px;
+		margin: 2px;
+		padding: 2px;
+		max-height: 230px;
+		width: 100%;
+	}
 	</style>
   </head>
   <body>
@@ -229,7 +237,7 @@ Author: quarkli@gmail.com
 		<div id="mlist" class="panel">
 			<div id="clist"></div>
 			<div id="plist"></div>
-			<div id="audio"></div>
+			<div id="media"></div>
 			<div id="bm"></div>
 		</div>
 		<div id="msg" class="panel">
@@ -239,7 +247,7 @@ Author: quarkli@gmail.com
 				<button id="send" type="button">Send</button>
 			</div>
 		</div>
-		<div id="media" class="panel"><div class="alert alert-info">Screen-cast, Video-cast, and Audio speech features will be available soon!</div>
+		<div id="media-old" class="panel"><div class="alert alert-info">Screen-cast, Video-cast, and Audio speech features will be available soon!</div>
 		<p>
 		<a id="svgsave" href-lang="image/svg+xml" href="" download target="_blank" onclick="buildfile()">Save SVG to file</a>
 		</p>
