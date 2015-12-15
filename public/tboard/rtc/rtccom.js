@@ -1,7 +1,7 @@
 /* 
 * @Author: Phenix
 * @Date:   2015-12-10 14:29:47
-* @Last Modified time: 2015-12-15 11:56:30
+* @Last Modified time: 2015-12-15 15:54:20
 */
 
 'use strict';
@@ -198,12 +198,26 @@ var rtcCom;
 
     _proto.startSpeaking = function(c){
         if(!checkCastSupport())return false;
+        if(this.avt.getMedStatus()!='idle') return false;
         this.avt.start({video:c});
         return true;
     };
     _proto.stopSpeaking = function(){
+        if(this.avt.getMedStatus()=='idle') return;
         this.avt.stop();
     };
+
+    _proto.startscnCast = function(){
+        if(!checkCastSupport())return false;
+        if(this.scn.getMedStatus()!='idle') return false;
+        this.scn.start();
+        return true;
+    };
+    _proto.stopscnCast = function(){
+        if(this.scn.getMedStatus()=='idle') return;
+        this.scn.stop();
+    };
+
 
     _proto.onReady = function(){};
     _proto.onCastList = function(){};

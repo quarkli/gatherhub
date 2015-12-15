@@ -1,0 +1,34 @@
+{
+  "name": "gatherhub Plugin",
+  "description": "This extension will capture screen.",
+  "version": "0.1.0",
+  "manifest_version": 2,
+  "minimum_chrome_version": "34",
+  "browser_action": {
+        "default_icon": "ghub-16.png"
+        },
+	"icons": { "16": "ghub-16.png",
+	           "48": "ghub-48.png",
+	          "128": "ghub-128.png" },        
+  "permissions": [
+    "desktopCapture"
+  ],
+  "background": {
+    "scripts": ["background.js"]
+  },
+  "content_scripts": [ {
+    "js": [ "content.js" ],
+    "matches": [
+    	"https://gatherhub.com/*",
+      "https://gatherhub.xyz/*",
+    	"https://192.168.10.10/*"
+        ]
+  }],
+  "externally_connectable": {
+      "matches": [
+    	"https://gatherhub.com/*",
+      "https://gatherhub.xyz/*",
+    	"https://192.168.10.10/*"
+      ]
+  }
+}

@@ -229,9 +229,20 @@ Author: quarkli@gmail.com
 		max-height: 230px;
 		width: 100%;
 	}
+	#scnshare{
+		position: absolute;
+		left: 55px;
+		width: 100%;
+		height: 100%;
+		margin: 0px auto;
+		padding: 0px;
+		text-align: center;
+		overflow: hidden;
+	}
 	</style>
   </head>
   <body>
+	<div id="scnshare"></div>
 	<div id="pad"></div>
 	<div id="exp">
 		<div id="mlist" class="panel">

@@ -16,7 +16,7 @@ var dispatch = function(){};
 $(function(){
 	var peerid;
 	var svr = ws1 = '192.168.10.10';
-	var ws2 = '52.69.118.100';
+	var ws2 = 'gatherhub.xyz';
 	var port = 55688;
 
 	$('#clist').niceScroll();
@@ -270,33 +270,71 @@ $(function(){
 		$('#remoteMed').remove();
 	};
 
+	rtc.onMyScnAdd = function(s){
+		var ln,m;
+		ln = "<video id='localScn' autoplay muted></video>";
+		$('#scnshare').append(ln);
+		m = document.querySelector('#localScn');
+		attachMediaStream(m,s);
+		$('#pad').css({opacity:'0.4'});
+	};
+
+	function rmMyScn(){
+	    $('#localScn').remove();
+		$('#pad').css({opacity:'1'});
+	}
+
+	rtc.onFrScnAdd = function(s){
+		var ln,m;
+		ln = "<video id='remoteScn' autoplay></video>";
+		$('#scnshare').append(ln);
+		m = document.querySelector('#remoteScn');
+		attachMediaStream(m,s);
+		$('#pad').css({opacity:'0.4'});
+	};
+
+	rtc.onFrScnRm = function(){
+    	$('#remoteScn').remove();
+		$('#pad').css({opacity:'1'});
+	};
+
 	rtc.onReady = function(){
 		console.log('rtc on Ready')
 		$('#btnSpk').show();
 		$('#btnVchat').show();
-		// btnScn.show();
+		$('#btnScn').show();
 	};
 
 
 	function appendCList(peerid,type,scn){
-		var icon,icnCfg;
-		icnCfg = {iconcolor: '#FFF', w: 32, h: 32, borderwidth: 0, bgcolor: sp.repcolor, type: 'flat'};
+		var av,sn,icnCfg,bgcolor;
 
+		icnCfg = {iconcolor: '#FFF', w: 32, h: 32, borderwidth: 0, type: 'flat'};
+		icnCfg.bgcolor = $('#'+peerid).css('background-color');
 		$('#'+peerid).appendTo('#clist');
-		$('<div id="cl-ih-'+peerid+'">').appendTo('#'+peerid);
+		$('#ih-'+peerid).remove();
+		$('<div id="ih-'+peerid+'">').appendTo('#'+peerid);
 		if(type != 'none'){
 			if(type == 'video'){
 				icnCfg.icon = svgicon.vchat;
 			}else{
 				icnCfg.icon = svgicon.mic;
 			}
-			icon = new Gatherhub.SvgButton(icnCfg);
-			icon.canvas.css('border-style', 'none');
-			icon.pad.css('cursor', 'auto');
-			icon.appendto('#cl-ih-'+peerid);
-			$('#cl-ih-'+peerid).css({float: 'right', clear: ''});
-
+			av = new Gatherhub.SvgButton(icnCfg);
+			av.canvas.css('border-style', 'none');
+			av.pad.css('cursor', 'auto');
+			av.appendto('#ih-'+peerid);
 		}
+		if(scn){
+			icnCfg.icon = svgicon.scncast;
+			sn = new Gatherhub.SvgButton(icnCfg);
+			sn.canvas.css('border-style', 'none');
+			sn.pad.css('cursor', 'auto');
+			sn.appendto('#ih-'+peerid);
+		}
+		$('#ih-'+peerid).css({float: 'right', clear: ''});
+		$('#ih-'+peerid).children().css({float: 'right', clear: ''});
+
 	}
 	rtc.onCastList = function(list){
 		$('#clist').children().children().last().remove();
@@ -348,8 +386,18 @@ $(function(){
 		rmMyAv();
 	});
 
-	// var btnScn = addBtnToList(svgicon.scncast,null,0);
-	// var btnMuteS = addBtnToList(svgicon.stopscn,null,0);
+	var btnScn = addBtnToList(svgicon.scncast,'btnScn',function(){
+		if(rtc.startscnCast()){
+			$('#btnScn').hide();
+			$('#btnMuteS').show();
+		}
+	});
+	var btnMuteS = addBtnToList(svgicon.stopscn,'btnMuteS',function(){
+			$('#btnMuteS').hide();
+			$('#btnScn').show();
+			rtc.stopscnCast();
+			rmMyScn();
+	});
 
 	$('#bm').children().css({float: 'left', clear: ''});
 
