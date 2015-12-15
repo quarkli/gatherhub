@@ -5,12 +5,18 @@ require 'json'
 require 'erb'
 include ERB::Util
 
+class EventMachine::WebSocket::Connection
+  def remote_addr
+    get_peername[2,6].unpack('nC4')[1..4].join('.')
+  end
+end
+
 EventMachine.run {
   @peers = Array.new
   @act_peers = 0
     
   EventMachine::WebSocket.start(:host => '0.0.0.0', :port => '55688') do |ws|
-    ws.onopen do
+    ws.onopen do 
 	  begin
         @act_peers += 1
 	  rescue StandardError => e
@@ -49,7 +55,7 @@ EventMachine.run {
 			syncmsg[:action] = "sync"
 		    syncmsg[:data][:ts] = Time.now.getutc.to_i
 			ws.send(syncmsg.to_json)
-		    puts "#{Time.now}: #{msg[:data]['name']} has entered Hub:#{msg[:hub]}(#{@act_peers})"
+		    puts "#{Time.now} / (#{ws.remote_addr}): #{msg[:data]['name']} has entered Hub:#{msg[:hub]}(#{@act_peers})"
 		  end	
           if (msg.key?(:dst)) then
             # Unicast
