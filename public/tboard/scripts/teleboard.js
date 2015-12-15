@@ -357,7 +357,12 @@ $(function(){
 		return btn;
 	}
 	var btnSpk = addBtnToList(svgicon.mic, 'btnSpk',function(){
-		if(rtc.startSpeaking(false)){
+		if(rtc.startSpeaking(false,function(){
+			console.log('start talking failed');
+			$('#btnMute').hide();
+			$('#btnSpk').show();
+			$('#btnVchat').show();
+		})){
 			$('#btnSpk').hide();
 			$('#btnVchat').hide();
 			$('#btnMute').show();
@@ -372,7 +377,12 @@ $(function(){
 	});
 
 	var btnVchat = addBtnToList(svgicon.vchat,'btnVchat',function(){
-		if(rtc.startSpeaking(true)){
+		if(rtc.startSpeaking(true,function(){
+			console.log('start video failed');
+			$('#btnMuteV').hide();
+			$('#btnSpk').show();
+			$('#btnVchat').show();
+		})){
 			$('#btnSpk').hide();
 			$('#btnVchat').hide();
 			$('#btnMuteV').show();
@@ -387,7 +397,14 @@ $(function(){
 	});
 
 	var btnScn = addBtnToList(svgicon.scncast,'btnScn',function(){
-		if(rtc.startscnCast()){
+		if(rtc.startscnCast(function(err){
+			console.log('start scn share failed');
+			$('#btnMuteS').hide();
+			$('#btnScn').show();
+			if(confirm('Screen sharing needs to install Chrome extension')){
+				window.location = 'extensions/gatherhub.crx';
+			}
+		})){
 			$('#btnScn').hide();
 			$('#btnMuteS').show();
 		}

@@ -1,7 +1,7 @@
 /* 
 * @Author: phenix cai
 * @Date:   2015-11-19 10:08:39
-* @Last Modified time: 2015-12-14 14:37:57
+* @Last Modified time: 2015-12-15 19:56:23
 */
 var webRtc = require('./webrtc');
 var castCtrl = require('./castctrl');
@@ -30,7 +30,7 @@ var medCast;
         return this.mState;
     };
 
-    _proto.start = function(cs){
+    _proto.start = function(cs,errCb){
         var self, hdl, type;
         self = this;
         hdl = (this.config.scnCast) ? this.startScreen.bind(this) 
@@ -40,7 +40,9 @@ var medCast;
             hdl(function(){
                 self._setMedState('active');
             }, function(err){
-                console.log('Error', err);
+                console.log('Error', err.name + ':' + err.message);
+                if(errCb)errCb(err);
+                self.ctrl.stop();
                 self._setMedState('idle');
             },cs);
         },type);

@@ -1159,7 +1159,7 @@ module.exports = localMedia;
 /* 
 * @Author: phenix cai
 * @Date:   2015-11-19 10:08:39
-* @Last Modified time: 2015-12-14 14:37:57
+* @Last Modified time: 2015-12-15 19:56:23
 */
 var webRtc = require('./webrtc');
 var castCtrl = require('./castctrl');
@@ -1188,7 +1188,7 @@ var medCast;
         return this.mState;
     };
 
-    _proto.start = function(cs){
+    _proto.start = function(cs,errCb){
         var self, hdl, type;
         self = this;
         hdl = (this.config.scnCast) ? this.startScreen.bind(this) 
@@ -1198,7 +1198,9 @@ var medCast;
             hdl(function(){
                 self._setMedState('active');
             }, function(err){
-                console.log('Error', err);
+                console.log('Error', err.name + ':' + err.message);
+                if(errCb)errCb(err);
+                self.ctrl.stop();
                 self._setMedState('idle');
             },cs);
         },type);
@@ -1563,7 +1565,7 @@ module.exports = peerConn;
 /* 
 * @Author: Phenix
 * @Date:   2015-12-10 14:29:47
-* @Last Modified time: 2015-12-15 15:54:20
+* @Last Modified time: 2015-12-15 19:11:07
 */
 
 'use strict';
@@ -1758,10 +1760,10 @@ var rtcCom;
         return id;
     };
 
-    _proto.startSpeaking = function(c){
+    _proto.startSpeaking = function(video,errCb){
         if(!checkCastSupport())return false;
         if(this.avt.getMedStatus()!='idle') return false;
-        this.avt.start({video:c});
+        this.avt.start({video:video},errCb);
         return true;
     };
     _proto.stopSpeaking = function(){
@@ -1769,10 +1771,10 @@ var rtcCom;
         this.avt.stop();
     };
 
-    _proto.startscnCast = function(){
+    _proto.startscnCast = function(errCb){
         if(!checkCastSupport())return false;
         if(this.scn.getMedStatus()!='idle') return false;
-        this.scn.start();
+        this.scn.start({},errCb);
         return true;
     };
     _proto.stopscnCast = function(){
@@ -3591,7 +3593,12 @@ $(function(){
 		return btn;
 	}
 	var btnSpk = addBtnToList(svgicon.mic, 'btnSpk',function(){
-		if(rtc.startSpeaking(false)){
+		if(rtc.startSpeaking(false,function(){
+			console.log('start talking failed');
+			$('#btnMute').hide();
+			$('#btnSpk').show();
+			$('#btnVchat').show();
+		})){
 			$('#btnSpk').hide();
 			$('#btnVchat').hide();
 			$('#btnMute').show();
@@ -3606,7 +3613,12 @@ $(function(){
 	});
 
 	var btnVchat = addBtnToList(svgicon.vchat,'btnVchat',function(){
-		if(rtc.startSpeaking(true)){
+		if(rtc.startSpeaking(true,function(){
+			console.log('start video failed');
+			$('#btnMuteV').hide();
+			$('#btnSpk').show();
+			$('#btnVchat').show();
+		})){
 			$('#btnSpk').hide();
 			$('#btnVchat').hide();
 			$('#btnMuteV').show();
@@ -3621,7 +3633,14 @@ $(function(){
 	});
 
 	var btnScn = addBtnToList(svgicon.scncast,'btnScn',function(){
-		if(rtc.startscnCast()){
+		if(rtc.startscnCast(function(err){
+			console.log('start scn share failed');
+			$('#btnMuteS').hide();
+			$('#btnScn').show();
+			if(confirm('Screen sharing needs to install Chrome extension')){
+				window.location = 'extensions/gatherhub.crx';
+			}
+		})){
 			$('#btnScn').hide();
 			$('#btnMuteS').show();
 		}

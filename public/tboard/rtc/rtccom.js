@@ -1,7 +1,7 @@
 /* 
 * @Author: Phenix
 * @Date:   2015-12-10 14:29:47
-* @Last Modified time: 2015-12-15 15:54:20
+* @Last Modified time: 2015-12-15 19:11:07
 */
 
 'use strict';
@@ -196,10 +196,10 @@ var rtcCom;
         return id;
     };
 
-    _proto.startSpeaking = function(c){
+    _proto.startSpeaking = function(video,errCb){
         if(!checkCastSupport())return false;
         if(this.avt.getMedStatus()!='idle') return false;
-        this.avt.start({video:c});
+        this.avt.start({video:video},errCb);
         return true;
     };
     _proto.stopSpeaking = function(){
@@ -207,10 +207,10 @@ var rtcCom;
         this.avt.stop();
     };
 
-    _proto.startscnCast = function(){
+    _proto.startscnCast = function(errCb){
         if(!checkCastSupport())return false;
         if(this.scn.getMedStatus()!='idle') return false;
-        this.scn.start();
+        this.scn.start({},errCb);
         return true;
     };
     _proto.stopscnCast = function(){
