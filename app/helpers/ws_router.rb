@@ -14,7 +14,7 @@ EventMachine.run {
 	  begin
         @act_peers += 1
 	  rescue StandardError => e
-	    puts "Error: #{e.message}"
+	    puts "Error: #{e.backtrace}"
 	  end
     end
 
@@ -31,7 +31,7 @@ EventMachine.run {
         end
         puts "#{Time.now}: #{c[:name]} has left Hub:#{c[:hub]}(#{@act_peers})"
 	  rescue StandardError => e
-	    puts "Error: #{e.message}"
+	    puts "Error: #{e.backtrace}"
 	  end
     end
     
@@ -64,8 +64,7 @@ EventMachine.run {
             end
           end
         rescue StandardError => e
-          puts "Error: #{e.message}"
-	      puts "Peer Msg: #{pmsg}"
+          puts "Error: #{e.backtrace}"
         end
       end
     end

@@ -225,8 +225,8 @@ $(function(){
 		connect();
 	}	
 
+	var wsready = false, pulse = null;
 	function connect() {
-		var wsready = false, pulse = null;
 		var ws = new WebSocket('ws://' + svr + ':' + port);
 		
 		sp.dispatch = dispatch = function(data, type, dst, p, c) {
@@ -329,6 +329,7 @@ $(function(){
 			clearInterval(pulse);
 			wsready = false;
 			showpop = false;
+			ws = null;
 			connect();
 		};
 	}
