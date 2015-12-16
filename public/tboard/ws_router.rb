@@ -5,8 +5,14 @@ require 'json'
 require 'erb'
 include ERB::Util
 
-wssCfg = {
+class EventMachine::WebSocket::Connection
+  def remote_addr
+    get_peername[2,6].unpack('nC4')[1..4].join('.')
+  end
+end
 
+
+wssCfg = {
   :host => "0.0.0.0",
   :port => 55688,
   :secure => true,
@@ -15,6 +21,8 @@ wssCfg = {
     :cert_chain_file => "/etc/nginx/ssl/server.crt"
   }
 };
+
+
 
 EventMachine.run {
   @peers = Array.new
@@ -25,7 +33,7 @@ EventMachine.run {
 	  begin
         @act_peers += 1
 	  rescue StandardError => e
-	    puts "Error: #{e.message}"
+	    puts "Error: #{e.backtrace}"
 	  end
     end
 
@@ -42,7 +50,7 @@ EventMachine.run {
         end
         puts "#{Time.now}: #{c[:name]} has left Hub:#{c[:hub]}(#{@act_peers})"
 	  rescue StandardError => e
-	    puts "Error: #{e.message}"
+	    puts "Error: #{e.backtrace}"
 	  end
     end
     
@@ -60,7 +68,7 @@ EventMachine.run {
 			syncmsg[:action] = "sync"
 		    syncmsg[:data][:ts] = Time.now.getutc.to_i
 			ws.send(syncmsg.to_json)
-		    puts "#{Time.now}: #{msg[:data]['name']} has entered Hub:#{msg[:hub]}(#{@act_peers})"
+		    puts "#{Time.now} / (#{ws.remote_addr}): #{msg[:data]['name']} has entered Hub:#{msg[:hub]}(#{@act_peers})"
 		  end	
           if (msg.key?(:dst)) then
             # Unicast
@@ -75,8 +83,7 @@ EventMachine.run {
             end
           end
         rescue StandardError => e
-          puts "Error: #{e.message}"
-	      puts "Peer Msg: #{pmsg}"
+          puts "Error: #{e.backtrace}"
         end
       end
     end

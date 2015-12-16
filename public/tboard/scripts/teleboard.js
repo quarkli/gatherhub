@@ -91,6 +91,7 @@ $(function(){
 		{btn: {w: w, h: h, icon: svgicon.zoomout, tip: 'Zoom Out'},	act: function(){sp.zoom(sp.zrate / 1.1);}}
 	];
 	var canvasedit = [
+		{btn: {w: w, h: h, icon: svgicon.download, tip: 'Save SVG'}, act: function(){saveSVG(hub);}},
 		{btn: {w: w, h: h, icon: svgicon.clear, tip: 'Clear Canvas'}, act: function(){
 			if (confirm('This will clear everything on the whiteboard of all peers. Are you sure?')) sp.clearall();
 		}},
@@ -530,6 +531,7 @@ $(function(){
 			clearInterval(pulse);
 			wsready = false;
 			showpop = false;
+			ws = null;
 			connect();
 		};
 	}
@@ -623,7 +625,6 @@ function appendUser(elem, peerid, uname, color) {
 	$(elem).scrollTop($(elem)[0].scrollHeight);
 }
 
-
 function appendMsg(elem, pid, sender, msg, color, tid) {
 	console.log(sender + '(' + tid + '): ' + msg);
 	var msg = Autolinker.link(msg, {newWindo: true, stripPrefix: false});
@@ -662,14 +663,21 @@ function getCookie(key) {
 	return keyValue ? keyValue[2] : null;
 }
 
-function buildfile() {
-	var xmlhead = '<?xml version="1.0" encoding="iso-8859-1"?><!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd"><svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" xml:space="preserve">';
-	var svgfile = btoa(unescape(encodeURIComponent(xmlhead+$('#pad').find('svg').get(0).outerHTML+'</svg>')));
-	$('#svgsave').attr('href', 'data:image/svg+xml;base64,\n' + svgfile);
-}
-
 function saveSVG(fname) {
-	var xmlhead = '<?xml version="1.0" encoding="iso-8859-1"?><!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd"><svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" xml:space="preserve">';
-	var svgfile = btoa(unescape(encodeURIComponent(xmlhead+$('#pad').find('svg').get(0).outerHTML+'</svg>')));
-	($("<a href-lang='image/svg+xml' href='data:image/svg+xml;base64,\n"+svgfile+"' title='"+fname+".svg' download target='_blank'>Save SVG to file</a>")).appendTo('#media')
+	var z = msp.zrate;
+	msp.fitcontent();
+	var w = msp.canvas.attr('width');
+	var h = msp.canvas.attr('height');
+	var vbox = msp.canvas[0].getAttribute('viewBox').split(' ');
+	msp.canvas.attr('width', vbox[2]);
+	msp.canvas.attr('height', vbox[3]);
+	msp.canvas.attr('xmlns', 'http://www.w3.org/2000/svg');
+	var svgctx = $('#pad').find('svg').get(0).outerHTML;
+	msp.canvas.attr('width', w);
+	msp.canvas.attr('height', h);
+	msp.zoom(z);
+	
+	var xmlhead = '<?xml version="1.0" encoding="utf-8"?>';
+	var svgfile = btoa(unescape(encodeURIComponent(xmlhead+svgctx)));
+	window.open('data:image/svg+xml;base64,\n' + svgfile, fname + '.svg');
 }

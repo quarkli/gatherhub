@@ -258,11 +258,6 @@ Author: quarkli@gmail.com
 				<button id="send" type="button">Send</button>
 			</div>
 		</div>
-		<div id="media-old" class="panel"><div class="alert alert-info">Screen-cast, Video-cast, and Audio speech features will be available soon!</div>
-		<p>
-		<a id="svgsave" href-lang="image/svg+xml" href="" download target="_blank" onclick="buildfile()">Save SVG to file</a>
-		</p>
-		</div>
 	</div>
 	<div id="bgroup"></div>
 	<div id="joinhub" class="modal fade" role="dialog">

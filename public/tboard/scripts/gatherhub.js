@@ -907,7 +907,12 @@ var Gatherhub = Gatherhub || {};
 			this.iconcolor(opt.iconcolor || 'black');
 			this.icon(opt.icon || '');
 			this.pad.attr('title', opt.tip || '');
-			this.pad.css('cursor', 'pointer');
+			if (opt.type == 'flat') {
+				this.canvas.css('border-style', 'none');
+			}
+			else {
+				this.pad.css('cursor', 'pointer');
+			}
 			if (opt === undefined) opt = {};
 			if ($.isNumeric(opt.w)) this.defaultWidth = opt.w;
 			if ($.isNumeric(opt.h)) this.defaultHeight = opt.h;
