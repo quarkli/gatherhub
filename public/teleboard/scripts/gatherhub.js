@@ -105,8 +105,9 @@ var Gatherhub = Gatherhub || {};
 		};
 		_proto.borderradius = function(r) {
 			if (r >= 0 && r <= 1) {
-				var s = this.width() < this.height ? this.width() : this.height();
-				this.canvas[0].style['border-radius'] = (s * r / 8) + 'px';
+				var s = this.width() < this.height() ? this.width() : this.height();
+				s = Math.round(s / 2 * r);
+				this.canvas[0].style['border-radius'] = s + 'px';
 			}
 			return this;
 		};
@@ -901,7 +902,7 @@ var Gatherhub = Gatherhub || {};
 			this.defaultHeight = 50;
 			this.resize = .8;
 			this.borderwidth(1);
-			this.borderradius(.25);
+			this.borderradius(.1);
 			this.bgcolor(opt.bgcolor || 'white');
 			this.bordercolor(opt.bordercolor || 'black');
 			this.iconcolor(opt.iconcolor || 'black');
