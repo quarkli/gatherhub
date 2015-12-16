@@ -88,9 +88,7 @@ $(function(){
 	];
 	var canvasedit = [
 		{btn: {w: w, h: h, icon: svgicon.download, tip: 'Save SVG'}, act: function(){saveSVG(hub);}},
-		{btn: {w: w, h: h, icon: svgicon.clear, tip: 'Clear Canvas'}, act: function(){
-			if (confirm('This will clear everything on the whiteboard of all peers. Are you sure?')) sp.clearall();
-		}},
+		{btn: {w: w, h: h, icon: svgicon.clear, tip: 'Clear Canvas'}, act: function(){$('#cfmclr').modal('toggle');}},
 		{btn: {w: w, h: h, icon: svgicon.redo, tip: 'Redo'}, act: function(){sp.redo();}},
 		{btn: {w: w, h: h, icon: svgicon.undo, tip: 'Undo'}, act: function(){sp.undo();}}
 	];	
@@ -245,7 +243,7 @@ $(function(){
 		};
 		ws.onopen = function(){
 			console.log("Connected.");
-			sp.clearall();
+			sp.canvas.children('g').first().empty();
 			$('#plist').empty();
 			$('#msgbox').empty();
 			wsready = showpop = true;
@@ -481,4 +479,11 @@ function saveSVG(fname) {
 	var xmlhead = '<?xml version="1.0" encoding="utf-8"?>';
 	var svgfile = btoa(unescape(encodeURIComponent(xmlhead+svgctx)));
 	window.open('data:image/svg+xml;base64,\n' + svgfile, fname + '.svg');
+}
+
+function cfmClear(ok) {
+	if (ok) {
+		msp.clearall();
+	}
+	$('#cfmclr').modal('toggle');
 }
