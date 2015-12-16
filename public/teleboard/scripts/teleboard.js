@@ -42,7 +42,7 @@ $(function(){
 
 	var vp = mvp = new Gatherhub.VisualPad();
 	vp.draggable = true;
-	vp.floating('absolute').bgcolor('#FFF').bordercolor('#888').borderwidth(3);
+	vp.floating('absolute').bgcolor('#FCFCFC').bordercolor('#888').borderwidth(3).borderradius(0.1);
 	vp.defsize(sp.width()/4, sp.height()/4).minimize().appendto('#pad');
 
 	sp.attachvp(vp);
@@ -108,7 +108,7 @@ $(function(){
 	toolBar.root.children().eq(4).hide();
 	
 	var actBtns = [
-		{btn: {w: w, h: h, icon: svgicon.pen, iconcolor: 'white', borderwidth: 3, bordercolor: 'white', borderradius: 2, bgcolor: 'red', resize: .6, tip: 'Free Hand Writing'}, act: function(){
+		{btn: {w: w, h: h, icon: svgicon.pen, iconcolor: 'white', borderwidth: 3, bordercolor: 'white', borderradius: .15, bgcolor: 'red', resize: .6, tip: 'Free Hand Writing'}, act: function(){
 			sp.drag(0);
 			sp.txtedit(0);
 			sp.drawgeo(0);
@@ -117,7 +117,7 @@ $(function(){
 			toolBar.root.children().eq(4).hide();
 			setPenColor(selcolor);
 		}},
-		{btn: {w: w, h: h, icon: svgicon.eraser, iconcolor: 'white', borderwidth: 3, bordercolor: 'white', borderradius: 2, bgcolor: 'red', resize: .6, tip: 'Eraser'}, act: function(){
+		{btn: {w: w, h: h, icon: svgicon.eraser, iconcolor: 'white', borderwidth: 3, bordercolor: 'white', borderradius: .15, bgcolor: 'red', resize: .6, tip: 'Eraser'}, act: function(){
 			sp.drag(0);
 			sp.txtedit(0);
 			sp.drawgeo(0);
@@ -127,7 +127,7 @@ $(function(){
 			toolBar.root.children().eq(0).show();
 			toolBar.root.children().eq(1).show();
 		}},
-		{btn: {w: w, h: h, icon: svgicon.textinput, iconcolor: 'white', borderwidth: 3, bordercolor: 'white', borderradius: 2, bgcolor: 'red', resize: .6, tip: 'Text Input'},	act: function(){
+		{btn: {w: w, h: h, icon: svgicon.textinput, iconcolor: 'white', borderwidth: 3, bordercolor: 'white', borderradius: .15, bgcolor: 'red', resize: .6, tip: 'Text Input'},	act: function(){
 			sp.drag(0);
 			sp.drawgeo(0);
 			sp.txtedit(1);
@@ -137,7 +137,7 @@ $(function(){
 			toolBar.root.children().eq(2).hide();
 			toolBar.root.children().eq(4).hide();
 		}},
-		{btn: {w: w, h: h, icon: svgicon.move, iconcolor: 'white', borderwidth: 3, bordercolor: 'white', borderradius: 2, bgcolor: 'red', resize: .6, tip: 'Move Canvas'}, act: function(){
+		{btn: {w: w, h: h, icon: svgicon.move, iconcolor: 'white', borderwidth: 3, bordercolor: 'white', borderradius: .15, bgcolor: 'red', resize: .6, tip: 'Move Canvas'}, act: function(){
 			sp.txtedit(0);
 			sp.drawgeo(0);
 			sp.drag(1);
@@ -146,7 +146,7 @@ $(function(){
 			toolBar.root.children().eq(0).show();
 			toolBar.root.children().eq(1).show();
 		}},
-		{btn: {w: w, h: h, icon: svgicon.geometrical, iconcolor: 'white', borderwidth: 3, bordercolor: 'white', borderradius: 2, bgcolor: 'red', resize: .6, tip: 'Draw Geometrics'}, act: function(){
+		{btn: {w: w, h: h, icon: svgicon.geometrical, iconcolor: 'white', borderwidth: 3, bordercolor: 'white', borderradius: .15, bgcolor: 'red', resize: .6, tip: 'Draw Geometrics'}, act: function(){
 			sp.drag(0);
 			sp.txtedit(0);
 			sp.drawgeo(1);
@@ -239,17 +239,19 @@ $(function(){
 		};
 		
 		ws.onerror = function(){
-			console.log("Message Router Connecting Error!");
+			console.log("Connecting failed, try alternative server!");
 			if (svr == ws1) svr = ws2;
 			else svr = ws1;
 		};
 		ws.onopen = function(){
-			console.log("Message Router Connected.");
-			wsready = true;
+			console.log("Connected.");
+			sp.clearall();
+			$('#plist').empty();
+			$('#msgbox').empty();
+			wsready = showpop = true;
 			dispatch({}, 'hello');
 			pulse = setInterval(function(){if (wsready) dispatch({},'heartbeat',peerid);}, 25000);
 			appendUser('#plist', peerid, peer + '(Me)', sp.repcolor);
-			showpop = true;
 		};
 		ws.onmessage = function(msg){
 			var ctx = JSON.parse(msg.data);
@@ -275,9 +277,11 @@ $(function(){
 					}
 					break;
 				case 'bye':
-					console.log(ctx.name + ': bye!');
-					popupMsg(ctx.name + ' has left this hub.', 'grey');
-					$('#' + ctx.peer).remove();
+					if (ctx.peer != peerid) {
+						console.log(ctx.name + ': bye!');
+						popupMsg(ctx.name + ' has left this hub.', 'grey');
+						$('#' + ctx.peer).remove();
+					}
 					break;
 				case 'message':
 					if (data.msg === undefined) {
@@ -325,7 +329,6 @@ $(function(){
 			}
 		};
 		ws.onclose = function(){
-			$('#plist').empty();
 			clearInterval(pulse);
 			wsready = false;
 			showpop = false;
