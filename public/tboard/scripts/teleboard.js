@@ -18,6 +18,8 @@ $(function(){
 	var svr = ws1 = 'gatherhub.xyz';
 	var ws2 = '192.168.10.10';
 	var port = 55688;
+	// init webrtc module -- media casting feature
+	var rtc = new RtcCom();
 
 	$('#clist').niceScroll();
 	$('#plist').niceScroll();
@@ -213,8 +215,6 @@ $(function(){
 		if ($('#tmsg').val().length) appendMsg('#msgbox', peerid, 'Me', $('#tmsg').val(), sp.repcolor, $.now() - td);
 		$('#tmsg').val('').focus();
 	});
-	// init webrtc module -- media casting feature
-	var rtc = new RtcCom();
 	
 	// start to connect
 	if (hub.length == 0) hub = 1000;
@@ -231,6 +231,7 @@ $(function(){
 	}	
 
 	// implement for webrtc
+
 	function attachMediaStream (element, stream) {
 	  element.srcObject = stream;
 	}
@@ -301,7 +302,7 @@ $(function(){
 		console.log('rtc on Ready')
 		$('#btnSpk').show();
 		$('#btnVchat').show();
-		$('#btnScn').show();
+		if(rtc.checkExtension()){$('#btnScn').show()};
 	};
 
 
@@ -414,8 +415,27 @@ $(function(){
 	});
 
 	$('#bm').children().css({float: 'left', clear: ''});
+	$('#btnInfo').click(function(){$('#showrtc').modal('toggle');});
+	function showRtcInfo(){
+		if(rtc.getRtcCap(function(inf){
+			$('#rtcinfo').html(inf);
+			$('#showrtc').modal('toggle');
+		})){
+			if(rtc.checkExtension(function(inf){
+				$('#rtcinfo').html(inf);
+				$('#showrtc').modal('toggle');
 
+			})){
+				// to do later...
+			}
+		}		
+	}
+
+	$('#btnclr').click(function(){cfmClear(1);});
+	$('#btncancel').click(function(){cfmClear(0)});
 	//end of implement of webrtc
+
+
 	var wsready = false, pulse = null;
 
 	function connect() {
@@ -445,6 +465,7 @@ $(function(){
 			pulse = setInterval(function(){if (wsready) dispatch({},'heartbeat',peerid);}, 25000);
 			appendUser('#plist', peerid, peer + '(Me)', sp.repcolor);
 			rtc.setMyPeer(peerid);
+			showRtcInfo();
 		};
 		ws.onmessage = function(msg){
 			var ctx = JSON.parse(msg.data);
@@ -687,3 +708,4 @@ function cfmClear(ok) {
 	}
 	$('#cfmclr').modal('toggle');
 }
+

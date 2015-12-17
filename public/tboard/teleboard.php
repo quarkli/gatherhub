@@ -288,8 +288,23 @@ Author: quarkli@gmail.com
 				All peers' canvas will be cleared and cannot be reversed, are you sure?
 				<br><br>
 			  <div class="form-group" style="text-align: center">
-				  <button id="btnclr" type="Button" class="btn btn-default" onclick="cfmClear(1)">Clear</button>
-				  <button id="btncancel" type="Button" class="btn btn-default" onclick="cfmClear(0);">Cancel</button>
+				  <button id="btnclr" type="Button" class="btn btn-default">Clear</button>
+				  <button id="btncancel" type="Button" class="btn btn-default">Cancel</button>
+			  </div>
+			</div>
+		  </div>
+		</div>
+	</div>
+	<div id="showrtc" class="modal fade" role="dialog">
+		<div class="modal-dialog">
+		  <div class="modal-content">
+			<div class="modal-header">
+			  <h4 class="modal-title">Information</h4>
+			</div>
+			<div class="modal-body alert alert-warning">
+			  <div id="rtcinfo"></div>
+			  <div class="form-group" style="text-align: right;">
+				  <button id="btnInfo" type="Button" class="btn btn-default">OK</button>
 			  </div>
 			</div>
 		  </div>

@@ -91,7 +91,7 @@ var peerConn;
                 if(self.ready == false){
                     self.onConError('default',self.config.id);
                 }
-            }, 1500);
+            }, 5000);
           }
         }
 

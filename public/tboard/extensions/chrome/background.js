@@ -1,3 +1,4 @@
+
 /* background page, responsible for actually choosing media */
 chrome.runtime.onConnect.addListener(function (channel) {
     channel.onMessage.addListener(function (message) {

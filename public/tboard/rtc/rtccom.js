@@ -1,7 +1,7 @@
 /* 
 * @Author: Phenix
 * @Date:   2015-12-10 14:29:47
-* @Last Modified time: 2015-12-15 19:11:07
+* @Last Modified time: 2015-12-17 23:16:51
 */
 
 'use strict';
@@ -23,24 +23,6 @@ var rtcCom;
 
     function _errLog(){
         console.log.apply(console, arguments);
-    }
-
-    function checkCastSupport(){
-        var info, rc;
-        rc = false;
-        switch(_browser){
-            case 'firefox':
-            info = 'Firefox could only receive audio/video/screen casting';
-            break;
-            case 'chrome':
-            rc = true;
-            break;
-            default:
-            info = 'Your browser could not support media casting feature';
-            break;
-        }
-        if(!rc)alert(info);
-        return rc;
     }
 
     function RtcCom(){
@@ -197,7 +179,7 @@ var rtcCom;
     };
 
     _proto.startSpeaking = function(video,errCb){
-        if(!checkCastSupport())return false;
+        if(!this.getRtcCap())return false;
         if(this.avt.getMedStatus()!='idle') return false;
         this.avt.start({video:video},errCb);
         return true;
@@ -208,7 +190,7 @@ var rtcCom;
     };
 
     _proto.startscnCast = function(errCb){
-        if(!checkCastSupport())return false;
+        if(!this.getRtcCap())return false;
         if(this.scn.getMedStatus()!='idle') return false;
         this.scn.start({},errCb);
         return true;
@@ -216,6 +198,37 @@ var rtcCom;
     _proto.stopscnCast = function(){
         if(this.scn.getMedStatus()=='idle') return;
         this.scn.stop();
+    };
+
+    _proto.getRtcCap = function(infCb){
+        var rc = false;
+        var info;
+        if(!this.support){
+            info = 'Your browser could not support audio/video chatting. It could not support Screen Sharing or Casting either. Please use <a href="https://www.google.com/chrome/browser/desktop/index.html"> Chrome </a> instead.';
+            infCb(info);
+            return rc;
+        }
+        switch(_browser){
+            case 'firefox':
+                info = 'Your browser could not support to launch a audio/video chatting.It could not launch a screen sharing either. But it could receive them. Please use <a href="https://www.google.com/chrome/browser/desktop/index.html"> Chrome </a> instead.';
+                if(infCb)infCb(info);
+                return rc;
+            break;
+            default:
+                info='';
+                rc = true;
+                break;
+        }
+        return rc;
+    }
+
+    _proto.checkExtension = function(infCb){
+        if(!sessionStorage.getScreenMediaJSExtensionId){
+            var info = 'If you want to share your screen with others, you would better to install <a href="https://chrome.google.com/webstore/detail/gatherhub-screen-capture/bdnieppldnkoaajefibbnpmemgfdkben"> Gatherhub Screen Capture </a>. After installation, the browser needs to be restarted.';
+            if(infCb){infCb(info)};
+            return false;
+        }
+        return true;
     };
 
 
