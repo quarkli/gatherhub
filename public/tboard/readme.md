@@ -8,6 +8,7 @@ close terminal and restart it.
 
 2,install node.js 
 $nvm isntall 0.12
+$ npm install -g browserify
 
 3, install dependence libs
 $ npm install 

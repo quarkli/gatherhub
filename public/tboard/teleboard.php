@@ -54,10 +54,6 @@ Author: quarkli@gmail.com
     <script src="js/bootstrap.min.js"></script>
     <script src="scripts/jquery.nicescroll.min.js"></script>
     <script src="scripts/Autolinker.min.js"></script>
-    <!-- <script src="scripts/svgicons.js"></script> -->
-    <!-- <script src="scripts/gatherhub.js"></script> -->
-    <!-- <script src="scripts/rtccom.js"></script> -->
-    <!-- <script src="scripts/teleboard.js"></script> -->
     <script src="scripts/tbb.js"></script>
 	<script>
 	var hub = '<?= $hub ?>';
@@ -279,7 +275,25 @@ Author: quarkli@gmail.com
 			  </div>
 			</div>
 		  </div>
+		</div>
 	</div>
+	<div id="cfmclr" class="modal fade" role="dialog">
+		<div class="modal-dialog">
+		  <div class="modal-content">
+			<div class="modal-header">
+			  <h4 class="modal-title">Clear Canvas</h4>
+			</div>
+			<div class="modal-body alert alert-danger">
+			    <strong>Warning!</strong>
+				All peers' canvas will be cleared and cannot be reversed, are you sure?
+				<br><br>
+			  <div class="form-group" style="text-align: center">
+				  <button id="btnclr" type="Button" class="btn btn-default" onclick="cfmClear(1)">Clear</button>
+				  <button id="btncancel" type="Button" class="btn btn-default" onclick="cfmClear(0);">Cancel</button>
+			  </div>
+			</div>
+		  </div>
+		</div>
 	</div>
   </body>
 </html>

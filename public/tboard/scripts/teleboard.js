@@ -15,8 +15,8 @@ var dispatch = function(){};
 
 $(function(){
 	var peerid;
-	var svr = ws1 = '192.168.10.10';
-	var ws2 = 'gatherhub.xyz';
+	var svr = ws1 = 'gatherhub.xyz';
+	var ws2 = '192.168.10.10';
 	var port = 55688;
 
 	$('#clist').niceScroll();
@@ -46,7 +46,7 @@ $(function(){
 
 	var vp = mvp = new Gatherhub.VisualPad();
 	vp.draggable = true;
-	vp.floating('absolute').bgcolor('#FFF').bordercolor('#888').borderwidth(3);
+	vp.floating('absolute').bgcolor('#FCFCFC').bordercolor('#888').borderwidth(3).borderradius(0.1);
 	vp.defsize(sp.width()/4, sp.height()/4).minimize().appendto('#pad');
 
 	sp.attachvp(vp);
@@ -92,9 +92,7 @@ $(function(){
 	];
 	var canvasedit = [
 		{btn: {w: w, h: h, icon: svgicon.download, tip: 'Save SVG'}, act: function(){saveSVG(hub);}},
-		{btn: {w: w, h: h, icon: svgicon.clear, tip: 'Clear Canvas'}, act: function(){
-			if (confirm('This will clear everything on the whiteboard of all peers. Are you sure?')) sp.clearall();
-		}},
+		{btn: {w: w, h: h, icon: svgicon.clear, tip: 'Clear Canvas'}, act: function(){$('#cfmclr').modal('toggle');}},
 		{btn: {w: w, h: h, icon: svgicon.redo, tip: 'Redo'}, act: function(){sp.redo();}},
 		{btn: {w: w, h: h, icon: svgicon.undo, tip: 'Undo'}, act: function(){sp.undo();}}
 	];	
@@ -112,7 +110,7 @@ $(function(){
 	toolBar.root.children().eq(4).hide();
 	
 	var actBtns = [
-		{btn: {w: w, h: h, icon: svgicon.pen, iconcolor: 'white', borderwidth: 3, bordercolor: 'white', borderradius: 2, bgcolor: 'red', resize: .6, tip: 'Free Hand Writing'}, act: function(){
+		{btn: {w: w, h: h, icon: svgicon.pen, iconcolor: 'white', borderwidth: 3, bordercolor: 'white', borderradius: .15, bgcolor: 'red', resize: .6, tip: 'Free Hand Writing'}, act: function(){
 			sp.drag(0);
 			sp.txtedit(0);
 			sp.drawgeo(0);
@@ -121,7 +119,7 @@ $(function(){
 			toolBar.root.children().eq(4).hide();
 			setPenColor(selcolor);
 		}},
-		{btn: {w: w, h: h, icon: svgicon.eraser, iconcolor: 'white', borderwidth: 3, bordercolor: 'white', borderradius: 2, bgcolor: 'red', resize: .6, tip: 'Eraser'}, act: function(){
+		{btn: {w: w, h: h, icon: svgicon.eraser, iconcolor: 'white', borderwidth: 3, bordercolor: 'white', borderradius: .15, bgcolor: 'red', resize: .6, tip: 'Eraser'}, act: function(){
 			sp.drag(0);
 			sp.txtedit(0);
 			sp.drawgeo(0);
@@ -131,7 +129,7 @@ $(function(){
 			toolBar.root.children().eq(0).show();
 			toolBar.root.children().eq(1).show();
 		}},
-		{btn: {w: w, h: h, icon: svgicon.textinput, iconcolor: 'white', borderwidth: 3, bordercolor: 'white', borderradius: 2, bgcolor: 'red', resize: .6, tip: 'Text Input'},	act: function(){
+		{btn: {w: w, h: h, icon: svgicon.textinput, iconcolor: 'white', borderwidth: 3, bordercolor: 'white', borderradius: .15, bgcolor: 'red', resize: .6, tip: 'Text Input'},	act: function(){
 			sp.drag(0);
 			sp.drawgeo(0);
 			sp.txtedit(1);
@@ -141,7 +139,7 @@ $(function(){
 			toolBar.root.children().eq(2).hide();
 			toolBar.root.children().eq(4).hide();
 		}},
-		{btn: {w: w, h: h, icon: svgicon.move, iconcolor: 'white', borderwidth: 3, bordercolor: 'white', borderradius: 2, bgcolor: 'red', resize: .6, tip: 'Move Canvas'}, act: function(){
+		{btn: {w: w, h: h, icon: svgicon.move, iconcolor: 'white', borderwidth: 3, bordercolor: 'white', borderradius: .15, bgcolor: 'red', resize: .6, tip: 'Move Canvas'}, act: function(){
 			sp.txtedit(0);
 			sp.drawgeo(0);
 			sp.drag(1);
@@ -150,7 +148,7 @@ $(function(){
 			toolBar.root.children().eq(0).show();
 			toolBar.root.children().eq(1).show();
 		}},
-		{btn: {w: w, h: h, icon: svgicon.geometrical, iconcolor: 'white', borderwidth: 3, bordercolor: 'white', borderradius: 2, bgcolor: 'red', resize: .6, tip: 'Draw Geometrics'}, act: function(){
+		{btn: {w: w, h: h, icon: svgicon.geometrical, iconcolor: 'white', borderwidth: 3, bordercolor: 'white', borderradius: .15, bgcolor: 'red', resize: .6, tip: 'Draw Geometrics'}, act: function(){
 			sp.drag(0);
 			sp.txtedit(0);
 			sp.drawgeo(1);
@@ -402,9 +400,7 @@ $(function(){
 			console.log('start scn share failed');
 			$('#btnMuteS').hide();
 			$('#btnScn').show();
-			if(confirm('Screen sharing needs to install Chrome extension')){
-				window.location = 'extensions/gatherhub.crx';
-			}
+			if(err.name == 'EXTENSION_UNAVAILABLE')alert('Screen sharing needs to install Chrome extension');
 		})){
 			$('#btnScn').hide();
 			$('#btnMuteS').show();
@@ -420,9 +416,9 @@ $(function(){
 	$('#bm').children().css({float: 'left', clear: ''});
 
 	//end of implement of webrtc
+	var wsready = false, pulse = null;
 
 	function connect() {
-		var wsready = false, pulse = null;
 		var ws = new WebSocket('wss://' + svr + ':' + port);
 		
 		rtc.dispatch = sp.dispatch = dispatch = function(data, type, dst, p, c) {
@@ -435,18 +431,20 @@ $(function(){
 		};
 		
 		ws.onerror = function(){
-			console.log("Message Router Connecting Error!");
+			console.log("Connecting failed, try alternative server!");
 			if (svr == ws1) svr = ws2;
 			else svr = ws1;
 		};
 		ws.onopen = function(){
-			console.log("Message Router Connected.");
-			wsready = true;
+			console.log("Connected.");
+			sp.canvas.children('g').first().empty();
+			$('#plist').empty();
+			$('#msgbox').empty();
+			wsready = showpop = true;
 			dispatch({rtc:rtc.support}, 'hello');
 			pulse = setInterval(function(){if (wsready) dispatch({},'heartbeat',peerid);}, 25000);
 			appendUser('#plist', peerid, peer + '(Me)', sp.repcolor);
 			rtc.setMyPeer(peerid);
-			showpop = true;
 		};
 		ws.onmessage = function(msg){
 			var ctx = JSON.parse(msg.data);
@@ -473,10 +471,12 @@ $(function(){
 					}
 					break;
 				case 'bye':
-					console.log(ctx.name + ': bye!');
-					popupMsg(ctx.name + ' has left this hub.', 'grey');
-					$('#' + ctx.peer).remove();
-					rtc.removePeer(ctx.peer);
+					if (ctx.peer != peerid) {
+						console.log(ctx.name + ': bye!');
+						popupMsg(ctx.name + ' has left this hub.', 'grey');
+						$('#' + ctx.peer).remove();
+						rtc.removePeer(ctx.peer);
+					}
 					break;
 				case 'message':
 					if (data.msg === undefined) {
@@ -527,7 +527,6 @@ $(function(){
 			}
 		};
 		ws.onclose = function(){
-			$('#plist').empty();
 			clearInterval(pulse);
 			wsready = false;
 			showpop = false;
@@ -680,4 +679,11 @@ function saveSVG(fname) {
 	var xmlhead = '<?xml version="1.0" encoding="utf-8"?>';
 	var svgfile = btoa(unescape(encodeURIComponent(xmlhead+svgctx)));
 	window.open('data:image/svg+xml;base64,\n' + svgfile, fname + '.svg');
+}
+
+function cfmClear(ok) {
+	if (ok) {
+		msp.clearall();
+	}
+	$('#cfmclr').modal('toggle');
 }

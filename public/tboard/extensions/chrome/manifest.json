@@ -1,7 +1,7 @@
 {
-  "name": "gatherhub Plugin",
-  "description": "This extension will capture screen.",
-  "version": "0.1.0",
+  "name": "Gatherhub Screen Capture",
+  "description": "Help users to do screen casting on GatherHub.",
+  "version": "0.1.2",
   "manifest_version": 2,
   "minimum_chrome_version": "34",
   "browser_action": {
@@ -19,15 +19,15 @@
   "content_scripts": [ {
     "js": [ "content.js" ],
     "matches": [
-    	"https://gatherhub.com/*",
-      "https://gatherhub.xyz/*",
+      "https://www.gatherhub.xyz/*",
+      "https://www.gatherhub.com/*",
     	"https://192.168.10.10/*"
         ]
   }],
   "externally_connectable": {
       "matches": [
-    	"https://gatherhub.com/*",
-      "https://gatherhub.xyz/*",
+      "https://www.gatherhub.xyz/*",
+      "https://www.gatherhub.com/*",
     	"https://192.168.10.10/*"
       ]
   }
