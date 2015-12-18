@@ -3496,9 +3496,9 @@ $(function(){
 	rtc.onMyAvAdd = function(s){
 		var ln,m;
 		if(s.getVideoTracks().length>0){
-		    ln = '<video id="localMed"  width="292" height="220" autoplay></video>';
+		    ln = '<video id="localMed"  width="292" height="220" autoplay muted></video>';
 		}else{
-		    ln = "<audio id='localMed' autoplay></audio>";
+		    ln = "<audio id='localMed' autoplay muted></audio>";
 		}
 
 		$('#media').append(ln);
@@ -3672,7 +3672,9 @@ $(function(){
 	});
 
 	$('#bm').children().css({float: 'left', clear: ''});
-	$('#btnInfo').click(function(){$('#showrtc').modal('toggle');});
+	$('#btnInfo').click(function(){
+		$('#showrtc').modal('toggle');
+	});
 	function showRtcInfo(){
 		if(rtc.getRtcCap(function(inf){
 			$('#rtcinfo').html(inf);
