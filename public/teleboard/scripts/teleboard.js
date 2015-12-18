@@ -41,6 +41,8 @@ $(function(){
 	var selcolor = sp.repcolor;
 
 	var vp = mvp = new Gatherhub.VisualPad();
+	vp.zmax = 1000000;
+	vp.zmin = 1 / vp.zmax;
 	vp.draggable = true;
 	vp.floating('absolute').bgcolor('#FCFCFC').bordercolor('#888').borderwidth(3).borderradius(0.1);
 	vp.defsize(sp.width()/4, sp.height()/4).minimize().appendto('#pad');
@@ -81,16 +83,18 @@ $(function(){
 		{btn: {w: w, h: h, icon: svgicon.circle, tip: 'Circle'}, act: function(){sp.geo = 'ellipse';}},
 		{btn: {w: w, h: h, icon: svgicon.triangle, tip: 'Triangle'}, act: function(){sp.geo = 'polygon';}}
 	];
+	var defratio = '<text x="0" y="0" style="font-size: 24px; fill: black;">1:1</text>'; 
 	var zoomctrl = [
-		{btn: {w: w, h: h, icon: svgicon.zoomin, tip: 'Zoom In'}, act: function(){sp.zoom(sp.zrate * 1.1);}},
+		{btn: {w: w, h: h, icon: defratio, tip: 'Default Ratio'}, act: function(){sp.zoom(1);}},
 		{btn: {w: w, h: h, icon: svgicon.fit, tip: 'Fit Content'}, act: function(){sp.fitcontent();}},
-		{btn: {w: w, h: h, icon: svgicon.zoomout, tip: 'Zoom Out'},	act: function(){sp.zoom(sp.zrate / 1.1);}}
+		{btn: {w: w, h: h, icon: svgicon.zoomout, tip: 'Zoom Out'},	act: function(){sp.zoom(sp.zrate / 1.1);}},
+		{btn: {w: w, h: h, icon: svgicon.zoomin, tip: 'Zoom In'}, act: function(){sp.zoom(sp.zrate * 1.1);}}
 	];
 	var canvasedit = [
 		{btn: {w: w, h: h, icon: svgicon.download, tip: 'Save SVG'}, act: function(){saveSVG(hub);}},
 		{btn: {w: w, h: h, icon: svgicon.clear, tip: 'Clear Canvas'}, act: function(){$('#cfmclr').modal('toggle');}},
-		{btn: {w: w, h: h, icon: svgicon.redo, tip: 'Redo'}, act: function(){sp.redo();}},
-		{btn: {w: w, h: h, icon: svgicon.undo, tip: 'Undo'}, act: function(){sp.undo();}}
+		{btn: {w: w, h: h, icon: svgicon.undo, tip: 'Undo'}, act: function(){sp.undo();}},
+		{btn: {w: w, h: h, icon: svgicon.redo, tip: 'Redo'}, act: function(){sp.redo();}}
 	];	
 	var mainBtn = [
 		{btn: {w: w, h: h, icon: svgicon.setting, tip: 'Settings'},	sublist: canvasedit, direction: subdir},
@@ -107,18 +111,21 @@ $(function(){
 	
 	var actBtns = [
 		{btn: {w: w, h: h, icon: svgicon.pen, iconcolor: 'white', borderwidth: 3, bordercolor: 'white', borderradius: .15, bgcolor: 'red', resize: .6, tip: 'Free Hand Writing'}, act: function(){
-			sp.drag(0);
-			sp.txtedit(0);
-			sp.drawgeo(0);
+			sp.setmode('draw');
 			toolBar.collapseall();
 			toolBar.root.children().show();
 			toolBar.root.children().eq(4).hide();
 			setPenColor(selcolor);
 		}},
+		{btn: {w: w, h: h, icon: svgicon.cut, iconcolor: 'white', borderwidth: 3, bordercolor: 'white', borderradius: .15, bgcolor: 'red', resize: 1, tip: 'Cut Stroke'}, act: function(){
+			sp.setmode('cut');
+			toolBar.collapseall();
+			toolBar.root.children().hide();
+			toolBar.root.children().eq(0).show();
+			toolBar.root.children().eq(1).show();
+		}},
 		{btn: {w: w, h: h, icon: svgicon.eraser, iconcolor: 'white', borderwidth: 3, bordercolor: 'white', borderradius: .15, bgcolor: 'red', resize: .6, tip: 'Eraser'}, act: function(){
-			sp.drag(0);
-			sp.txtedit(0);
-			sp.drawgeo(0);
+			sp.setmode('draw');
 			sp.pencolor(sp.bgcolor());
 			toolBar.collapseall();
 			toolBar.root.children().hide();
@@ -126,9 +133,7 @@ $(function(){
 			toolBar.root.children().eq(1).show();
 		}},
 		{btn: {w: w, h: h, icon: svgicon.textinput, iconcolor: 'white', borderwidth: 3, bordercolor: 'white', borderradius: .15, bgcolor: 'red', resize: .6, tip: 'Text Input'},	act: function(){
-			sp.drag(0);
-			sp.drawgeo(0);
-			sp.txtedit(1);
+			sp.setmode('text');
 			setPenColor(selcolor);
 			toolBar.collapseall();
 			toolBar.root.children().show();
@@ -136,18 +141,14 @@ $(function(){
 			toolBar.root.children().eq(4).hide();
 		}},
 		{btn: {w: w, h: h, icon: svgicon.move, iconcolor: 'white', borderwidth: 3, bordercolor: 'white', borderradius: .15, bgcolor: 'red', resize: .6, tip: 'Move Canvas'}, act: function(){
-			sp.txtedit(0);
-			sp.drawgeo(0);
-			sp.drag(1);
+			sp.setmode('drag');
 			toolBar.collapseall();
 			toolBar.root.children().hide();
 			toolBar.root.children().eq(0).show();
 			toolBar.root.children().eq(1).show();
 		}},
 		{btn: {w: w, h: h, icon: svgicon.geometrical, iconcolor: 'white', borderwidth: 3, bordercolor: 'white', borderradius: .15, bgcolor: 'red', resize: .6, tip: 'Draw Geometrics'}, act: function(){
-			sp.drag(0);
-			sp.txtedit(0);
-			sp.drawgeo(1);
+			sp.setmode('geo');
 			setPenColor(selcolor);
 			toolBar.collapseall();
 			toolBar.root.children().show();
