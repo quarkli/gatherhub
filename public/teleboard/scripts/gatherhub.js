@@ -42,7 +42,7 @@ var Gatherhub = Gatherhub || {};
 		var s = 1;
 		if (num < 0) {s = -1; num *= s;}
 		var n = num < 1 ? 0 : Math.floor(Math.log(num)/Math.log(10)) + 1;
-		return (0 | (num * Math.pow(10, p - n))) / Math.pow(10, p - n) * s;
+		return parseInt(num * Math.pow(10, p - n)) / Math.pow(10, p - n) * s;
 	}
 
 	function extend(func){
@@ -63,6 +63,8 @@ var Gatherhub = Gatherhub || {};
 			this.pad = $('<div/>').css('font-size', 0);
 			this.canvas = $(document.createElementNS('http://www.w3.org/2000/svg', 'svg')).appendTo(this.pad);
 			this.zrate = 1;
+			this.zmax = 100;
+			this.zmin = 0.01;
 			this.zcenter = {x: 0.5, y: 0.5};
 			this.canvasvbox = {x: 0, y: 0, w: 0, h: 0};
 			this.movable = false;
@@ -158,7 +160,7 @@ var Gatherhub = Gatherhub || {};
 				var max = (this.parent && this.parent.width()) ? this.parent.width() : $(window).width();
 				if (w > max) w = max;
 				this.canvas.attr('width', w);
-				this.canvasvbox.w = precision((this.canvas.attr('width') - this.borderpadding()) / this.zrate, 6);
+				this.canvasvbox.w = precision((this.canvas.attr('width') - this.borderpadding()) / this.zrate, 10);
 				if (this.pad.position().left + this.canvas.attr('width') * 1 + this.borderpadding() / 2 > max) this.moveto('left', 9999);
 			}
 			return this;
@@ -169,7 +171,7 @@ var Gatherhub = Gatherhub || {};
 				var max = (this.parent && this.parent.height()) ? this.parent.height() : $(window).height();
 				if (h > max) h = max;
 				this.canvas.attr('height', h);
-				this.canvasvbox.h = precision((this.canvas.attr('height') - this.borderpadding()) / this.zrate, 6);
+				this.canvasvbox.h = precision((this.canvas.attr('height') - this.borderpadding()) / this.zrate, 10);
 				if (this.pad.position().top + this.canvas.attr('height') * 1 + this.borderpadding() / 2 > max) this.moveto('top', 9999);
 			}
 			return this;
@@ -200,21 +202,21 @@ var Gatherhub = Gatherhub || {};
 			if (this.canvasvbox.w == 0) this.canvasvbox.w = this.width();
 			if (this.canvasvbox.h == 0) this.canvasvbox.h = this.height();
 
-			z = $.isNumeric(z) ? (z > 100 ? 100 : z < 0.01 ? 0.01 : precision(z, 6)) : this.zrate;
+			z = $.isNumeric(z) ? (z > this.zmax ? this.zmax : z < this.zmin ? this.zmin : precision(z, 10)) : this.zrate;
 			this.zrate = z;
 			var x = this.zcenter.x * this.canvasvbox.w + this.canvasvbox.x;
 			var y = this.zcenter.y * this.canvasvbox.h + this.canvasvbox.y;
-			this.canvasvbox.w = precision((this.width() - this.borderpadding()) / this.zrate, 6);
-			this.canvasvbox.h = precision((this.height() - this.borderpadding()) / this.zrate, 6);
-			this.canvasvbox.x = precision(x - this.zcenter.x * this.canvasvbox.w, 6);
-			this.canvasvbox.y = precision(y - this.zcenter.y * this.canvasvbox.h, 6);
+			this.canvasvbox.w = precision((this.width() - this.borderpadding()) / this.zrate, 10);
+			this.canvasvbox.h = precision((this.height() - this.borderpadding()) / this.zrate, 10);
+			this.canvasvbox.x = precision(x - this.zcenter.x * this.canvasvbox.w, 10);
+			this.canvasvbox.y = precision(y - this.zcenter.y * this.canvasvbox.h, 10);
 			this.refreshvbox();
 			return this;
 		};
 		_proto.offsetcanvas = function(axis, offset) {
 			if ($.isNumeric(offset)) {
-				if (axis == 'x') this.canvasvbox.x = precision(this.canvasvbox.x - offset / this.zrate, 6);
-				if (axis == 'y') this.canvasvbox.y = precision(this.canvasvbox.y - offset / this.zrate, 6);
+				if (axis == 'x') this.canvasvbox.x = precision(this.canvasvbox.x - offset / this.zrate, 10);
+				if (axis == 'y') this.canvasvbox.y = precision(this.canvasvbox.y - offset / this.zrate, 10);
 				this.refreshvbox();
 			}
 			return this;
@@ -419,8 +421,8 @@ var Gatherhub = Gatherhub || {};
 					y: screnXY.y - this.pad.position().top - this.borderpadding() / 2};
 		}
 		function vboxxy(canvasxy) {
-			return {x: precision(canvasxy.x / this.zrate + this.canvasvbox.x, 6),
-					y: precision(canvasxy.y / this.zrate + this.canvasvbox.y, 6)};
+			return {x: precision(canvasxy.x / this.zrate + this.canvasvbox.x, 10),
+					y: precision(canvasxy.y / this.zrate + this.canvasvbox.y, 10)};
 		}
 		function vbox2scn(vboxxy) {
 			var x = (vboxxy.x - this.canvasvbox.x) * this.zrate;
@@ -438,7 +440,7 @@ var Gatherhub = Gatherhub || {};
 			
 			var self = this;
 			var pw = this.pc == self.bgcolor() ?  30 / this.zrate : this.pw / this.zrate * 1.1;
-			if (this.geomode) {
+			if (this.mode == 'geo') {
 				pw = 5 / this.zrate;
 				path = $(document.createElementNS('http://www.w3.org/2000/svg', this.geo));
 				path.attr('id', this.gid + '-' + this.seq++);
@@ -469,6 +471,13 @@ var Gatherhub = Gatherhub || {};
 				if (self.pc == self.bgcolor()) 
 					$(this).clone().attr('stroke', self.bgcolor()).attr('stroke-width', 1 + $(this).attr('stroke-width') * 1).appendTo(self.pathholder);
 			});
+			path.on('mouseover touchenter', function(){
+				if (self.cutting) {
+					$(this).appendTo(self.redocache);
+					if (self.dispatch) self.dispatch({id: path.attr('id')}, 'undo');
+					flush(self);
+				}
+			});
 
 			this.pathholder.append(path);
 			//clearPathsCache();
@@ -492,7 +501,7 @@ var Gatherhub = Gatherhub || {};
 				var point = vboxxy.call(this, canvasxy.call(this, screenxy(x, y)));
 				x = point.x;
 				y = point.y;
-				if (this.geomode) {
+				if (this.mode == 'geo') {
 					var x0 = path.attr('x0') * 1;
 					var y0 = path.attr('y0') * 1;
 					if (this.geo == 'rect') {
@@ -524,7 +533,7 @@ var Gatherhub = Gatherhub || {};
 			//	'(' + Array.prototype.slice.call(arguments) + ')');
 			if (this.activepath) {
 				var path = this.activepath;
-				var move = this.geomode ? 2 : path.attr('d').split('L').length;
+				var move = this.mode == 'geo' ? 2 : path.attr('d').split('L').length;
 				this.activepath = null;
 				
 				if (move < 2 || (falseTouch && move < 3)) {
@@ -585,8 +594,6 @@ var Gatherhub = Gatherhub || {};
 			this.repcolor = randcolor();
 			this.gid = this.repcolor.slice(1,7);
 			this.tibox = $('<input type="text" id="tibox">');
-			this.txtedit(0);
-			
 			this.tibox.on('keyup', function(e){
 				if(e.keyCode == 13){
 					$(this).blur();
@@ -709,38 +716,28 @@ var Gatherhub = Gatherhub || {};
 		_proto.tibox = null;
 		_proto.pinchlevel = 7;
 		_proto.geo = 'rect';
-		_proto.geomode = false;
+		_proto.mode = 'draw';
 		_proto.dragging = false;
-		_proto.dragmode = false;
-		_proto.timode = false;
-		_proto.drag = function(on) {
-			if (on) {
-				_proto.dragmode = true;
-				this.pad.css('cursor', 'move');
+		_proto.cutting = false;
+		_proto.setmode = function(mode) {
+			this.mode = mode;
+			switch (mode) {
+				case 'drag':
+					this.pad.css('cursor', 'move');
+					break;
+				case 'text':
+					this.pad.css('cursor', 'text');
+					break;
+				case 'cut':
+					this.pad.css('cursor', 'url("images/cut.svg"), auto');
+					break;
+				default:
+					this.pad.css('cursor', 'crosshair');
+					break;
 			}
-			else {
-				_proto.dragmode = false;
-				this.pad.css('cursor', 'crosshair');
-			}
+			if (mode != 'text') this.tibox.blur();
 			return this;
-		};
-		_proto.txtedit = function(on) {
-			if (on) {
-				_proto.timode = true;
-				this.pad.css('cursor', 'text');
-			}
-			else {
-				_proto.timode = false;
-				this.tibox.blur();
-				this.pad.css('cursor', 'crosshair');
-			}
-			return this;
-		};
-		_proto.drawgeo = function(on) {
-			if (on) _proto.geomode = true;
-			else _proto.geomode = false;
-			return this;
-		};
+		}
 		_proto.attachvp = function(vp) {
 			if (Object.getPrototypeOf(vp) === g.VisualPad.prototype) {
 				vp.src(this.pathholder.attr('id'));
@@ -785,6 +782,7 @@ var Gatherhub = Gatherhub || {};
 			setTimeout(function(){$('#' + i).remove();}, 2000);			
 		};
 		_proto.appendpath = function(p) {
+			var self = this;
 			var path;
 			$.each(p, function(k, v){
 				if (k == 'tagName') {
@@ -795,6 +793,13 @@ var Gatherhub = Gatherhub || {};
 				}
 				else {
 					path.attr(k, v);
+				}
+			});
+			path.on('mouseover touchenter', function(){
+				if (self.cutting) {
+					$(this).appendTo(self.redocache);
+					if (self.dispatch) self.dispatch({id: path.attr('id')}, 'undo');
+					flush(self);
 				}
 			});
 			path.appendTo(this.pathholder);
@@ -846,10 +851,13 @@ var Gatherhub = Gatherhub || {};
 			return this;
 		};
 		_proto.mousedownHdl = function(x, y) {
-			if (this.dragmode) {
+			if (this.mode == 'cut') {
+				this.cutting = true;
+			}
+			if (this.mode == 'drag') {
 				this.dragging = true;
 			}
-			else if (this.timode) {
+			else if (this.mode == 'text') {
 				this.tibox.css({top: y - 6, left: x, color: this.pc}).appendTo(this.pad.parent()).show().focus();
 				this.tibox.x = x;
 				this.tibox.y = y - 6;
@@ -864,13 +872,14 @@ var Gatherhub = Gatherhub || {};
 		_proto.mouseupHdl = function() {
 			drawEnd.call(this);
 			this.dragging = false;
+			this.cutting = false;
 		};
 		_proto.mousemoveHdl = function(x, y) {
 			if (this.dragging) {
 				this.offsetcanvas('x', x - mouseX);
 				this.offsetcanvas('y', y - mouseY);
 			}
-			else {
+			else if (this.mode == 'draw' || this.mode == 'geo') {
 				drawPath.call(this, x, y);
 			}
 		};
