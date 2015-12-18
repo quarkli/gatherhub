@@ -852,7 +852,7 @@ module.exports = {
 /* 
 * @Author: Phenix Cai
 * @Date:   2015-11-22 10:02:34
-* @Last Modified time: 2015-12-14 15:12:41
+* @Last Modified time: 2015-12-18 20:32:08
 */
 
 
@@ -1056,7 +1056,7 @@ var castCtrl;
 
     _proto._stopCastReq = function(){
         if(this.castList[0] && this.castList[0].id == this.id){
-            if(this._stopCb )this._stopCb();
+            if(this._stopCb && this.castList.length == 1)this._stopCb();
             this.castList.shift();
             this._infCastList();
         }else{
@@ -1818,7 +1818,7 @@ module.exports = rtcCom;
 /* 
 * @Author: Phenix Cai
 * @Date:   2015-11-13 19:14:00
-* @Last Modified time: 2015-12-14 14:28:57
+* @Last Modified time: 2015-12-18 20:28:43
 */
 
 'use strict';
@@ -1885,7 +1885,7 @@ var webRtc;
                 _errLog("wrong answer id from "+id);
                 return;
             }
-          pc.setRmtDesc(msg.sdp);
+            pc.setRmtDesc(msg.sdp);
             
         } else if (msg.sdp.type === 'candidate') {
             if(!pc){
@@ -1936,7 +1936,7 @@ var webRtc;
     _proto.stopMedia = function(){
         var self = this;
         this.media.stop(function(s){
-            self.peers.forEach(function(pc){
+            if(s)self.peers.forEach(function(pc){
                 pc.removeStream(s);
                 pc.makeOffer();
             });
@@ -1961,7 +1961,7 @@ var webRtc;
         var self = this;
         this.media.rlsScn(function(s){
             _infLog('rls ',s);
-            self.peers.forEach(function(pc){
+            if(s)self.peers.forEach(function(pc){
                 pc.removeStream(s);
                 pc.makeOffer();
             });
@@ -2076,28 +2076,10 @@ var webRtc;
         }else{
             // received offer 
             pc.setRmtDesc(sdp);
-            if(config.oneway == false){
-                if(isSdpWithAudio(sdp.sdp)){
-                    _infLog('offered with audio active');
-                    this.media.start(function(err,s){
-                        if(!err){
-                            this.onLMedAdd(s);
-                            pc.addStream(s);
-                            pc.makeAnswer();
-                        }else{
-                            _errLog('start media Error',err);
-                        }
-                    });
-                }else{
-                    _infLog('offered with audio mute');
-                    this.media.stop(function(s){
-                        if(s)pc.removeStream(s);
-                        pc.makeAnswer();
-                    });
-                }
-            }else{
+            this.media.stop(function(s){
+                if(s)pc.removeStream(s);
                 pc.makeAnswer();
-            }
+            });
 
         }
 
@@ -3570,7 +3552,7 @@ $(function(){
 		icnCfg.bgcolor = $('#'+peerid).css('background-color');
 		$('#'+peerid).appendTo('#clist');
 		$('#ih-'+peerid).remove();
-		$('<div id="ih-'+peerid+'">').appendTo('#'+peerid);
+		$('<div id="ih-'+peerid+'" class="prstatus">').appendTo('#'+peerid);
 		if(type != 'none'){
 			if(type == 'video'){
 				icnCfg.icon = svgicon.vchat;
@@ -3594,7 +3576,7 @@ $(function(){
 
 	}
 	rtc.onCastList = function(list){
-		$('#clist').children().children().last().remove();
+		$('.prstatus').remove();
 		$('#clist').children().appendTo('#plist');
 		list.forEach(function(it){
 			appendCList(it.id,it.av,it.scn);

@@ -1,7 +1,7 @@
 /* 
 * @Author: Phenix Cai
 * @Date:   2015-11-22 10:02:34
-* @Last Modified time: 2015-12-14 15:12:41
+* @Last Modified time: 2015-12-18 20:32:08
 */
 
 
@@ -205,7 +205,7 @@ var castCtrl;
 
     _proto._stopCastReq = function(){
         if(this.castList[0] && this.castList[0].id == this.id){
-            if(this._stopCb )this._stopCb();
+            if(this._stopCb && this.castList.length == 1)this._stopCb();
             this.castList.shift();
             this._infCastList();
         }else{

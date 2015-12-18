@@ -1,7 +1,7 @@
 /* 
 * @Author: Phenix Cai
 * @Date:   2015-11-13 19:14:00
-* @Last Modified time: 2015-12-14 14:28:57
+* @Last Modified time: 2015-12-18 20:28:43
 */
 
 'use strict';
@@ -68,7 +68,7 @@ var webRtc;
                 _errLog("wrong answer id from "+id);
                 return;
             }
-          pc.setRmtDesc(msg.sdp);
+            pc.setRmtDesc(msg.sdp);
             
         } else if (msg.sdp.type === 'candidate') {
             if(!pc){
@@ -119,7 +119,7 @@ var webRtc;
     _proto.stopMedia = function(){
         var self = this;
         this.media.stop(function(s){
-            self.peers.forEach(function(pc){
+            if(s)self.peers.forEach(function(pc){
                 pc.removeStream(s);
                 pc.makeOffer();
             });
@@ -144,7 +144,7 @@ var webRtc;
         var self = this;
         this.media.rlsScn(function(s){
             _infLog('rls ',s);
-            self.peers.forEach(function(pc){
+            if(s)self.peers.forEach(function(pc){
                 pc.removeStream(s);
                 pc.makeOffer();
             });
@@ -259,28 +259,10 @@ var webRtc;
         }else{
             // received offer 
             pc.setRmtDesc(sdp);
-            if(config.oneway == false){
-                if(isSdpWithAudio(sdp.sdp)){
-                    _infLog('offered with audio active');
-                    this.media.start(function(err,s){
-                        if(!err){
-                            this.onLMedAdd(s);
-                            pc.addStream(s);
-                            pc.makeAnswer();
-                        }else{
-                            _errLog('start media Error',err);
-                        }
-                    });
-                }else{
-                    _infLog('offered with audio mute');
-                    this.media.stop(function(s){
-                        if(s)pc.removeStream(s);
-                        pc.makeAnswer();
-                    });
-                }
-            }else{
+            this.media.stop(function(s){
+                if(s)pc.removeStream(s);
                 pc.makeAnswer();
-            }
+            });
 
         }
 

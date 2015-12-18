@@ -313,7 +313,7 @@ $(function(){
 		icnCfg.bgcolor = $('#'+peerid).css('background-color');
 		$('#'+peerid).appendTo('#clist');
 		$('#ih-'+peerid).remove();
-		$('<div id="ih-'+peerid+'">').appendTo('#'+peerid);
+		$('<div id="ih-'+peerid+'" class="prstatus">').appendTo('#'+peerid);
 		if(type != 'none'){
 			if(type == 'video'){
 				icnCfg.icon = svgicon.vchat;
@@ -337,7 +337,7 @@ $(function(){
 
 	}
 	rtc.onCastList = function(list){
-		$('#clist').children().children().last().remove();
+		$('.prstatus').remove();
 		$('#clist').children().appendTo('#plist');
 		list.forEach(function(it){
 			appendCList(it.id,it.av,it.scn);
