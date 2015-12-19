@@ -1,7 +1,7 @@
 /* 
 * @Author: Phenix Cai
 * @Date:   2015-11-13 19:14:00
-* @Last Modified time: 2015-12-18 20:28:43
+* @Last Modified time: 2015-12-19 09:22:48
 */
 
 'use strict';
@@ -43,6 +43,8 @@ var webRtc;
         }
 
         this.media =  new localMedia(this.config); 
+        this.strm = null;
+        this.scrn = null;
 
         this.datChRecvCb = {};
         this.datChRecvCb['textMsg'] = this._onDatRecv.bind(this);
@@ -107,6 +109,7 @@ var webRtc;
             if(!err){
                 if(onSuc)onSuc(s);
                 self.onLMedAdd(s);
+                self.strm = s;
                 self.peers.forEach(function(pc){
                     pc.addStream(s);
                     pc.makeOffer();
@@ -123,6 +126,7 @@ var webRtc;
                 pc.removeStream(s);
                 pc.makeOffer();
             });
+            self.strm = null;
         });
     };
     _proto.startScreen = function(onSuc,onErr){
@@ -131,6 +135,7 @@ var webRtc;
             if(!err){
                 if(onSuc)onSuc(s);
                 self.onLMedAdd(s);
+                self.scrn = s;
                 self.peers.forEach(function(pc){
                     pc.addStream(s);
                     pc.makeOffer();
@@ -148,6 +153,7 @@ var webRtc;
                 pc.removeStream(s);
                 pc.makeOffer();
             });
+            self.scrn = null;
         });
     };
 
@@ -259,11 +265,25 @@ var webRtc;
         }else{
             // received offer 
             pc.setRmtDesc(sdp);
-            this.media.stop(function(s){
-                if(s)pc.removeStream(s);
-                pc.makeAnswer();
-            });
-
+            if(config.oneway){
+                if(this.strm){
+                    this.media.stop(function(s){
+                        if(s)pc.removeStream(s);
+                        pc.makeAnswer();
+                    });
+                    this.strm = null;
+                    return;
+                }
+                if(this.scrn){
+                    this.media.rlsScn(function(s){
+                        if(s)pc.removeStream(s);
+                        pc.makeAnswer();
+                    });
+                    this.scrn = null;
+                    return;
+                }
+            }
+            pc.makeAnswer();
         }
 
     };
