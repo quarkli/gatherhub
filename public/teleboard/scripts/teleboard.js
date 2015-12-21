@@ -439,7 +439,7 @@ function appendMsg(elem, pid, sender, msg, color, tid) {
 	else pb.addClass('rightbubble');
 	
 	pp.attr('tid', tid).append($('<br>'));
-	ph.html(sender + ':').appendTo(pp);
+	ph.html((sender == 'Me' ? peer + '(Me)' : sender) + ':').appendTo(pp);
 	pb.html(msg).appendTo(pp);
 	var tgt = $(elem).children().last();
 	while(tgt.attr('tid') > tid) {tgt = tgt.prev();}
