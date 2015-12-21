@@ -244,9 +244,6 @@ $(function(){
 		};
 		ws.onopen = function(){
 			console.log("Connected.");
-			sp.canvas.children('g').first().empty();
-			$('#plist').empty();
-			$('#msgbox').empty();
 			wsready = showpop = true;
 			dispatch({}, 'hello');
 			pulse = setInterval(function(){if (wsready) dispatch({},'heartbeat',peerid);}, 25000);
@@ -331,6 +328,7 @@ $(function(){
 			clearInterval(pulse);
 			wsready = false;
 			showpop = false;
+			needsync = true;
 			ws = null;
 			connect();
 		};
@@ -417,6 +415,7 @@ function popupMsg(msg, color) {
 }
 
 function appendUser(elem, peerid, uname, color) {
+	if ($('#' + peerid).length) return;
 	var ph = '<div class="panel-heading" style="text-shadow: 1px 2px #444; color: #FFF; font-weight: bold; background-color:' + color + '" id="' + peerid + '" uname="' + uname + '">';
 	$(ph).html(uname).appendTo(elem);
 	$(elem).children().sort(function(a,b){
@@ -427,6 +426,7 @@ function appendUser(elem, peerid, uname, color) {
 
 function appendMsg(elem, pid, sender, msg, color, tid) {
 	console.log(sender + '(' + tid + '): ' + msg);
+	if ($('#msgbox').children().filter(function(){return $(this).attr('tid')==tid;}).length) return;
 	var msg = Autolinker.link(msg, {newWindo: true, stripPrefix: false});
 	var lr = sender == 'Me' ? 'right' : 'left';
 	var prev = $(elem).children().last();
