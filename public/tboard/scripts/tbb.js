@@ -852,7 +852,7 @@ module.exports = {
 /* 
 * @Author: Phenix Cai
 * @Date:   2015-11-22 10:02:34
-* @Last Modified time: 2015-12-18 20:32:08
+* @Last Modified time: 2015-12-23 14:24:48
 */
 
 
@@ -861,17 +861,12 @@ var castCtrl;
 
 
 (function(){
-    var _proto, t1, t2, t3, _dbgFlag;
+    var _proto, t1, t2, t3, _debug;
     // constant
     t1 = 150;
     t2 = 250;
     t3 = (t1+t2)*2;
-    _dbgFlag = true;
-    function _infLog(){
-        if(_dbgFlag){
-            console.log.apply(console, arguments);
-        }
-    }
+    _debug = true;
 
     function objSetTimeout(obj,func,time){
         var t;
@@ -881,9 +876,10 @@ var castCtrl;
         return t;
     }
 
-    function CastCtrl(id){
+    function CastCtrl(label,id){
         this.castList  = [];
         this.pendList = []; 
+        this.label = label;
         this.id = id;
         this.reqTimer;
         this.reqCnt = 0;
@@ -900,11 +896,11 @@ var castCtrl;
 
     // api functions
     _proto.login = function(){
-        this.onSend({from:this.id, to:'All',cmd:'hello'});
+        this.onSend({from:this.id, label: this.label, to:'All',cmd:'hello'});
     };
 
     _proto.bye = function(id){
-        this.recvMsg({from:id, to:this.id, cmd:'rls'});
+        this.recvMsg({from:id, label:this.label, to:this.id, cmd:'rls'});
     };
 
     _proto.start = function(cb,type){
@@ -933,7 +929,7 @@ var castCtrl;
         var myself, rid, delay, idx;
         myself = this.id;
         rid = msg.from;
-        _infLog(this.id +' hdlMsg ',msg);
+        if(_debug)console.log(this.id +' hdlMsg ',msg);
         switch(msg.cmd)
         {
             case 'req':
@@ -960,13 +956,13 @@ var castCtrl;
                 this.pendList = [];
                 this.castList = msg.list;
                 this.onCastList(this.castList);
-                _infLog('cmp '+ myself + ' vs ',this.castList[0]);
+                if(_debug)console.log('cmp '+ myself + ' vs ',this.castList[0]);
 
                 if(this.castList[0] && this.castList[0].id == myself){
                     if(this._startCb)this._startCb();
                 }else{
                     if(this.reqCnt > 0){
-                        _infLog(this.id+' stop timer');
+                        if(_debug)console.log(this.id+' stop timer');
                         clearTimeout(this.reqTimer);
                         this.reqCnt = 0;
                     }
@@ -977,7 +973,7 @@ var castCtrl;
                 }
             break;
             case 'hello':
-                _infLog('hello cmp '+ myself + ' vs ',this.castList[0]);
+                if(_debug)console.log('hello cmp '+ myself + ' vs ',this.castList[0]);
                 if(this.castList[0] && this.castList[0].id == myself){
                     this._infCastList();
                 }
@@ -997,7 +993,7 @@ var castCtrl;
         from = this.id;
         list = this.castList;
         to = 'All';
-        this.onSend({from:from, to:to, cmd:'list',list:list});
+        this.onSend({from:from, label:this.label, to:to, cmd:'list',list:list});
         this.onCastList(list);
     };
 
@@ -1006,25 +1002,25 @@ var castCtrl;
         from = this.id;
         to = 'All';
         type = this.type;
-        this.onSend({from:from, to:to, cmd:'req', type:type});
+        this.onSend({from:from, label:this.label, to:to, cmd:'req', type:type});
     };
 
     _proto._cancelCastReq = function(){
         var from, to;
         from = this.id;
         to = 'All';
-        this.onSend({from:from, to:to, cmd:'rls'});
+        this.onSend({from:from, label:this.label, to:to, cmd:'rls'});
     };
 
     _proto._reqTimerHdl = function(){
-        _infLog(this.id + ' _reqTimerHdl', this.reqCnt);
+        if(_debug)console.log(this.id + ' _reqTimerHdl', this.reqCnt);
         this.reqCnt --;
         if(this.reqCnt > 0){
             this._sendCastReq();
             this.reqTimer = objSetTimeout(this,this._reqTimerHdl, t2);
         }else if (this.reqCnt == 0){
             if(this.pendList.length > 0){
-                _infLog('collision occurs');
+                if(_debug)console.log('collision occurs');
                 delay = t1 + Math.ceil(Math.random()*t3);
                 this.reqTimer = objSetTimeout(this,this._startCastReq, delay);
                 this.pendList = [];
@@ -1045,7 +1041,7 @@ var castCtrl;
     _proto._startCastReq = function(){
         var self = this;
         if(this.pendList.length > 0){
-            _infLog(this.id + ' warn: there is some un-handled reqs here. ',this.pendList);
+            if(_debug)console.log(this.id + ' warn: there is some un-handled reqs here. ',this.pendList);
             this.reqWait = 1; 
             return;
         }
@@ -1056,7 +1052,7 @@ var castCtrl;
 
     _proto._stopCastReq = function(){
         if(this.castList[0] && this.castList[0].id == this.id){
-            if(this._stopCb && this.castList.length == 1)this._stopCb();
+            if(this._stopCb)this._stopCb();
             this.castList.shift();
             this._infCastList();
         }else{
@@ -1156,131 +1152,15 @@ var localMedia;
 })();
 module.exports = localMedia;
 },{"getscreenmedia":1,"getusermedia":2}],7:[function(require,module,exports){
-/* 
-* @Author: phenix cai
-* @Date:   2015-11-19 10:08:39
-* @Last Modified time: 2015-12-15 19:56:23
-*/
-var webRtc = require('./webrtc');
-var castCtrl = require('./castctrl');
-var medCast;
-(function(){
-    var _proto;
-    function extend(func){
-            var base = function(){};
-            base.prototype = func.prototype;
-            return new base();
-    }
-
-    function MedCast(opts){
-        var self, cn;      
-        self = this;
-        webRtc.call(this,opts);
-        //media casting list
-        this.castList = [];
-        this.initFlag = false;
-        this.mState = 'idle';
-    }
-    _proto = MedCast.prototype = extend(webRtc);
-    medCast = MedCast;
-
-    _proto.getMedStatus = function(){
-        return this.mState;
-    };
-
-    _proto.start = function(cs,errCb){
-        var self, hdl, type;
-        self = this;
-        hdl = (this.config.scnCast) ? this.startScreen.bind(this) 
-            : this.startMedia.bind(this);
-        type = (this.config.scnCast)? 'scn': ((cs.video)? 'video': 'audio');
-        if(this.ctrl)this.ctrl.start(function(){
-            hdl(function(){
-                self._setMedState('active');
-            }, function(err){
-                console.log('Error', err.name + ':' + err.message);
-                if(errCb)errCb(err);
-                self.ctrl.stop();
-                self._setMedState('idle');
-            },cs);
-        },type);
-        this._setMedState('pending');
-    };
-
-    _proto.stop = function(){
-        var self, hdl;
-        self = this;
-        hdl = (this.config.scnCast) ? this.stopScreen.bind(this) 
-            : this.stopMedia.bind(this);
-        if(this.ctrl)this.ctrl.stop(function(){
-            hdl();
-        });
-        this._setMedState('idle');
-    };
-
-    _proto.onCastList = function(){};
-    _proto.onMediaAct = function(){};
-    _proto.onReady = function(){};
-
-    //internal APIs
-    _proto._initCmdChan = function(){
-        var self;
-        self = this;
-        if(this.initFlag == false){
-            this.ctrl = new castCtrl(this.myPeer());
-            this.ctrl.onSend = function(cmd){
-                var data = JSON.stringify(cmd);
-                // console.log('castcmd send ',data);
-                self.sendData('castCtrl',data);
-            };
-            this.ctrl.onCastList = this.onCastList.bind(this);
-            setTimeout(function(){
-                self.ctrl.login();
-            }, 400);
-            this.initFlag = true;
-        }
-        this.createDataChan('castCtrl',function(from,data){
-            var cmd = JSON.parse(data);
-            self.ctrl.hdlMsg(cmd);
-        });
-    };
-
-    _proto.onChansReady = function(){
-        this._initCmdChan();
-        this.onReady();
-    };
-
-    _proto._setMedState = function(state){
-        this.mState = state;
-        this.onMediaAct(state);
-    };
-    _proto.myPeer = function(v){
-        return (v==undefined)? this._myPeer : this._myPeer = v;
-    };
-
-
-})();
-
-module.exports = medCast;
-},{"./castctrl":5,"./webrtc":10}],8:[function(require,module,exports){
 'use strict';
 var adapter = require('webrtc-adapter-test');
 var peerConn;
 
 (function(){
-    var _proto, _dbgFlag, _browser;
+    var _proto, _debug, _browser;
     _browser = adapter.webrtcDetectedBrowser;
 
-    _dbgFlag = false;
-    function _infLog(){
-        if(_dbgFlag){
-            console.log.apply(console, arguments);
-        }
-    }
-
-    function _errLog(){
-        console.log.apply(console, arguments);
-    }
+    _debug = false;
 
     //constructors
     function PeerConn(opts){
@@ -1321,7 +1201,7 @@ var peerConn;
         try{
             this.peer =  RTCPeerConnection(this.config.ice, this.config.peerConstrs);
         }catch(e){
-            _errLog(e.name);
+            console.log(e.name);
             return;
         };
 
@@ -1338,7 +1218,7 @@ var peerConn;
 
         //internal methods
         function onIce(event){
-          _infLog('onIce: ', event);
+          if(_debug)console.log('onIce: ', event);
           if (event.candidate) {
             self.onCmdSend('msg',{
                     room: self.config.room,
@@ -1351,12 +1231,12 @@ var peerConn;
                   candidate: event.candidate.candidate},
                     });
           } else {
-            _infLog('End of candidates.');
-            setTimeout(function(){
-                if(self.ready == false){
-                    self.onConError('default',self.config.id);
-                }
-            }, 5000);
+            if(_debug)console.log('End of candidates.');
+            // setTimeout(function(){
+            //     if(self.ready == false){
+            //         self.onConError('default',self.config.id);
+            //     }
+            // }, 5000);
           }
         }
 
@@ -1398,16 +1278,15 @@ var peerConn;
             from my mind, it should be a=recevonly */
             var sdp = self.prePrcsSdp(desc.sdp);
             desc.sdp = sdp;
-            _infLog('makeOffer ',desc);
+            if(_debug)console.log('makeOffer ',desc);
             self.peer.setLocalDescription(desc);
             self.onCmdSend('msg',{
-                room:self.config.room, 
                 to:self.config.id, 
                 mid:self.config.mid,
                 sdp:desc
             });
         }, function(err){
-            _errLog('offer Error',err);
+            console.log('offer Error',err);
         }, constrains);
     };
 
@@ -1418,16 +1297,15 @@ var peerConn;
         this.peer.createAnswer(function(desc){
             var sdp = self.prePrcsSdp(desc.sdp);
             desc.sdp = sdp;
-            _infLog('makeAnswer ',desc);
+            if(_debug)console.log('makeAnswer ',desc);
             self.peer.setLocalDescription(desc);
             self.onCmdSend('msg',{
-                room:self.config.room, 
                 to:self.config.id,
                 mid: self.config.mid,
                 sdp:desc
             });
         },function(err){
-            _errLog('answer Error',err);
+            console.log('answer Error',err);
         },constrains);
     };
 
@@ -1454,7 +1332,7 @@ var peerConn;
                 try{
                     self.peer.removeTrack(t);
                 }catch(err){
-                    _errLog('remove track err ', err);
+                    console.log('remove track err ', err);
                 };
             });
         }else{
@@ -1466,16 +1344,16 @@ var peerConn;
     _proto.setRmtDesc = function(desc){
         var sdp = new RTCSessionDescription(desc);
         this.peer.setRemoteDescription(sdp);
-        _infLog('setRemoteDescription ',sdp);
+        if(_debug)console.log('setRemoteDescription ',sdp);
     };
 
     _proto.addIceCandidate = function(candidate){
         this.peer.addIceCandidate(candidate);
-        _infLog('addIceCandidate ',candidate);
+        if(_debug)console.log('addIceCandidate ',candidate);
     };
 
     _proto.close = function(){
-        _infLog('peerConnection close ',this.config.id);
+        if(_debug)console.log('peerConnection close ',this.config.id);
         this.peer.close();
     };
 
@@ -1486,19 +1364,21 @@ var peerConn;
     _proto._obsrvDatChan = function(ch){
         var self = this;
         ch.onclose = function(){
-            _infLog('dc chan close ',ch);
+            if(_debug)console.log('dc chan close ',ch);
         };
         ch.onerror = function(){
-            _errLog('dc chan erro ',ch);
+            console.log('dc chan erro ',ch);
             self.onConError(ch.label,self.config.id);
         };
         ch.onopen =  function(){
-            _infLog('dc chan open ',ch);
+            if(_debug)console.log('dc chan open ',ch);
+            console.log('dc chan open ',ch);
             self.ready = true;
             self.onConnReady(ch.label,self.config.id);
         };
         ch.onmessage = function(ev){
-            // _infLog('peer recv '+ch.label,ev.data);
+            // if(_debug)console.log('peer recv '+ch.label,ev.data);
+            if(ch.label=='castCtrl0')console.log('peer recv '+ch.label,ev.data);
             self.onDcRecv(ch.label,self.config.id,ev.data);
         };
     };
@@ -1521,9 +1401,9 @@ var peerConn;
     _proto.sendData = function(chan,data){
         var dc = this.getDatChan(chan);
         if(!dc || (dc.readyState != 'open')){
-            _errLog('Error','channel '+dc+' is not ready, could not send');
+            console.log('Error','channel '+dc+' is not ready, could not send');
         }else{
-            // _infLog('send ',data);
+            if(dc.label=='castCtrl0')console.log('send ',data);
             dc.send(data);
         }
     };
@@ -1539,7 +1419,7 @@ var peerConn;
         nwSdp = '';
         sdps = sdp.split('m=');
         cnt = 0;
-        _infLog('parse sdp ','audio = '+auOn+' video = '+scOn);
+        if(_debug)console.log('parse sdp ','audio = '+auOn+' video = '+scOn);
         sdps.forEach(function(d){
             var ss;
             ss = (cnt > 0)? 'm=' + d : d;
@@ -1561,60 +1441,51 @@ var peerConn;
 
 module.exports = peerConn;
 
-},{"webrtc-adapter-test":3}],9:[function(require,module,exports){
+},{"webrtc-adapter-test":3}],8:[function(require,module,exports){
 /* 
 * @Author: Phenix
-* @Date:   2015-12-10 14:29:47
-* @Last Modified time: 2015-12-17 23:16:51
+* @Date:   2015-12-21 10:01:29
+* @Last Modified time: 2015-12-23 19:31:17
 */
 
 'use strict';
-var medCast = require('./mediacast');
+
+var localMedia =  require('./localmedia');
+var WebRtc = require('./webrtc');
+var CastCtrl = require('./castctrl');
 var rtc = require('webrtcsupport');
 var adapter = require('webrtc-adapter-test');
 
-var rtcCom;
+var teleCom;
 (function(){
-    var _proto, _dbgFlag, _browser;
-    _dbgFlag = true;
-    _browser = adapter.webrtcDetectedBrowser;
-
-    function _infLog(){
-        if(_dbgFlag){
-            console.log.apply(console, arguments);
-        }
-    }
-
-    function _errLog(){
-        console.log.apply(console, arguments);
-    }
-
-    function RtcCom(){
-        var self,config;
+    var _proto, _debug, _browser;
+    _debug = true;
+    function TeleCom(){
+        var self,config,w;
         self = this;
-        config = {};
+        config = {mid:'default',recvMedia:{}};
         this.support = rtc.support;
-        this.users = [];
-
-        this.medias = [];
-        config.mid = 0;
-        this.avt = this.medias[0] = new medCast(config);
-        this.avt.list = [];
-        config.mid = 1;
-        config.scnCast = true;
-        this.scn = this.medias[1] = new medCast(config);
-        this.scn.list = [];
+        w = this.webRtc = new WebRtc(config);
+        this.myPid = 'default';
+        this.streams = {default: w};
+        this.ctrls = []; //media controllers
+        this.users = []; // array to store current peerids
+        this.ready =  false;
+        this.actMedia = {status:'idle',idx:0};
+        this.actScn = {status:'idle',idx:0};
+        this.midx = 0;
+        this.media =  new localMedia(); 
 
         function updateCastList(){
             var list = [];
             var iflag = true;
             var video;
 
-            self.avt.list.forEach(function(p){
+            self.ctrls[0].castList.forEach(function(p){
                 list.push({id:p.id,av:p.type,scn:false});
             });
 
-            self.scn.list.forEach(function(p){
+            self.ctrls[1].castList.forEach(function(p){
                 for(var i=0;i<list.length;i++){
                     if(list[i].id == p.id){
                         list[i].scn = true;
@@ -1623,145 +1494,190 @@ var rtcCom;
                 }
                 list.push({id:p.id,av:'none',scn:true});
             });
-            _infLog('update list ',list);
+            if(_debug)console.log('update list ',list);
             self.onCastList(list);
         }
 
-        function regMedCallback(){
-            var hdl;
-            self.medias.forEach(function(m){
-                m.onCmdSend = function (h,d) {
-                    var data, type, dst;
-                    type = 'rtc';
-                    dst = getPeer.call(self,d.to);
-                    if(!dst){
-                        _errLog('erro id ',d.to);
-                        return;
-                    }
-                    data = {media:d.mid,sdp:d.sdp};
-                    // _infLog('send msg to '+dst, data);
-                    self.dispatch(data,type,dst);
-                };
-                m.onCastList = function(list){
-                    m.list = list;
-                    updateCastList();
-                };
-                m.onLMedAdd = function(s){
-                    hdl = (m.config.scnCast)? self.onMyScnAdd.bind(self)
-                        : self.onMyAvAdd.bind(self);
-                    hdl(s);
-                };
-                m.onRMedAdd = function(s){
-                    hdl = (m.config.scnCast)? self.onFrScnAdd.bind(self)
-                        : self.onFrAvAdd.bind(self);
-                    hdl(s);
-                };
-                m.onRMedDel = function(s){
-                    hdl = (m.config.scnCast)? self.onFrScnRm.bind(self)
-                        : self.onFrAvRm.bind(self);
-                    hdl(s);
-                };
-                m.onMediaAct = function(s){
-                    hdl = (m.config.scnCast)? self.onScnState.bind(self)
-                        : self.onAvState.bind(self);
-                    hdl(s);
-                };
-            });
-            self.avt.onTextRecv = function(f,d){
-                // _infLog('onTextRecv '+f,d);
-                var usr = self.usrList[f];
-                self.onTextRecv(usr,d);
-            };
-            self.avt.onCrpErro = function(c){
-                // self.exChan.addPartener(c.id);
-            };
-            self.avt.onReady = function(){
+        w.setDCRcvCb('default',function(from,data){
+            var cmd =JSON.parse(data);
+            self.hdlMsg(from, cmd);
+        });
+        w.onCmdSend =  function(h,d){
+            var data, type, dst;
+            type = 'rtc';
+            dst = d.to;
+            if(!dst){
+                console.log('erro id ',d.to);
+                return;
+            }
+            data = {media:d.mid,sdp:d.sdp};
+            if(_debug)console.log('send msg to '+dst, data);
+            self.dispatch(data,type,dst);
+        };
+        w.onReady = function(){
+            if(self.ready == false){
+                if(_debug)console.log('default rtc chan ready, now init cast controllers');
+                for(var i = 0;i < 2; i++){
+                    var m = self.ctrls[i] = new CastCtrl(i,self.myPeer());
+                    m.onSend = function(cmd){
+                        var data = JSON.stringify(cmd);
+                        w.sendData('castCtrl',data);
+                    };
+                    m.onCastList = function(list){
+                        //TODO: 
+                        updateCastList.call(self);
+                    };
+                    w.setDCRcvCb('castCtrl',function(from,data){
+                        var cmd = JSON.parse(data);
+                        var ctrl = self.ctrls[cmd.label];
+                        if(ctrl)ctrl.hdlMsg(cmd);
+                    });
+                }
                 self.onReady();
-            };
+            }
+            self.ready = true;
+            w.createDataChan('castCtrl');
         }
-        regMedCallback();
 
     }
-    function getPeerId(peer){
-        var id;
-        // _infLog('this.users ',this.users);
-        this.users.forEach(function(p){
-            if(p.peer == peer) id = p.id;
-        });
-        if(id == undefined){
-            id = this.users.length;
-            this.users.push({peer:peer,id:id});
-        } 
-        // _infLog('getId ',id);
-        return id;
-    }
-    function getPeer(id){
-        var peer;
-        this.users.forEach(function(p){
-            if(p.id == id) peer = p.peer;
-        });
-        return peer;
-    }
-    _proto = RtcCom.prototype;
-    rtcCom = RtcCom;
-    _proto.setMyPeer = function(peer){
-        this.medias.forEach(function(m){
-            m.myPeer(peer);
-        });
-    };
+
+    teleCom = TeleCom;
+    _proto = TeleCom.prototype;
 
     _proto.addPeer = function(peer){
-        var id;
-        if(!rtc.support) return id;
-        id = getPeerId.call(this,peer);
-        _infLog('Another peer '+ peer + ' # '+id+ ' made a request to join hub');
-        this.medias.forEach(function(m){
-            m.addPartener(id);
-        });
-        return id;
+        self = this;
+        if(!rtc.support || !peer) return;
+        if(_debug)console.log('Another peer '+ peer + ' made a request to join hub');
+        if(this.users.indexOf(peer)<0)this.users.push(peer);
+        var w = this.streams['default'];
+        w.addPeer(peer,'calling');
+        w.createDataChan('default');
+        w.startCall(peer);
+        //TODO: ... when there is a casting stream, add particular partenner
+        var am = this.actMedia;
+        if(am.status == 'active'){
+            var as = this.streams[am.mid];
+            if(as){
+                as.addPeer(peer,'calling');
+                as.startCall(peer);
+            }
+        }
     };
 
     _proto.removePeer = function(peer){
-        var id = getPeerId.call(this,peer);
-        if(id!=undefined){
-            this.medias.forEach(function(m){
-                m.rmPartener(id);
-            });
-            delete this.users[id];
+        if(peer!=undefined){
+            var m = this.streams;
+            for(var i in m){
+                m[i].rmPeer(peer);
+            }
+            var idx = this.users.indexOf(peer);
+            if(idx>=0)this.users.splice(idx,1);
+            if(this.users.length == 0){
+                if(_debug)console.log('no one in the hub');
+                //TODO: 
+                self.ready = false;
+            }
+
         }
+    };
+
+    function dcSendMsg(h,d){
+        if(d.to == undefined) return;
+        var data = JSON.stringify({media:d.mid,sdp:d.sdp});
+        var w = this.streams.default;
+        w.sendData('default',data,d.to);    
+        // if(_debug)console.log('dc send msg ',data,d.to);  
     }
 
     _proto.hdlMsg = function(peer,data){
-        var id,msg,mid;
-        if(!rtc.support) return id;
-        // _infLog(peer+' recv msg ',data);
-        id = getPeerId.call(this,peer);
+        var msg,mid,self;
+        if(!rtc.support) return;
+        self = this;
+        // if(_debug)console.log(peer,' recv msg ',data);
+        if(this.users.indexOf(peer)<0)this.users.push(peer);
         mid = data.media;
-        msg = {from:id,mid:mid,sdp:data.sdp};
-        if(mid!=undefined)this.medias[mid].parseSigMsg(msg);
-        return id;
+        msg = {from:peer,mid:mid,sdp:data.sdp};
+        if(mid!=undefined){
+            if(this.streams[mid]==undefined){
+                var config = {mid:mid};
+                var w = this.streams[mid] = new WebRtc(config);
+                w.onCmdSend = dcSendMsg.bind(this);
+                w.onRMedAdd = this.onFrAvAdd;
+                w.onRMedDel = this.onFrAvRm;
+            }
+            this.streams[mid].parseSigMsg(msg);
+            var am = this.actMedia;
+            if(mid ==  am.mid && am.status == 'close'&& msg.sdp.type == 'answer'){
+                if(self.streams[am.mid].remove(peer)==0){
+                    delete self.streams[am.mid];
+                    am.status = 'idle';
+                }
+            }
+        };
     };
 
-    _proto.startSpeaking = function(video,errCb){
-        if(!this.getRtcCap())return false;
-        if(this.avt.getMedStatus()!='idle') return false;
-        this.avt.start({video:video},errCb);
+    _proto.myPeer = function(v){
+        return (v==undefined)? this.myPid : this.myPid = v;
+    };
+
+    function startStream(oneway,strm){
+        var mid = this.myPeer()+(this.midx++);
+        this.actMedia.mid = mid;
+        var config = {mid:mid,oneway:oneway};
+        var w = this.streams[mid] = new WebRtc(config);
+        w.onCmdSend = dcSendMsg.bind(this);
+        w.onRMedAdd = this.onFrAvAdd;
+        w.onRMedDel = this.onFrAvRm;
+        console.log('user list is ',this.users)
+        this.users.forEach(function(p){
+            w.addPeer(p,'calling');
+            w.startCall(p,strm);
+        });
+    }
+
+    _proto.startSpeaking = function(cfg,errCb){
+        var self,cs,type;
+        self = this;
+        if(cfg.video) cs = { video: true, audio: true};
+        type = (cfg.video)? 'video' : 'audio';
+        var am = this.actMedia;
+        if(am.status != 'idle')return;
+        this.media.start(cs,function(err,s){
+            if(!err){
+                am.status = 'active';
+                if(cfg.oneway){
+                    am.strm = s;
+                    self.ctrls[0].start(function(){
+                        var strm = am.strm;
+                        if(strm){
+                            self.onMyAvAdd(strm);
+                            startStream.call(self,true,strm);
+                        }
+                    },type);
+                }else{
+                    startStream.call(self,false,s);
+                }
+            }else{
+                if(errCb)errCb(err);
+            }
+        });
         return true;
     };
+
     _proto.stopSpeaking = function(){
-        if(this.avt.getMedStatus()=='idle') return;
-        this.avt.stop();
-    };
+        var self = this;
+        var c = this.ctrls[0];
+        var am = this.actMedia;
+        var w = this.streams[am.mid];
+        if(am.status == 'idle')return;
+        this.media.stop(function(s){
+            c.stop(function(){
+                if(s)w.stopCall(s);
+                am.status = 'close';
+                delete am.strm;
+            });
+        });
 
-    _proto.startscnCast = function(errCb){
-        if(!this.getRtcCap())return false;
-        if(this.scn.getMedStatus()!='idle') return false;
-        this.scn.start({},errCb);
-        return true;
-    };
-    _proto.stopscnCast = function(){
-        if(this.scn.getMedStatus()=='idle') return;
-        this.scn.stop();
     };
 
     _proto.getRtcCap = function(infCb){
@@ -1795,77 +1711,51 @@ var rtcCom;
         return true;
     };
 
-
+    _proto.dispatch = function(){};
     _proto.onReady = function(){};
     _proto.onCastList = function(){};
-    _proto.onTextRecv = function(){};
     _proto.onMyAvAdd = function(){};
     _proto.onFrAvAdd = function(){};
     _proto.onFrAvRm = function(){};
-    _proto.onAvState = function(){};
     _proto.onMyScnAdd = function(){};
     _proto.onFrScnAdd = function(){};
     _proto.onFrScnRm = function(){};
-    _proto.onScnState = function(){};
-    _proto.onWarnMsg = function(){};
-
 
 })();
 
-module.exports = rtcCom;
+module.exports = teleCom;
 
-},{"./mediacast":7,"webrtc-adapter-test":3,"webrtcsupport":4}],10:[function(require,module,exports){
+
+},{"./castctrl":5,"./localmedia":6,"./webrtc":9,"webrtc-adapter-test":3,"webrtcsupport":4}],9:[function(require,module,exports){
 /* 
 * @Author: Phenix Cai
 * @Date:   2015-11-13 19:14:00
-* @Last Modified time: 2015-12-19 09:22:48
+* @Last Modified time: 2015-12-23 18:08:25
 */
 
 'use strict';
-var localMedia =  require('./localmedia');
 var peerConn = require('./peerconn');
 
 
 var webRtc;
 (function(){
-    var _proto, _dbgFlag;
-    _dbgFlag = false;
-    function _infLog(){
-        if(_dbgFlag){
-            console.log.apply(console, arguments);
-        }
-    }
-
-    function _errLog(){
-        console.log.apply(console, arguments);
-    }
-    
+    var _proto, _debug;
+    _debug = false;
 
     function WebRtc(opts){
         
-        var options, item, self, tmpId, cn;
+        var options, item, self,  cn;
         self = this;
         options = opts || {};
-        tmpId = Math.ceil(Math.random()*1000);
 
-        this.config = {
-            room : 'default',
-            user : 'demo'+tmpId,
-            oneway : true
-        }; 
-        this.peers = [];
+        this.config = {oneway:true}; 
+        this.peers = {};
 
         for(item in options){
             this.config[item] = options[item];
         }
 
-        this.media =  new localMedia(this.config); 
-        this.strm = null;
-        this.scrn = null;
-
         this.datChRecvCb = {};
-        this.datChRecvCb['textMsg'] = this._onDatRecv.bind(this);
-
     }
     // export obj
     webRtc = WebRtc;
@@ -1876,22 +1766,22 @@ var webRtc;
         var id, pc, candidate;
         id = msg.from;
         pc = this.peers[id];
-        _infLog('Received msg:', msg);
+        if(_debug)console.log('Received msg:', msg);
 
         if (msg.sdp.type === 'offer') {
             //get invite from other side
-            this._createPeer('called',id,msg.sdp);
+            this.addPeer(id,'called',msg.sdp);
             
         } else if (msg.sdp.type === 'answer' ) {
             if(!pc){
-                _errLog("wrong answer id from "+id);
+                console.log("wrong answer id from "+id);
                 return;
             }
             pc.setRmtDesc(msg.sdp);
             
         } else if (msg.sdp.type === 'candidate') {
             if(!pc){
-                _errLog("wrong candidate id from "+id);
+                console.log("wrong candidate id from "+id);
                 return;
             }
           candidate = new RTCIceCandidate({sdpMLineIndex:msg.sdp.label,
@@ -1900,113 +1790,101 @@ var webRtc;
         } 
     };
 
-
-    _proto.addPartener = function(id){
-        this._createPeer('calling',id,null);
+    _proto.addPeer = function(id,type,sdp){
+        // this._createPeer('calling',id,null);
+        var pc, config;
+        config = this.config;
+        config.id = id;
+        config.type = type;
+        pc = this.peers[id];
+        if(!pc){
+            pc = new peerConn(config);
+            if(!pc || !pc.peer){
+                console.log('erro: create pc failed');
+                this.onCrpErro(config);
+                return;
+            } // create peerconnection error
+            this.peers[id] = pc;
+            regPconnEvtCb.call(this,pc);
+        }
+        if(type=='called'){
+            pc.setRmtDesc(sdp);
+            pc.makeAnswer();
+        }
     };
 
-    _proto.rmPartener = function(id){
-        this._removePeer(id);
+    _proto.rmPeer = function(id){
+        var pc;
+        pc = this.peers[id];
+        if(pc){
+            pc.close();
+            delete this.peers[id];
+        }
     };
 
-    _proto.sendData = function(chan,data){
-        this.peers.forEach(function(pc){
+    _proto.sendData = function(chan,data,to){
+        if(to){
+            var pc = this.peers[to];
             if(pc)pc.sendData(chan, data);
-        });
+        }else{
+            for(var i in this.peers){
+                this.peers[i].sendData(chan,data);
+            }
+        }
     };
 
-    _proto.useVideo =function(b){
-        this.config.videoCast = b;
-    };
-    _proto.startMedia =  function(onSuc,onErr,param){
-        var self, cs;
-        self = this;
-        if(param.video) cs = {video: true, audio: true};
-        this.media.start(cs, function(err,s){
-            if(!err){
-                if(onSuc)onSuc(s);
-                self.onLMedAdd(s);
-                self.strm = s;
-                self.peers.forEach(function(pc){
-                    pc.addStream(s);
-                    pc.makeOffer();
-                });
-            }else{
-                if(onErr)onErr(err);
-            }
-        })
-    };
-    _proto.stopMedia = function(){
-        var self = this;
-        this.media.stop(function(s){
-            if(s)self.peers.forEach(function(pc){
-                pc.removeStream(s);
-                pc.makeOffer();
-            });
-            self.strm = null;
-        });
-    };
-    _proto.startScreen = function(onSuc,onErr){
-        var self = this;
-        this.media.getScn(function(err,s){
-            if(!err){
-                if(onSuc)onSuc(s);
-                self.onLMedAdd(s);
-                self.scrn = s;
-                self.peers.forEach(function(pc){
-                    pc.addStream(s);
-                    pc.makeOffer();
-                });
-            }else{
-                if(onErr)onErr(err);
-            }
-        });
-    };
-    _proto.stopScreen = function(){
-        var self = this;
-        this.media.rlsScn(function(s){
-            _infLog('rls ',s);
-            if(s)self.peers.forEach(function(pc){
-                pc.removeStream(s);
-                pc.makeOffer();
-            });
-            self.scrn = null;
-        });
+    _proto.startCall = function(id,s){
+        var pc = this.peers[id];
+        if(!pc){
+            console.log('wrong pc from id ',id);
+            return;
+        }
+        if(s)pc.addStream(s);
+        pc.makeOffer();
     };
 
-    _proto.sendTxt2All = function(data){
-        // console.log('sendTxt2All ',data);
-        this.sendData('textMsg',data);
-    }; 
+    _proto.stopCall = function(s){
+        for(var i in this.peers){
+            if(s)this.peers[i].removeStream(s);
+            this.peers[i].makeOffer();
+        }
+    };
+
+    _proto.remove = function(id){
+        var pc = this.peers[id];
+        if(pc){
+            pc.close();
+            delete this.peers[id];
+        }
+        var length = 0;
+        for(var i in this.peers){length++;}
+        return length;
+    }
+
 
     _proto.createDataChan = function(label,onRecv){
-        this.datChRecvCb[label] = onRecv.bind(this);
-        
-        this.peers.forEach(function(p){
-            p.getDatChan(label);
-        });
+        if(onRecv)this.datChRecvCb[label] = onRecv.bind(this);
+        for(var i in this.peers){
+            this.peers[i].getDatChan(label);
+        }
+    };
 
+    _proto.setDCRcvCb = function(label,onRecv){
+        this.datChRecvCb[label] = onRecv.bind(this);
     };
 
 
     /*some callback fuctions*/
     _proto.onCmdSend = function(){};
-    _proto.onTextRecv = function(){};
-    _proto.onLMedAdd = function(){};
     _proto.onRMedAdd = function(){};
     _proto.onRMedDel = function(){};
     _proto.onCrpErro = function(){};
-    _proto.onChansReady = function(){};
+    _proto.onReady = function(){};
 
-    // internal APIs
-
-    _proto._onDatRecv = function(f,d){
-        this.onTextRecv(f,d);
-    };
 
     //internal api for webrtc
     //register callback functions for peerconnections
-    _proto._regPconnEvtCb = function(pc){
+    function regPconnEvtCb(pc){
         var self = this;
         pc.onCmdSend = function(h,d){
             self.onCmdSend(h,d);
@@ -2019,12 +1897,12 @@ var webRtc;
             self.onRMedAdd(s);
         };
         pc.onRmRStrm = function(s){
-            _infLog('rmtStrmDel',s);
+            if(_debug)console.log('rmtStrmDel',s);
             self.onRMedDel(s);
         };
         pc.onConError = function(label,id){
             var config = self.config;
-            _errLog('peer',id+' connect error');
+            console.log('peer',id+' connect error');
             self._removePeer(id);
             config.type = 'calling';
             config.id = id;
@@ -2032,10 +1910,10 @@ var webRtc;
         };
         pc.onConnReady = function(label,id){
             var ready = true;
-            self.peers.forEach(function(p){
-                if(p.ready == false) ready = false;
-            });
-            if(ready)self.onChansReady();
+            for(var i in self.peers){
+                if(self.peers[i].ready == false){ready=false;break;}
+            }
+            if(ready)self.onReady();
         }
     };
 
@@ -2056,72 +1934,13 @@ var webRtc;
         return ret;
     }
 
-    _proto._createPeer = function(type,id,sdp){
-        var pc,config;
-        config = this.config;
-        config.id = id;
-        config.type = type;
-
-        pc = this.peers[id];
-        if(!pc){
-            pc = new peerConn(config);
-            if(!pc || !pc.peer){
-                _errLog('erro: create pc failed');
-                this.onCrpErro(config);
-                return;
-            } // create peerconnection error
-            this.peers[id] = pc;
-            this._regPconnEvtCb(pc);
-        }
-        if(type == 'calling'){
-            this.media.getStrms().forEach(function(s){
-                if(s)pc.addStream(s);
-            });
-            pc.getDatChan('textMsg');
-            pc.makeOffer();
-        }else{
-            // received offer 
-            pc.setRmtDesc(sdp);
-            if(config.oneway){
-                if(this.strm){
-                    this.media.stop(function(s){
-                        if(s)pc.removeStream(s);
-                        pc.makeAnswer();
-                    });
-                    this.strm = null;
-                    return;
-                }
-                if(this.scrn){
-                    this.media.rlsScn(function(s){
-                        if(s)pc.removeStream(s);
-                        pc.makeAnswer();
-                    });
-                    this.scrn = null;
-                    return;
-                }
-            }
-            pc.makeAnswer();
-        }
-
-    };
-
-    _proto._removePeer = function(id){
-        var pc;
-        pc = this.peers[id];
-        if(pc){
-            pc.close();
-            delete this.peers[id];
-        }
-    };
-
-
 
 })();
 
 module.exports = webRtc;
 
 
-},{"./localmedia":6,"./peerconn":8}],11:[function(require,module,exports){
+},{"./peerconn":7}],10:[function(require,module,exports){
 /*
 gatherhub.js is distributed under the permissive MIT License:
 
@@ -3211,7 +3030,7 @@ var Gatherhub = Gatherhub || {};
 if (typeof module !== 'undefined') {
 	module.exports = Gatherhub;
 }
-},{}],12:[function(require,module,exports){
+},{}],11:[function(require,module,exports){
 var svgicon = {
 	brushl: '<g><path d="M0.002,123.619C0,123.484,0,123.438,0.002,123.619L0.002,123.619z"/><path d="M134.563,5.449c0,0-7.158-0.347-10.589,3.085c-1.421,1.409-2.927,3.098-4.624,4.884c-6.754,7.176-15.693,16.809-24.558,26.519c-8.825,9.748-17.646,19.506-24.083,27c-3.234,3.733-5.933,6.838-7.821,9.012c-1.864,2.199-2.929,3.458-2.929,3.458c-2.169,2.555-2.258,6.376-0.04,9.047c2.485,2.983,6.922,3.39,9.907,0.908c0,0,1.266-1.059,3.483-2.901c2.194-1.866,5.324-4.537,9.081-7.74c7.551-6.375,17.382-15.105,27.206-23.846c9.784-8.78,19.497-17.635,26.728-24.33c1.802-1.679,3.502-3.17,4.923-4.578c3.18-3.014,3.18-7.529,3.18-8.885C144.436,11.628,142.333,6.109,134.563,5.449z"/><path d="M78.939,94.825c0,0-0.036-1.3-0.355-3.267c-0.146-0.896-0.765-1.646-1.615-1.962c-0.854-0.316-1.812-0.148-2.506,0.438l-2.382,2.017c-1.897,1.576-4.286,2.44-6.741,2.44c-3.142,0-6.094-1.383-8.104-3.793c-3.284-3.949-3.258-9.649,0.058-13.557l2.037-2.365c0.32-0.368,0.388-0.896,0.176-1.335c-0.216-0.442-0.671-0.714-1.161-0.691c0,0-36.537-0.976-38.566,30.112c-1.722,26.372-14.744,23.391-18.657,21.518c-0.107-0.05-0.234-0.043-0.332,0.021c-0.1,0.062-0.161,0.174-0.161,0.29c0,0.009,0,0.016,0,0.022c0,0.475,0.138,0.931,0.395,1.33c3.582,5.543,17.449,21.216,53.936,7.396C54.961,133.439,82.329,123.5,78.939,94.825z"/></g>',
 	brushm: '<g><path d="M0.002,123.619C0,123.484,0,123.438,0.002,123.619L0.002,123.619z"/><path d="M134.563,5.449c0,0-7.158-0.347-10.589,3.085c-1.421,1.409-2.927,3.098-4.624,4.884    c-6.754,7.176-15.693,16.809-24.558,26.519c-8.825,9.748-17.646,19.506-24.083,27c-3.234,3.733-5.933,6.838-7.821,9.012c-1.864,2.199-2.929,3.458-2.929,3.458c-2.169,2.555-2.258,6.376-0.04,9.047c2.485,2.983,6.922,3.39,9.907,0.908    c0,0,1.266-1.059,3.483-2.901c2.194-1.866,5.324-4.537,9.081-7.74c7.551-6.375,17.382-15.105,27.206-23.846    c9.784-8.78,19.497-17.635,26.728-24.33c1.802-1.679,3.502-3.17,4.923-4.578c3.18-3.014,3.18-7.529,3.18-8.885    C144.436,11.628,142.333,6.109,134.563,5.449z"/><path d="m 72.48768,92.615878 c 0.40784,0.945103-0.50676,-3.448052 -3.035056,-1.372983 -2.930824,1.009578 -4.79992,1.054676 -6.347345,0.491883 -1.915869,-0.543873 -3.00474,-1.171317 -4.27879,-2.714067 -0.910774,-1.789793 -2.301132,-3.097255 -1.24592,-7.427848 0.705561,-2.002175 0.885635,-3.486644 -1.863616,-3.394171 0,0 -19.441263,-0.338794 -20.727353,19.562038 -1.0915,16.88191 -9.34553,14.97364 -11.8258,13.77465 -0.0678,-0.032 -0.14832,-0.0275 -0.21044,0.0134 -0.0634,0.0397 -0.10205,0.11139 -0.10205,0.18564 l 0,0.0141 c 0,0.30406 0.0875,0.59597 0.25037,0.85139 2.27046,3.54832 11.06011,13.58132 34.18751,4.73451 0,0 17.34729,-6.3624 15.19853,-24.71857 z"/></g>',
@@ -3256,10 +3075,10 @@ var svgicon = {
 if (typeof module !== 'undefined') {
 	module.exports = svgicon;
 }
-},{}],13:[function(require,module,exports){
+},{}],12:[function(require,module,exports){
 var Gatherhub = require('./gatherhub');
 var svgicon = require('./svgicons');
-var RtcCom = require('../rtc/rtccom');
+var RtcCom = require('../rtc/telecom');
 // for debug use
 var msp;
 var mvp;
@@ -3526,6 +3345,7 @@ $(function(){
 	};
 
 	rtc.onFrAvRm = function(){
+		console.log('remote stream deleted');
 		$('#remoteMed').remove();
 	};
 
@@ -3616,7 +3436,7 @@ $(function(){
 		return btn;
 	}
 	var btnSpk = addBtnToList(svgicon.mic, 'btnSpk',function(){
-		if(rtc.startSpeaking(false,function(){
+		if(rtc.startSpeaking({oneway:true,video:false},function(){
 			console.log('start talking failed');
 			$('#btnMute').hide();
 			$('#btnSpk').show();
@@ -3636,7 +3456,7 @@ $(function(){
 	});
 
 	var btnVchat = addBtnToList(svgicon.vchat,'btnVchat',function(){
-		if(rtc.startSpeaking(true,function(){
+		if(rtc.startSpeaking({oneway:true,video:true},function(){
 			console.log('start video failed');
 			$('#btnMuteV').hide();
 			$('#btnSpk').show();
@@ -3725,7 +3545,7 @@ $(function(){
 			dispatch({rtc:rtc.support}, 'hello');
 			pulse = setInterval(function(){if (wsready) dispatch({},'heartbeat',peerid);}, 25000);
 			appendUser('#plist', peerid, peer + '(Me)', sp.repcolor);
-			rtc.setMyPeer(peerid);
+			rtc.myPeer(peerid);
 			showRtcInfo();
 		};
 		ws.onmessage = function(msg){
@@ -3971,4 +3791,4 @@ function cfmClear(ok) {
 }
 
 
-},{"../rtc/rtccom":9,"./gatherhub":11,"./svgicons":12}]},{},[13]);
+},{"../rtc/telecom":8,"./gatherhub":10,"./svgicons":11}]},{},[12]);

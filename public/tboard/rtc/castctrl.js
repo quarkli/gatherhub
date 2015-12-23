@@ -1,7 +1,7 @@
 /* 
 * @Author: Phenix Cai
 * @Date:   2015-11-22 10:02:34
-* @Last Modified time: 2015-12-18 20:32:08
+* @Last Modified time: 2015-12-23 14:24:48
 */
 
 
@@ -10,17 +10,12 @@ var castCtrl;
 
 
 (function(){
-    var _proto, t1, t2, t3, _dbgFlag;
+    var _proto, t1, t2, t3, _debug;
     // constant
     t1 = 150;
     t2 = 250;
     t3 = (t1+t2)*2;
-    _dbgFlag = true;
-    function _infLog(){
-        if(_dbgFlag){
-            console.log.apply(console, arguments);
-        }
-    }
+    _debug = true;
 
     function objSetTimeout(obj,func,time){
         var t;
@@ -30,9 +25,10 @@ var castCtrl;
         return t;
     }
 
-    function CastCtrl(id){
+    function CastCtrl(label,id){
         this.castList  = [];
         this.pendList = []; 
+        this.label = label;
         this.id = id;
         this.reqTimer;
         this.reqCnt = 0;
@@ -49,11 +45,11 @@ var castCtrl;
 
     // api functions
     _proto.login = function(){
-        this.onSend({from:this.id, to:'All',cmd:'hello'});
+        this.onSend({from:this.id, label: this.label, to:'All',cmd:'hello'});
     };
 
     _proto.bye = function(id){
-        this.recvMsg({from:id, to:this.id, cmd:'rls'});
+        this.recvMsg({from:id, label:this.label, to:this.id, cmd:'rls'});
     };
 
     _proto.start = function(cb,type){
@@ -82,7 +78,7 @@ var castCtrl;
         var myself, rid, delay, idx;
         myself = this.id;
         rid = msg.from;
-        _infLog(this.id +' hdlMsg ',msg);
+        if(_debug)console.log(this.id +' hdlMsg ',msg);
         switch(msg.cmd)
         {
             case 'req':
@@ -109,13 +105,13 @@ var castCtrl;
                 this.pendList = [];
                 this.castList = msg.list;
                 this.onCastList(this.castList);
-                _infLog('cmp '+ myself + ' vs ',this.castList[0]);
+                if(_debug)console.log('cmp '+ myself + ' vs ',this.castList[0]);
 
                 if(this.castList[0] && this.castList[0].id == myself){
                     if(this._startCb)this._startCb();
                 }else{
                     if(this.reqCnt > 0){
-                        _infLog(this.id+' stop timer');
+                        if(_debug)console.log(this.id+' stop timer');
                         clearTimeout(this.reqTimer);
                         this.reqCnt = 0;
                     }
@@ -126,7 +122,7 @@ var castCtrl;
                 }
             break;
             case 'hello':
-                _infLog('hello cmp '+ myself + ' vs ',this.castList[0]);
+                if(_debug)console.log('hello cmp '+ myself + ' vs ',this.castList[0]);
                 if(this.castList[0] && this.castList[0].id == myself){
                     this._infCastList();
                 }
@@ -146,7 +142,7 @@ var castCtrl;
         from = this.id;
         list = this.castList;
         to = 'All';
-        this.onSend({from:from, to:to, cmd:'list',list:list});
+        this.onSend({from:from, label:this.label, to:to, cmd:'list',list:list});
         this.onCastList(list);
     };
 
@@ -155,25 +151,25 @@ var castCtrl;
         from = this.id;
         to = 'All';
         type = this.type;
-        this.onSend({from:from, to:to, cmd:'req', type:type});
+        this.onSend({from:from, label:this.label, to:to, cmd:'req', type:type});
     };
 
     _proto._cancelCastReq = function(){
         var from, to;
         from = this.id;
         to = 'All';
-        this.onSend({from:from, to:to, cmd:'rls'});
+        this.onSend({from:from, label:this.label, to:to, cmd:'rls'});
     };
 
     _proto._reqTimerHdl = function(){
-        _infLog(this.id + ' _reqTimerHdl', this.reqCnt);
+        if(_debug)console.log(this.id + ' _reqTimerHdl', this.reqCnt);
         this.reqCnt --;
         if(this.reqCnt > 0){
             this._sendCastReq();
             this.reqTimer = objSetTimeout(this,this._reqTimerHdl, t2);
         }else if (this.reqCnt == 0){
             if(this.pendList.length > 0){
-                _infLog('collision occurs');
+                if(_debug)console.log('collision occurs');
                 delay = t1 + Math.ceil(Math.random()*t3);
                 this.reqTimer = objSetTimeout(this,this._startCastReq, delay);
                 this.pendList = [];
@@ -194,7 +190,7 @@ var castCtrl;
     _proto._startCastReq = function(){
         var self = this;
         if(this.pendList.length > 0){
-            _infLog(this.id + ' warn: there is some un-handled reqs here. ',this.pendList);
+            if(_debug)console.log(this.id + ' warn: there is some un-handled reqs here. ',this.pendList);
             this.reqWait = 1; 
             return;
         }
@@ -205,7 +201,7 @@ var castCtrl;
 
     _proto._stopCastReq = function(){
         if(this.castList[0] && this.castList[0].id == this.id){
-            if(this._stopCb && this.castList.length == 1)this._stopCb();
+            if(this._stopCb)this._stopCb();
             this.castList.shift();
             this._infCastList();
         }else{

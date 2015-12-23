@@ -1,54 +1,32 @@
 /* 
 * @Author: Phenix Cai
 * @Date:   2015-11-13 19:14:00
-* @Last Modified time: 2015-12-19 09:22:48
+* @Last Modified time: 2015-12-23 18:08:25
 */
 
 'use strict';
-var localMedia =  require('./localmedia');
 var peerConn = require('./peerconn');
 
 
 var webRtc;
 (function(){
-    var _proto, _dbgFlag;
-    _dbgFlag = false;
-    function _infLog(){
-        if(_dbgFlag){
-            console.log.apply(console, arguments);
-        }
-    }
-
-    function _errLog(){
-        console.log.apply(console, arguments);
-    }
-    
+    var _proto, _debug;
+    _debug = false;
 
     function WebRtc(opts){
         
-        var options, item, self, tmpId, cn;
+        var options, item, self,  cn;
         self = this;
         options = opts || {};
-        tmpId = Math.ceil(Math.random()*1000);
 
-        this.config = {
-            room : 'default',
-            user : 'demo'+tmpId,
-            oneway : true
-        }; 
-        this.peers = [];
+        this.config = {oneway:true}; 
+        this.peers = {};
 
         for(item in options){
             this.config[item] = options[item];
         }
 
-        this.media =  new localMedia(this.config); 
-        this.strm = null;
-        this.scrn = null;
-
         this.datChRecvCb = {};
-        this.datChRecvCb['textMsg'] = this._onDatRecv.bind(this);
-
     }
     // export obj
     webRtc = WebRtc;
@@ -59,22 +37,22 @@ var webRtc;
         var id, pc, candidate;
         id = msg.from;
         pc = this.peers[id];
-        _infLog('Received msg:', msg);
+        if(_debug)console.log('Received msg:', msg);
 
         if (msg.sdp.type === 'offer') {
             //get invite from other side
-            this._createPeer('called',id,msg.sdp);
+            this.addPeer(id,'called',msg.sdp);
             
         } else if (msg.sdp.type === 'answer' ) {
             if(!pc){
-                _errLog("wrong answer id from "+id);
+                console.log("wrong answer id from "+id);
                 return;
             }
             pc.setRmtDesc(msg.sdp);
             
         } else if (msg.sdp.type === 'candidate') {
             if(!pc){
-                _errLog("wrong candidate id from "+id);
+                console.log("wrong candidate id from "+id);
                 return;
             }
           candidate = new RTCIceCandidate({sdpMLineIndex:msg.sdp.label,
@@ -83,113 +61,101 @@ var webRtc;
         } 
     };
 
-
-    _proto.addPartener = function(id){
-        this._createPeer('calling',id,null);
+    _proto.addPeer = function(id,type,sdp){
+        // this._createPeer('calling',id,null);
+        var pc, config;
+        config = this.config;
+        config.id = id;
+        config.type = type;
+        pc = this.peers[id];
+        if(!pc){
+            pc = new peerConn(config);
+            if(!pc || !pc.peer){
+                console.log('erro: create pc failed');
+                this.onCrpErro(config);
+                return;
+            } // create peerconnection error
+            this.peers[id] = pc;
+            regPconnEvtCb.call(this,pc);
+        }
+        if(type=='called'){
+            pc.setRmtDesc(sdp);
+            pc.makeAnswer();
+        }
     };
 
-    _proto.rmPartener = function(id){
-        this._removePeer(id);
+    _proto.rmPeer = function(id){
+        var pc;
+        pc = this.peers[id];
+        if(pc){
+            pc.close();
+            delete this.peers[id];
+        }
     };
 
-    _proto.sendData = function(chan,data){
-        this.peers.forEach(function(pc){
+    _proto.sendData = function(chan,data,to){
+        if(to){
+            var pc = this.peers[to];
             if(pc)pc.sendData(chan, data);
-        });
+        }else{
+            for(var i in this.peers){
+                this.peers[i].sendData(chan,data);
+            }
+        }
     };
 
-    _proto.useVideo =function(b){
-        this.config.videoCast = b;
-    };
-    _proto.startMedia =  function(onSuc,onErr,param){
-        var self, cs;
-        self = this;
-        if(param.video) cs = {video: true, audio: true};
-        this.media.start(cs, function(err,s){
-            if(!err){
-                if(onSuc)onSuc(s);
-                self.onLMedAdd(s);
-                self.strm = s;
-                self.peers.forEach(function(pc){
-                    pc.addStream(s);
-                    pc.makeOffer();
-                });
-            }else{
-                if(onErr)onErr(err);
-            }
-        })
-    };
-    _proto.stopMedia = function(){
-        var self = this;
-        this.media.stop(function(s){
-            if(s)self.peers.forEach(function(pc){
-                pc.removeStream(s);
-                pc.makeOffer();
-            });
-            self.strm = null;
-        });
-    };
-    _proto.startScreen = function(onSuc,onErr){
-        var self = this;
-        this.media.getScn(function(err,s){
-            if(!err){
-                if(onSuc)onSuc(s);
-                self.onLMedAdd(s);
-                self.scrn = s;
-                self.peers.forEach(function(pc){
-                    pc.addStream(s);
-                    pc.makeOffer();
-                });
-            }else{
-                if(onErr)onErr(err);
-            }
-        });
-    };
-    _proto.stopScreen = function(){
-        var self = this;
-        this.media.rlsScn(function(s){
-            _infLog('rls ',s);
-            if(s)self.peers.forEach(function(pc){
-                pc.removeStream(s);
-                pc.makeOffer();
-            });
-            self.scrn = null;
-        });
+    _proto.startCall = function(id,s){
+        var pc = this.peers[id];
+        if(!pc){
+            console.log('wrong pc from id ',id);
+            return;
+        }
+        if(s)pc.addStream(s);
+        pc.makeOffer();
     };
 
-    _proto.sendTxt2All = function(data){
-        // console.log('sendTxt2All ',data);
-        this.sendData('textMsg',data);
-    }; 
+    _proto.stopCall = function(s){
+        for(var i in this.peers){
+            if(s)this.peers[i].removeStream(s);
+            this.peers[i].makeOffer();
+        }
+    };
+
+    _proto.remove = function(id){
+        var pc = this.peers[id];
+        if(pc){
+            pc.close();
+            delete this.peers[id];
+        }
+        var length = 0;
+        for(var i in this.peers){length++;}
+        return length;
+    }
+
 
     _proto.createDataChan = function(label,onRecv){
-        this.datChRecvCb[label] = onRecv.bind(this);
-        
-        this.peers.forEach(function(p){
-            p.getDatChan(label);
-        });
+        if(onRecv)this.datChRecvCb[label] = onRecv.bind(this);
+        for(var i in this.peers){
+            this.peers[i].getDatChan(label);
+        }
+    };
 
+    _proto.setDCRcvCb = function(label,onRecv){
+        this.datChRecvCb[label] = onRecv.bind(this);
     };
 
 
     /*some callback fuctions*/
     _proto.onCmdSend = function(){};
-    _proto.onTextRecv = function(){};
-    _proto.onLMedAdd = function(){};
     _proto.onRMedAdd = function(){};
     _proto.onRMedDel = function(){};
     _proto.onCrpErro = function(){};
-    _proto.onChansReady = function(){};
+    _proto.onReady = function(){};
 
-    // internal APIs
-
-    _proto._onDatRecv = function(f,d){
-        this.onTextRecv(f,d);
-    };
 
     //internal api for webrtc
     //register callback functions for peerconnections
-    _proto._regPconnEvtCb = function(pc){
+    function regPconnEvtCb(pc){
         var self = this;
         pc.onCmdSend = function(h,d){
             self.onCmdSend(h,d);
@@ -202,12 +168,12 @@ var webRtc;
             self.onRMedAdd(s);
         };
         pc.onRmRStrm = function(s){
-            _infLog('rmtStrmDel',s);
+            if(_debug)console.log('rmtStrmDel',s);
             self.onRMedDel(s);
         };
         pc.onConError = function(label,id){
             var config = self.config;
-            _errLog('peer',id+' connect error');
+            console.log('peer',id+' connect error');
             self._removePeer(id);
             config.type = 'calling';
             config.id = id;
@@ -215,10 +181,10 @@ var webRtc;
         };
         pc.onConnReady = function(label,id){
             var ready = true;
-            self.peers.forEach(function(p){
-                if(p.ready == false) ready = false;
-            });
-            if(ready)self.onChansReady();
+            for(var i in self.peers){
+                if(self.peers[i].ready == false){ready=false;break;}
+            }
+            if(ready)self.onReady();
         }
     };
 
@@ -238,65 +204,6 @@ var webRtc;
         });
         return ret;
     }
-
-    _proto._createPeer = function(type,id,sdp){
-        var pc,config;
-        config = this.config;
-        config.id = id;
-        config.type = type;
-
-        pc = this.peers[id];
-        if(!pc){
-            pc = new peerConn(config);
-            if(!pc || !pc.peer){
-                _errLog('erro: create pc failed');
-                this.onCrpErro(config);
-                return;
-            } // create peerconnection error
-            this.peers[id] = pc;
-            this._regPconnEvtCb(pc);
-        }
-        if(type == 'calling'){
-            this.media.getStrms().forEach(function(s){
-                if(s)pc.addStream(s);
-            });
-            pc.getDatChan('textMsg');
-            pc.makeOffer();
-        }else{
-            // received offer 
-            pc.setRmtDesc(sdp);
-            if(config.oneway){
-                if(this.strm){
-                    this.media.stop(function(s){
-                        if(s)pc.removeStream(s);
-                        pc.makeAnswer();
-                    });
-                    this.strm = null;
-                    return;
-                }
-                if(this.scrn){
-                    this.media.rlsScn(function(s){
-                        if(s)pc.removeStream(s);
-                        pc.makeAnswer();
-                    });
-                    this.scrn = null;
-                    return;
-                }
-            }
-            pc.makeAnswer();
-        }
-
-    };
-
-    _proto._removePeer = function(id){
-        var pc;
-        pc = this.peers[id];
-        if(pc){
-            pc.close();
-            delete this.peers[id];
-        }
-    };
-
 
 
 })();

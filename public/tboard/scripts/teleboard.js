@@ -1,6 +1,6 @@
 var Gatherhub = require('./gatherhub');
 var svgicon = require('./svgicons');
-var RtcCom = require('../rtc/rtccom');
+var RtcCom = require('../rtc/telecom');
 // for debug use
 var msp;
 var mvp;
@@ -267,6 +267,7 @@ $(function(){
 	};
 
 	rtc.onFrAvRm = function(){
+		console.log('remote stream deleted');
 		$('#remoteMed').remove();
 	};
 
@@ -357,7 +358,7 @@ $(function(){
 		return btn;
 	}
 	var btnSpk = addBtnToList(svgicon.mic, 'btnSpk',function(){
-		if(rtc.startSpeaking(false,function(){
+		if(rtc.startSpeaking({oneway:true,video:false},function(){
 			console.log('start talking failed');
 			$('#btnMute').hide();
 			$('#btnSpk').show();
@@ -377,7 +378,7 @@ $(function(){
 	});
 
 	var btnVchat = addBtnToList(svgicon.vchat,'btnVchat',function(){
-		if(rtc.startSpeaking(true,function(){
+		if(rtc.startSpeaking({oneway:true,video:true},function(){
 			console.log('start video failed');
 			$('#btnMuteV').hide();
 			$('#btnSpk').show();
@@ -466,7 +467,7 @@ $(function(){
 			dispatch({rtc:rtc.support}, 'hello');
 			pulse = setInterval(function(){if (wsready) dispatch({},'heartbeat',peerid);}, 25000);
 			appendUser('#plist', peerid, peer + '(Me)', sp.repcolor);
-			rtc.setMyPeer(peerid);
+			rtc.myPeer(peerid);
 			showRtcInfo();
 		};
 		ws.onmessage = function(msg){
