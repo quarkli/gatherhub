@@ -53,7 +53,7 @@ $(function(){
 	function setPenColor(c) {
 		selcolor = c;
 		sp.pencolor(c);
-		if (sp.timode) sp.tibox.css('color', c);
+		if (sp.mode == 'text') sp.tibox.css('color', c);
 	}
 
 	var w = h = parseInt($(window).height() / 24) * 2;
@@ -253,10 +253,13 @@ $(function(){
 			var ctx = JSON.parse(msg.data);
 			var data = ctx.data;
 			
+			if ($('#plist').children('#' + ctx.peer) == 0 && ctx.action != 'bye') {
+				appendUser('#plist', ctx.peer, data.name, data.color);
+			}
+			
 			switch (ctx.action) {
 				case 'hello':
 					console.log(ctx.peer + ': hello!');
-					appendUser('#plist', ctx.peer, data.name, data.color);
 					popupMsg(data.name + ' has entered this hub.', data.color);
 					dispatch({}, 'welcome', ctx.peer);
 					break;
