@@ -1069,7 +1069,7 @@ module.exports = castCtrl;
 /* 
 * @Author: Phenix Cai
 * @Date:   2015-11-13 14:44:49
-* @Last Modified time: 2015-12-01 15:46:06
+* @Last Modified time: 2015-12-24 17:36:36
 */
 'use strict';
 var getUserMedia = require('getusermedia');
@@ -1136,7 +1136,7 @@ var localMedia;
     };
     _proto.rlsScn = function(cb){
         var s =  this.scnStrm;
-        console.log('this.scnStrm ',this.scnStrm);
+        // console.log('this.scnStrm ',this.scnStrm);
         if(cb)cb(this.scnStrm);
         if(s)muteStrm(s);
         this.scnStrm = null;
@@ -1445,7 +1445,7 @@ module.exports = peerConn;
 /* 
 * @Author: Phenix
 * @Date:   2015-12-21 10:01:29
-* @Last Modified time: 2015-12-23 19:31:17
+* @Last Modified time: 2015-12-24 17:48:21
 */
 
 'use strict';
@@ -1554,14 +1554,6 @@ var teleCom;
         w.createDataChan('default');
         w.startCall(peer);
         //TODO: ... when there is a casting stream, add particular partenner
-        var am = this.actMedia;
-        if(am.status == 'active'){
-            var as = this.streams[am.mid];
-            if(as){
-                as.addPeer(peer,'calling');
-                as.startCall(peer);
-            }
-        }
     };
 
     _proto.removePeer = function(peer){
@@ -1590,20 +1582,27 @@ var teleCom;
     }
 
     _proto.hdlMsg = function(peer,data){
-        var msg,mid,self;
+        var msg,mid,self,scn;
         if(!rtc.support) return;
         self = this;
         // if(_debug)console.log(peer,' recv msg ',data);
         if(this.users.indexOf(peer)<0)this.users.push(peer);
         mid = data.media;
+        scn = mid.indexOf(peer+'-scn-');
+        console.log('mid is ',mid,' scn is ',scn);
         msg = {from:peer,mid:mid,sdp:data.sdp};
         if(mid!=undefined){
             if(this.streams[mid]==undefined){
                 var config = {mid:mid};
                 var w = this.streams[mid] = new WebRtc(config);
                 w.onCmdSend = dcSendMsg.bind(this);
-                w.onRMedAdd = this.onFrAvAdd;
-                w.onRMedDel = this.onFrAvRm;
+                if(scn==0){
+                    w.onRMedAdd = this.onFrScnAdd;
+                    w.onRMedDel = this.onFrScnRm;
+                }else{
+                    w.onRMedAdd = this.onFrAvAdd;
+                    w.onRMedDel = this.onFrAvRm;
+                }
             }
             this.streams[mid].parseSigMsg(msg);
             var am = this.actMedia;
@@ -1613,6 +1612,13 @@ var teleCom;
                     am.status = 'idle';
                 }
             }
+            var as = this.actScn;
+            if(mid == as.mid && as.status == 'close' && msg.sdp.type == 'answer'){
+                if(self.streams[as.mid].remove(peer)==0){
+                    delete self.streams[as.mid];
+                    as.status = 'idle';
+                }
+            }
         };
     };
 
@@ -1620,15 +1626,20 @@ var teleCom;
         return (v==undefined)? this.myPid : this.myPid = v;
     };
 
-    function startStream(oneway,strm){
-        var mid = this.myPeer()+(this.midx++);
-        this.actMedia.mid = mid;
+    function startStream(type,oneway,strm){
+        var mid = this.myPeer()+'-'+type+'-'+(this.midx++);
         var config = {mid:mid,oneway:oneway};
         var w = this.streams[mid] = new WebRtc(config);
         w.onCmdSend = dcSendMsg.bind(this);
-        w.onRMedAdd = this.onFrAvAdd;
-        w.onRMedDel = this.onFrAvRm;
-        console.log('user list is ',this.users)
+        if(type == 'scn'){
+            w.onRMedAdd = this.onFrScnAdd;
+            w.onRMedDel = this.onFrScnRm;
+            this.actScn.mid = mid;
+        }else{
+            w.onRMedAdd = this.onFrAvAdd;
+            w.onRMedDel = this.onFrAvRm;
+            this.actMedia.mid = mid;
+        }
         this.users.forEach(function(p){
             w.addPeer(p,'calling');
             w.startCall(p,strm);
@@ -1651,11 +1662,11 @@ var teleCom;
                         var strm = am.strm;
                         if(strm){
                             self.onMyAvAdd(strm);
-                            startStream.call(self,true,strm);
+                            startStream.call(self,type,true,strm);
                         }
                     },type);
                 }else{
-                    startStream.call(self,false,s);
+                    startStream.call(self,type,false,s);
                 }
             }else{
                 if(errCb)errCb(err);
@@ -1678,6 +1689,43 @@ var teleCom;
             });
         });
 
+    };
+
+    _proto.startscnCast = function(errCb){
+        var self = this;
+        var as = this.actScn;
+        var type = 'scn';
+        if(as.status != 'idle')return;
+        this.ctrls[1].start(function(){
+            as.status = 'trying';
+            self.media.getScn(function(err,s){
+                if(!err){
+                    as.status = 'active';
+                    as.strm = s;
+                    self.onMyScnAdd(s);
+                    startStream.call(self,type,true,s);
+                }else{
+                    if(errCb)errCb(err);
+                }
+            });
+        },type);
+        return true;
+    };
+
+    _proto.stopscnCast = function(){
+        var self = this;
+        var as = this.actScn;
+        var c = this.ctrls[1];
+        var w = this.streams[as.mid];
+        console.log('w is ',w, ' as.mid ',as.mid);
+        if(as.status == 'idle')return;
+        c.stop(function(){
+            self.media.rlsScn(function(s){
+                if(s)w.stopCall(s);
+                as.status = 'close';
+                delete as.strm;
+            });
+        });
     };
 
     _proto.getRtcCap = function(infCb){

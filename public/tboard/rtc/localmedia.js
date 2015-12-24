@@ -1,7 +1,7 @@
 /* 
 * @Author: Phenix Cai
 * @Date:   2015-11-13 14:44:49
-* @Last Modified time: 2015-12-01 15:46:06
+* @Last Modified time: 2015-12-24 17:36:36
 */
 'use strict';
 var getUserMedia = require('getusermedia');
@@ -68,7 +68,7 @@ var localMedia;
     };
     _proto.rlsScn = function(cb){
         var s =  this.scnStrm;
-        console.log('this.scnStrm ',this.scnStrm);
+        // console.log('this.scnStrm ',this.scnStrm);
         if(cb)cb(this.scnStrm);
         if(s)muteStrm(s);
         this.scnStrm = null;
