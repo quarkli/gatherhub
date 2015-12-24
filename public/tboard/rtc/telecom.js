@@ -1,7 +1,7 @@
 /* 
 * @Author: Phenix
 * @Date:   2015-12-21 10:01:29
-* @Last Modified time: 2015-12-24 17:48:21
+* @Last Modified time: 2015-12-24 20:04:27
 */
 
 'use strict';
@@ -54,6 +54,19 @@ var teleCom;
             self.onCastList(list);
         }
 
+        function addPeer2Talk(peer,type){
+            var am = (type=='scn')? self.actScn: self.actMedia;
+            if(am.status == 'active'){
+                var w = self.streams[am.mid];
+                var s = am.strm;
+                if(w&&s){
+                    console.log('create peer');
+                    w.addPeer(peer,'calling');
+                    w.startCall(peer,s);
+                }
+            }
+        }
+
         w.setDCRcvCb('default',function(from,data){
             var cmd =JSON.parse(data);
             self.hdlMsg(from, cmd);
@@ -81,8 +94,9 @@ var teleCom;
                     };
                     m.onCastList = function(list){
                         //TODO: 
-                        updateCastList.call(self);
+                        updateCastList();
                     };
+                    m.onAddPr2Talk = addPeer2Talk;
                     w.setDCRcvCb('castCtrl',function(from,data){
                         var cmd = JSON.parse(data);
                         var ctrl = self.ctrls[cmd.label];
@@ -90,6 +104,9 @@ var teleCom;
                     });
                 }
                 self.onReady();
+                setTimeout(function(){
+                    for(var i=0;i<2;i++){self.ctrls[i].login();}
+                }, 400);
             }
             self.ready = true;
             w.createDataChan('castCtrl');
@@ -145,7 +162,7 @@ var teleCom;
         if(this.users.indexOf(peer)<0)this.users.push(peer);
         mid = data.media;
         scn = mid.indexOf(peer+'-scn-');
-        console.log('mid is ',mid,' scn is ',scn);
+        // console.log('mid is ',mid,' scn is ',scn);
         msg = {from:peer,mid:mid,sdp:data.sdp};
         if(mid!=undefined){
             if(this.streams[mid]==undefined){
@@ -211,7 +228,7 @@ var teleCom;
         if(am.status != 'idle')return;
         this.media.start(cs,function(err,s){
             if(!err){
-                am.status = 'active';
+                am.status = 'trying';
                 if(cfg.oneway){
                     am.strm = s;
                     self.ctrls[0].start(function(){
@@ -219,6 +236,7 @@ var teleCom;
                         if(strm){
                             self.onMyAvAdd(strm);
                             startStream.call(self,type,true,strm);
+                            am.status = 'active';
                         }
                     },type);
                 }else{
@@ -256,10 +274,10 @@ var teleCom;
             as.status = 'trying';
             self.media.getScn(function(err,s){
                 if(!err){
-                    as.status = 'active';
                     as.strm = s;
                     self.onMyScnAdd(s);
                     startStream.call(self,type,true,s);
+                    as.status = 'active';
                 }else{
                     if(errCb)errCb(err);
                 }
@@ -273,7 +291,7 @@ var teleCom;
         var as = this.actScn;
         var c = this.ctrls[1];
         var w = this.streams[as.mid];
-        console.log('w is ',w, ' as.mid ',as.mid);
+        // console.log('w is ',w, ' as.mid ',as.mid);
         if(as.status == 'idle')return;
         c.stop(function(){
             self.media.rlsScn(function(s){

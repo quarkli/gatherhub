@@ -1,7 +1,7 @@
 /* 
 * @Author: Phenix Cai
 * @Date:   2015-11-22 10:02:34
-* @Last Modified time: 2015-12-23 14:24:48
+* @Last Modified time: 2015-12-24 20:07:17
 */
 
 
@@ -41,6 +41,7 @@ var castCtrl;
     // callback functions
     _proto.onSend = function(){};
     _proto.onCastList = function(){};
+    _proto.onAddPr2Talk = function(){};
 
 
     // api functions
@@ -124,6 +125,8 @@ var castCtrl;
             case 'hello':
                 if(_debug)console.log('hello cmp '+ myself + ' vs ',this.castList[0]);
                 if(this.castList[0] && this.castList[0].id == myself){
+                    var type = this.castList[0].type;
+                    this.onAddPr2Talk(rid,type);
                     this._infCastList();
                 }
             break;
