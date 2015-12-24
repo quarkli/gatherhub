@@ -1,5 +1,5 @@
 <?php
-$hub = mt_rand(1000000,9999999);
+$hub = '';
 $peer = '';
 if(isset($_POST['hub'])) $hub = $_POST['hub'];
 if(isset($_POST['peer'])) $peer = $_POST['peer'];
@@ -8,7 +8,7 @@ if (isset($_GET['peer'])) $peer = $_GET['peer'];
 if(isset($_POST['email']) && isset($_POST['sendMail'])) {
 	$to      = $_POST['email'];
 	$subject = 'Gatherhub: Your hub is created';
-	$headers = 'From: qlli@gatherhub.com' . "\r\n" .
+	$headers = 'From: qli@gatherhub.com' . "\r\n" .
 	    'Reply-To: qli@gatherhub.com' . "\r\n" .
 	    'X-Mailer: PHP/' . phpversion();
 	$headers .= "MIME-Version: 1.0" . "\r\n";
@@ -48,7 +48,7 @@ Author: quarkli@gmail.com
 	<title>Gatherhub Teleboard</title>
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1">
-	<link rel="icon" href="images/ghub-logo.png">
+	<link rel="icon" href="images/ghub-logo-c.png">
     <link rel="stylesheet" href="css/bootstrap.min.css">
     <script src="scripts/jquery.min.js"></script>
     <script src="js/bootstrap.min.js"></script>

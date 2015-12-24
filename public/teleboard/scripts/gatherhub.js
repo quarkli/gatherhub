@@ -39,10 +39,7 @@ var Gatherhub = Gatherhub || {};
 	
 	// Internal functions
 	function precision(num, p) {
-		var s = 1;
-		if (num < 0) {s = -1; num *= s;}
-		var n = num < 1 ? 0 : Math.floor(Math.log(num)/Math.log(10)) + 1;
-		return parseInt(num * Math.pow(10, p - n)) / Math.pow(10, p - n) * s;
+		return num.toString().slice(0, p) * 1;
 	}
 
 	function extend(func){
@@ -467,11 +464,7 @@ var Gatherhub = Gatherhub || {};
 				path.attr('fill', 'none');
 				path.attr('d', 'M' + x + ',' + y);
 			}
-			path.on('click touchstart', function(){
-				if (self.pc == self.bgcolor()) 
-					$(this).clone().attr('stroke', self.bgcolor()).attr('stroke-width', 1 + $(this).attr('stroke-width') * 1).appendTo(self.pathholder);
-			});
-			path.on('mouseover touchenter', function(){
+			path.on('touchstart touchend mouseover', function(){
 				if (self.cutting) {
 					$(this).appendTo(self.redocache);
 					if (self.dispatch) self.dispatch({id: path.attr('id')}, 'undo');
@@ -784,6 +777,7 @@ var Gatherhub = Gatherhub || {};
 		_proto.appendpath = function(p) {
 			var self = this;
 			var path;
+			if ($('#' + p.id).length) return;
 			$.each(p, function(k, v){
 				if (k == 'tagName') {
 					path = $(document.createElementNS('http://www.w3.org/2000/svg', v));

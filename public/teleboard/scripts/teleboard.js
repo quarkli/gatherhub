@@ -53,7 +53,7 @@ $(function(){
 	function setPenColor(c) {
 		selcolor = c;
 		sp.pencolor(c);
-		if (sp.timode) sp.tibox.css('color', c);
+		if (sp.mode == 'text') sp.tibox.css('color', c);
 	}
 
 	var w = h = parseInt($(window).height() / 24) * 2;
@@ -244,9 +244,6 @@ $(function(){
 		};
 		ws.onopen = function(){
 			console.log("Connected.");
-			sp.canvas.children('g').first().empty();
-			$('#plist').empty();
-			$('#msgbox').empty();
 			wsready = showpop = true;
 			dispatch({}, 'hello');
 			pulse = setInterval(function(){if (wsready) dispatch({},'heartbeat',peerid);}, 25000);
@@ -256,10 +253,13 @@ $(function(){
 			var ctx = JSON.parse(msg.data);
 			var data = ctx.data;
 			
+			if ($('#plist').children('#' + ctx.peer) == 0 && ctx.action != 'bye') {
+				appendUser('#plist', ctx.peer, data.name, data.color);
+			}
+			
 			switch (ctx.action) {
 				case 'hello':
 					console.log(ctx.peer + ': hello!');
-					appendUser('#plist', ctx.peer, data.name, data.color);
 					popupMsg(data.name + ' has entered this hub.', data.color);
 					dispatch({}, 'welcome', ctx.peer);
 					break;
@@ -331,6 +331,7 @@ $(function(){
 			clearInterval(pulse);
 			wsready = false;
 			showpop = false;
+			needsync = true;
 			ws = null;
 			connect();
 		};
@@ -417,6 +418,7 @@ function popupMsg(msg, color) {
 }
 
 function appendUser(elem, peerid, uname, color) {
+	if ($('#' + peerid).length) return;
 	var ph = '<div class="panel-heading" style="text-shadow: 1px 2px #444; color: #FFF; font-weight: bold; background-color:' + color + '" id="' + peerid + '" uname="' + uname + '">';
 	$(ph).html(uname).appendTo(elem);
 	$(elem).children().sort(function(a,b){
@@ -427,6 +429,7 @@ function appendUser(elem, peerid, uname, color) {
 
 function appendMsg(elem, pid, sender, msg, color, tid) {
 	console.log(sender + '(' + tid + '): ' + msg);
+	if ($('#msgbox').children().filter(function(){return $(this).attr('tid')==tid;}).length) return;
 	var msg = Autolinker.link(msg, {newWindo: true, stripPrefix: false});
 	var lr = sender == 'Me' ? 'right' : 'left';
 	var prev = $(elem).children().last();
@@ -439,7 +442,7 @@ function appendMsg(elem, pid, sender, msg, color, tid) {
 	else pb.addClass('rightbubble');
 	
 	pp.attr('tid', tid).append($('<br>'));
-	ph.html(sender + ':').appendTo(pp);
+	ph.html((sender == 'Me' ? peer + '(Me)' : sender) + ':').appendTo(pp);
 	pb.html(msg).appendTo(pp);
 	var tgt = $(elem).children().last();
 	while(tgt.attr('tid') > tid) {tgt = tgt.prev();}
