@@ -310,5 +310,21 @@ Author: quarkli@gmail.com
 		  </div>
 		</div>
 	</div>
+	<div id="ivt2talk" class="modal fade" role="dialog">
+		<div class="modal-dialog">
+		  <div class="modal-content">
+			<div class="modal-header">
+			  <h4 class="modal-title" id="dlgIvtTt">Invite someone to talk?</h4>
+			</div>
+			<div class="modal-body alert alert-info">
+				<div id="ivtInfo"></div>
+			  <div class="form-group" style="text-align: center;">
+				  <button id="btnIvtA" type="Button" class="btn btn-default">Audio</button>
+				  <button id="btnIvtV" type="Button" class="btn btn-default">Video</button>
+			  </div>
+			</div>
+		  </div>
+		</div>
+	</div>
   </body>
 </html>

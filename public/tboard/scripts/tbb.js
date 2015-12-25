@@ -852,7 +852,7 @@ module.exports = {
 /* 
 * @Author: Phenix Cai
 * @Date:   2015-11-22 10:02:34
-* @Last Modified time: 2015-12-24 20:07:17
+* @Last Modified time: 2015-12-25 15:53:17
 */
 
 
@@ -901,7 +901,7 @@ var castCtrl;
     };
 
     _proto.bye = function(id){
-        this.recvMsg({from:id, label:this.label, to:this.id, cmd:'rls'});
+        this.hdlMsg({from:id, label:this.label, to:this.id, cmd:'rls'});
     };
 
     _proto.start = function(cb,type){
@@ -984,7 +984,6 @@ var castCtrl;
         }
 
     };
-
 
     //internal functions
 
@@ -1448,7 +1447,7 @@ module.exports = peerConn;
 /* 
 * @Author: Phenix
 * @Date:   2015-12-21 10:01:29
-* @Last Modified time: 2015-12-24 20:04:27
+* @Last Modified time: 2015-12-25 15:55:15
 */
 
 'use strict';
@@ -3454,14 +3453,14 @@ $(function(){
 	};
 
 
-	function appendCList(peerid,type,scn){
-		var av,sn,icnCfg,bgcolor;
-
+	function appendCList(pid,type,scn){
+		var item,av,sn,icnCfg,bgcolor;
+		item = $('#'+pid);
 		icnCfg = {iconcolor: '#FFF', w: 32, h: 32, borderwidth: 0, type: 'flat'};
-		icnCfg.bgcolor = $('#'+peerid).css('background-color');
-		$('#'+peerid).appendTo('#clist');
-		$('#ih-'+peerid).remove();
-		$('<div id="ih-'+peerid+'" class="prstatus">').appendTo('#'+peerid);
+		icnCfg.bgcolor = item.css('background-color');
+		item.appendTo('#clist');
+		$('#ih-'+pid).remove();
+		$('<div id="ih-'+pid+'" class="prstatus">').appendTo('#'+pid);
 		if(type != 'none'){
 			if(type == 'video'){
 				icnCfg.icon = svgicon.vchat;
@@ -3471,22 +3470,26 @@ $(function(){
 			av = new Gatherhub.SvgButton(icnCfg);
 			av.canvas.css('border-style', 'none');
 			av.pad.css('cursor', 'auto');
-			av.appendto('#ih-'+peerid);
+			av.appendto('#ih-'+pid);
 		}
 		if(scn){
 			icnCfg.icon = svgicon.scncast;
 			sn = new Gatherhub.SvgButton(icnCfg);
 			sn.canvas.css('border-style', 'none');
 			sn.pad.css('cursor', 'auto');
-			sn.appendto('#ih-'+peerid);
+			sn.appendto('#ih-'+pid);
 		}
-		$('#ih-'+peerid).css({float: 'right', clear: ''});
-		$('#ih-'+peerid).children().css({float: 'right', clear: ''});
+		$('#ih-'+pid).css({float: 'right', clear: ''});
+		$('#ih-'+pid).children().css({float: 'right', clear: ''});
 
 	}
+
 	rtc.onCastList = function(list){
 		$('.prstatus').remove();
 		$('#clist').children().appendTo('#plist');
+		$('#plist').children().sort(function(a,b){
+			return $(a).attr('uname') > $(b).attr('uname');
+		}).appendTo('#plist');
 		list.forEach(function(it){
 			appendCList(it.id,it.av,it.scn);
 		});
@@ -3583,6 +3586,7 @@ $(function(){
 
 	$('#btnclr').click(function(){cfmClear(1);});
 	$('#btncancel').click(function(){cfmClear(0)});
+
 	//end of implement of webrtc
 
 

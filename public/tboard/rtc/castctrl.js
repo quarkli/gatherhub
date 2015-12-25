@@ -1,7 +1,7 @@
 /* 
 * @Author: Phenix Cai
 * @Date:   2015-11-22 10:02:34
-* @Last Modified time: 2015-12-24 20:07:17
+* @Last Modified time: 2015-12-25 15:53:17
 */
 
 
@@ -50,7 +50,7 @@ var castCtrl;
     };
 
     _proto.bye = function(id){
-        this.recvMsg({from:id, label:this.label, to:this.id, cmd:'rls'});
+        this.hdlMsg({from:id, label:this.label, to:this.id, cmd:'rls'});
     };
 
     _proto.start = function(cb,type){
@@ -133,7 +133,6 @@ var castCtrl;
         }
 
     };
-
 
     //internal functions
 
