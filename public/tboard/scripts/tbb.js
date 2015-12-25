@@ -1447,7 +1447,7 @@ module.exports = peerConn;
 /* 
 * @Author: Phenix
 * @Date:   2015-12-21 10:01:29
-* @Last Modified time: 2015-12-25 15:55:15
+* @Last Modified time: 2015-12-25 16:44:46
 */
 
 'use strict';
@@ -1575,6 +1575,20 @@ var teleCom;
         //TODO: ... when there is a casting stream, add particular partenner
     };
 
+    function rlsMedia(type){
+        var am = (type=='scn')? this.actScn: this.actMedia;
+        if(am.status != 'close') return;
+        if(am.strm){
+            if(type == 'scn'){
+                this.media.rlsScn();
+            }else{
+                this.media.stop();
+            }
+            delete(am.strm);
+        }
+        am.status == 'idle';
+    }
+
     _proto.removePeer = function(peer){
         if(peer!=undefined){
             var m = this.streams;
@@ -1586,7 +1600,16 @@ var teleCom;
             if(this.users.length == 0){
                 if(_debug)console.log('no one in the hub');
                 //TODO: 
-                self.ready = false;
+                this.ready = false;
+                this.onDisconnect();
+                if(this.actMedia.status!='idle'){
+                    this.actMedia.status = 'close';
+                    rlsMedia.call(this,'audio');
+                }
+                if(this.actScn.status!='idle'){
+                    this.actScn.status = 'close';
+                    rlsMedia.call(this,'scn');
+                }
             }
 
         }
@@ -1665,50 +1688,46 @@ var teleCom;
         });
     }
 
-    _proto.startSpeaking = function(cfg,errCb){
+    _proto.startAVCast = function(cfg,errCb){
         var self,cs,type;
         self = this;
         if(cfg.video) cs = { video: true, audio: true};
         type = (cfg.video)? 'video' : 'audio';
         var am = this.actMedia;
         if(am.status != 'idle')return;
-        this.media.start(cs,function(err,s){
-            if(!err){
-                am.status = 'trying';
-                if(cfg.oneway){
+        this.ctrls[0].start(function(){
+            am.status = 'trying';
+            self.media.start(cs,function(err,s){
+                if(!err){
                     am.strm = s;
-                    self.ctrls[0].start(function(){
-                        var strm = am.strm;
-                        if(strm){
-                            self.onMyAvAdd(strm);
-                            startStream.call(self,type,true,strm);
-                            am.status = 'active';
-                        }
-                    },type);
+                    self.onMyAvAdd(s);
+                    startStream.call(self,type,true,s);
+                    am.status = 'active';
                 }else{
-                    startStream.call(self,type,false,s);
+                    am.status = 'idle';
+                    if(errCb)errCb(err);
                 }
-            }else{
-                if(errCb)errCb(err);
-            }
-        });
+            });
+        }, type);
         return true;
     };
 
-    _proto.stopSpeaking = function(){
+    _proto.stopAVCast = function(){
         var self = this;
         var c = this.ctrls[0];
         var am = this.actMedia;
         var w = this.streams[am.mid];
         if(am.status == 'idle')return;
-        this.media.stop(function(s){
-            c.stop(function(){
+        c.stop(function(){
+            self.media.stop(function(s){
                 if(s)w.stopCall(s);
                 am.status = 'close';
                 delete am.strm;
+                setTimeout(function(){
+                    rlsMedia.call(self,'audio');
+                }, 2000);
             });
         });
-
     };
 
     _proto.startscnCast = function(errCb){
@@ -1725,6 +1744,7 @@ var teleCom;
                     startStream.call(self,type,true,s);
                     as.status = 'active';
                 }else{
+                    as.status = 'idle';
                     if(errCb)errCb(err);
                 }
             });
@@ -1744,6 +1764,10 @@ var teleCom;
                 if(s)w.stopCall(s);
                 as.status = 'close';
                 delete as.strm;
+                setTimeout(function(){
+                    rlsMedia.call(self,'scn');
+                }, 2000);
+
             });
         });
     };
@@ -1788,6 +1812,7 @@ var teleCom;
     _proto.onMyScnAdd = function(){};
     _proto.onFrScnAdd = function(){};
     _proto.onFrScnRm = function(){};
+    _proto.onDisconnect = function(){};
 
 })();
 
@@ -3452,6 +3477,20 @@ $(function(){
 		if(rtc.checkExtension()){$('#btnScn').show()};
 	};
 
+	rtc.onDisconnect = function(){
+		$('#btnSpk').hide();
+		$('#btnVchat').hide();
+		$('#btnScn').hide();
+		$('#btnMute').hide();
+		$('#btnMuteV').hide();
+		$('#btnMuteS').hide();
+		$('#localMed').remove();
+		$('#remoteMed').remove();
+	    $('#localScn').remove();
+    	$('#remoteScn').remove();
+		$('.prstatus').remove();
+	};
+
 
 	function appendCList(pid,type,scn){
 		var item,av,sn,icnCfg,bgcolor;
@@ -3508,7 +3547,7 @@ $(function(){
 		return btn;
 	}
 	var btnSpk = addBtnToList(svgicon.mic, 'btnSpk',function(){
-		if(rtc.startSpeaking({oneway:true,video:false},function(){
+		if(rtc.startAVCast({oneway:true,video:false},function(){
 			console.log('start talking failed');
 			$('#btnMute').hide();
 			$('#btnSpk').show();
@@ -3523,12 +3562,12 @@ $(function(){
 		$('#btnMute').hide();
 		$('#btnSpk').show();
 		$('#btnVchat').show();
-		rtc.stopSpeaking();
+		rtc.stopAVCast();
 		rmMyAv();
 	});
 
 	var btnVchat = addBtnToList(svgicon.vchat,'btnVchat',function(){
-		if(rtc.startSpeaking({oneway:true,video:true},function(){
+		if(rtc.startAVCast({oneway:true,video:true},function(){
 			console.log('start video failed');
 			$('#btnMuteV').hide();
 			$('#btnSpk').show();
@@ -3543,7 +3582,7 @@ $(function(){
 		$('#btnMuteV').hide();
 		$('#btnSpk').show();
 		$('#btnVchat').show();
-		rtc.stopSpeaking();
+		rtc.stopAVCast();
 		rmMyAv();
 	});
 

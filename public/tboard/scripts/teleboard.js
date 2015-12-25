@@ -306,6 +306,20 @@ $(function(){
 		if(rtc.checkExtension()){$('#btnScn').show()};
 	};
 
+	rtc.onDisconnect = function(){
+		$('#btnSpk').hide();
+		$('#btnVchat').hide();
+		$('#btnScn').hide();
+		$('#btnMute').hide();
+		$('#btnMuteV').hide();
+		$('#btnMuteS').hide();
+		$('#localMed').remove();
+		$('#remoteMed').remove();
+	    $('#localScn').remove();
+    	$('#remoteScn').remove();
+		$('.prstatus').remove();
+	};
+
 
 	function appendCList(pid,type,scn){
 		var item,av,sn,icnCfg,bgcolor;
@@ -362,7 +376,7 @@ $(function(){
 		return btn;
 	}
 	var btnSpk = addBtnToList(svgicon.mic, 'btnSpk',function(){
-		if(rtc.startSpeaking({oneway:true,video:false},function(){
+		if(rtc.startAVCast({oneway:true,video:false},function(){
 			console.log('start talking failed');
 			$('#btnMute').hide();
 			$('#btnSpk').show();
@@ -377,12 +391,12 @@ $(function(){
 		$('#btnMute').hide();
 		$('#btnSpk').show();
 		$('#btnVchat').show();
-		rtc.stopSpeaking();
+		rtc.stopAVCast();
 		rmMyAv();
 	});
 
 	var btnVchat = addBtnToList(svgicon.vchat,'btnVchat',function(){
-		if(rtc.startSpeaking({oneway:true,video:true},function(){
+		if(rtc.startAVCast({oneway:true,video:true},function(){
 			console.log('start video failed');
 			$('#btnMuteV').hide();
 			$('#btnSpk').show();
@@ -397,7 +411,7 @@ $(function(){
 		$('#btnMuteV').hide();
 		$('#btnSpk').show();
 		$('#btnVchat').show();
-		rtc.stopSpeaking();
+		rtc.stopAVCast();
 		rmMyAv();
 	});
 
