@@ -1,7 +1,7 @@
 /* 
 * @Author: Phenix Cai
 * @Date:   2015-11-22 10:02:34
-* @Last Modified time: 2015-12-25 15:53:17
+* @Last Modified time: 2015-12-25 17:13:30
 */
 
 
@@ -49,7 +49,7 @@ var castCtrl;
         this.onSend({from:this.id, label: this.label, to:'All',cmd:'hello'});
     };
 
-    _proto.bye = function(id){
+    _proto.rmPeer = function(id){
         this.hdlMsg({from:id, label:this.label, to:this.id, cmd:'rls'});
     };
 
@@ -91,6 +91,13 @@ var castCtrl;
                 }
             break;
             case 'rls':
+                if(this.castList[0] && this.castList[0].id == rid && 
+                    this.castList[1] && this.castList[1].id == myself){
+                    this.castList.shift();
+                    this._infCastList();
+                    if(this._startCb)this._startCb();
+                    return;
+                }
                 if(this.castList[0] && this.castList[0].id == myself){
                     idx = getCastIdx.call(this,rid); 
                     if(idx >= 0){

@@ -1,7 +1,7 @@
 /* 
 * @Author: Phenix
 * @Date:   2015-12-21 10:01:29
-* @Last Modified time: 2015-12-25 16:44:46
+* @Last Modified time: 2015-12-27 09:50:15
 */
 
 'use strict';
@@ -140,7 +140,7 @@ var teleCom;
             }
             delete(am.strm);
         }
-        am.status == 'idle';
+        am.status = 'idle';
     }
 
     _proto.removePeer = function(peer){
@@ -148,7 +148,15 @@ var teleCom;
             var m = this.streams;
             for(var i in m){
                 m[i].rmPeer(peer);
+                if(i.indexOf(peer)==0){
+                    if(_debug)console.log('need remove stream ',i);
+                    m[i].onRMedDel();
+                    delete m[i];
+                }
             }
+            this.ctrls.forEach(function(p){
+                p.rmPeer(peer);
+            });
             var idx = this.users.indexOf(peer);
             if(idx>=0)this.users.splice(idx,1);
             if(this.users.length == 0){
@@ -190,6 +198,10 @@ var teleCom;
         if(mid!=undefined){
             if(this.streams[mid]==undefined){
                 var config = {mid:mid};
+                if(msg.sdp.type != 'offer'){
+                    console.log('could not init webrtc from msg ',msg);
+                    return;
+                }
                 var w = this.streams[mid] = new WebRtc(config);
                 w.onCmdSend = dcSendMsg.bind(this);
                 if(scn==0){
@@ -198,6 +210,16 @@ var teleCom;
                 }else{
                     w.onRMedAdd = this.onFrAvAdd;
                     w.onRMedDel = this.onFrAvRm;
+                }
+            }else{
+                if(mid.indexOf(peer)==0 && msg.sdp.type == 'offer'){
+                    //second offer, should be bye, destroy the streams[mid] after 3 seconds
+                    if(_debug)console.log('recv msg with offer is ', msg);
+
+                    setTimeout(function(){
+                        if(_debug)console.log('destroy stream ',mid, ' after 3 seconds ');
+                        delete self.streams[mid];
+                    },3000);
                 }
             }
             this.streams[mid].parseSigMsg(msg);

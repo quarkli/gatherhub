@@ -852,7 +852,7 @@ module.exports = {
 /* 
 * @Author: Phenix Cai
 * @Date:   2015-11-22 10:02:34
-* @Last Modified time: 2015-12-25 15:53:17
+* @Last Modified time: 2015-12-25 17:13:30
 */
 
 
@@ -900,7 +900,7 @@ var castCtrl;
         this.onSend({from:this.id, label: this.label, to:'All',cmd:'hello'});
     };
 
-    _proto.bye = function(id){
+    _proto.rmPeer = function(id){
         this.hdlMsg({from:id, label:this.label, to:this.id, cmd:'rls'});
     };
 
@@ -942,6 +942,13 @@ var castCtrl;
                 }
             break;
             case 'rls':
+                if(this.castList[0] && this.castList[0].id == rid && 
+                    this.castList[1] && this.castList[1].id == myself){
+                    this.castList.shift();
+                    this._infCastList();
+                    if(this._startCb)this._startCb();
+                    return;
+                }
                 if(this.castList[0] && this.castList[0].id == myself){
                     idx = getCastIdx.call(this,rid); 
                     if(idx >= 0){
@@ -1447,7 +1454,7 @@ module.exports = peerConn;
 /* 
 * @Author: Phenix
 * @Date:   2015-12-21 10:01:29
-* @Last Modified time: 2015-12-25 16:44:46
+* @Last Modified time: 2015-12-27 09:50:15
 */
 
 'use strict';
@@ -1586,7 +1593,7 @@ var teleCom;
             }
             delete(am.strm);
         }
-        am.status == 'idle';
+        am.status = 'idle';
     }
 
     _proto.removePeer = function(peer){
@@ -1594,7 +1601,15 @@ var teleCom;
             var m = this.streams;
             for(var i in m){
                 m[i].rmPeer(peer);
+                if(i.indexOf(peer)==0){
+                    if(_debug)console.log('need remove stream ',i);
+                    m[i].onRMedDel();
+                    delete m[i];
+                }
             }
+            this.ctrls.forEach(function(p){
+                p.rmPeer(peer);
+            });
             var idx = this.users.indexOf(peer);
             if(idx>=0)this.users.splice(idx,1);
             if(this.users.length == 0){
@@ -1636,6 +1651,10 @@ var teleCom;
         if(mid!=undefined){
             if(this.streams[mid]==undefined){
                 var config = {mid:mid};
+                if(msg.sdp.type != 'offer'){
+                    console.log('could not init webrtc from msg ',msg);
+                    return;
+                }
                 var w = this.streams[mid] = new WebRtc(config);
                 w.onCmdSend = dcSendMsg.bind(this);
                 if(scn==0){
@@ -1644,6 +1663,16 @@ var teleCom;
                 }else{
                     w.onRMedAdd = this.onFrAvAdd;
                     w.onRMedDel = this.onFrAvRm;
+                }
+            }else{
+                if(mid.indexOf(peer)==0 && msg.sdp.type == 'offer'){
+                    //second offer, should be bye, destroy the streams[mid] after 3 seconds
+                    if(_debug)console.log('recv msg with offer is ', msg);
+
+                    setTimeout(function(){
+                        if(_debug)console.log('destroy stream ',mid, ' after 3 seconds ');
+                        delete self.streams[mid];
+                    },3000);
                 }
             }
             this.streams[mid].parseSigMsg(msg);
