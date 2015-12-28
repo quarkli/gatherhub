@@ -1,201 +1,222 @@
 <!DOCTYPE html>
 <html xmlns:wb="http://open.weibo.com/wb">
+
 <head>
-	<title>Gatherhub</title>
-	<meta charset="utf-8">
-	<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1">
-	<link rel="icon" href="images/ghub-logo-c.png">
+    <title>Gatherhub</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1">
+    <link rel="icon" href="images/ghub-logo-c.png">
     <link rel="stylesheet" href="css/bootstrap.min.css">
-	<script src="http://tjs.sjs.sinajs.cn/open/api/js/wb.js" type="text/javascript" charset="utf-8"></script>    
-	<script src="scripts/jquery.min.js"></script>
+    <style>
+    .banner {
+        font-size: 32px;
+        text-align: center;
+    }
+    
+    .center {
+        text-align: center;
+    }
+    
+    .vcenter {
+        position: relative;
+        top: 50%;
+        -webkit-transform: translateY(-50%);
+                transform: translateY(-50%);
+    }
+    </style>
+</head>
+
+<body>
+    <nav class="navbar navbar-default">
+        <div class="container-fluid">
+            <div class="navbar-header">
+                <a class="navbar-brand" href="/">
+                    <div class="vcenter" style="display: inline-block; float: left;">
+                        <img src="images/ghub-logo-c.png" width="40" />
+                        <img src="images/ghub-banner.png" height="60" />
+                    </div>
+                </a>
+            </div>
+            <div>
+                <ul class="nav navbar-nav pull-right">
+                    <li class="active"><a href="/">Home</a></li>
+                    <li><a href="faq.html">FAQ</a></li>
+                    <li><a href="about.html">About</a></li>
+                    <li><a href="contact.php">Contact</a></li>
+                    <li><a href="disclaimer.html">Disclaimer</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+    <div class="container-fluid">
+        <div class="row center">
+            <div class="col-sm-3"></div>
+            <div class="col-sm-2">
+                <img src="images/screen-chat.svg" width="100px" />
+                <br>
+                <span>Discussion</span>
+            </div>
+            <div class="col-sm-2">
+                <img src="images/screen-paint.svg" width="100px" />
+                <br>
+                <span>Exchange Ideas</span>
+            </div>
+            <div class="col-sm-2">
+                <img src="images/screen-sharescn.svg" width="100px" />
+                <br>
+                <span>Screen-cast</span>
+            </div>
+            <div class="col-sm-2"></div>
+        </div>
+        <div class="row center">
+            <div class="col-sm-3"></div>
+            <div class="col-sm-2">
+                <img src="images/screen-vchat.svg" width="100px" />
+                <br>
+                <span>Video-cast</span>
+            </div>
+            <div class="col-sm-2">
+                <img src="images/screen-conf.svg" width="100px" />
+                <br>
+                <span>P2P Conference</span>
+            </div>
+            <div class="col-sm-2">
+                <img src="images/screen-responsive.svg" width="100px" />
+                <br>
+                <span>Responsive</span>
+            </div>
+            <div class="col-sm-2"></div>
+        </div>
+        <div class="row banner">
+            <br>
+            <button type="button" class="btn btn-lg btn-primary" data-toggle="modal" data-target="#setuphub">Plug in to a hub now!</button>
+        </div>
+        <div class="row center">
+            <br>By Gatherhub Team
+            <br>
+            <br>
+        </div>
+        <div class="row center">
+            <div id="gpshare" class="col-xs-5" align="right">
+                <div class="g-plus" data-action="share" data-annotation="bubble" data-height="24"></div>
+            </div>
+            <div id="fbshare" class="col-xs-2" align="center" style="position: relative;">
+                <div class="fb-share-button" data-href="http://gatherhub.com/" data-layout="button_count"></div>
+            </div>
+            <div id="wbshare" class="col-xs-4" align="left">
+                <wb:share-button addition="number" type="button"></wb:share-button>
+            </div>
+        </div>
+    </div>
+    <div id="setuphub" class="modal fade" role="dialog">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                    <h4 class="modal-title">Create a hub</h4>
+                </div>
+                <div class="modal-body">
+                    <form id="newHub" role="form" method="post" action="teleboard.php">
+                        <div class="form-group">
+                            <label for="text">Your Name:</label>
+                            <input type="text" class="form-control" id="peer" name="peer">
+                        </div>
+                        <div class="form-group">
+                            <label for="email">Your Email:</label>
+                            <input type="email" class="form-control" id="email" name="email">
+                            <input type="hidden" class="form-control" id="hub" name="hub">
+                        </div>
+                        <div class="form-group" style="text-align: right;">
+                            <div class="checkbox">
+                                <label>
+                                    <input type="checkbox" id="cacheOn">Remember me</label>
+                            </div>
+                            <div class="checkbox">
+                                <label>
+                                    <input type="checkbox" name="sendMail">Send email notification</label>
+                            </div>
+                            <button type="submit" class="btn btn-default" onclick="return validateInput()">Submit</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="fb-root"></div>
+    <script>
+    (function(d, s, id) {
+        var js, fjs = d.getElementsByTagName(s)[0];
+        if (d.getElementById(id)) return;
+        js = d.createElement(s);
+        js.id = id;
+        js.src = "//connect.facebook.net/zh_TW/sdk.js#xfbml=1&version=v2.5";
+        fjs.parentNode.insertBefore(js, fjs);
+    }(document, 'script', 'facebook-jssdk'));
+    </script>
+    <script src="https://apis.google.com/js/platform.js" async defer></script>
+    <script src="http://tjs.sjs.sinajs.cn/open/api/js/wb.js" type="text/javascript" charset="utf-8"></script>
+    <script src="scripts/jquery.min.js"></script>
     <script src="scripts/md5.min.js"></script>
     <script src="js/bootstrap.min.js"></script>
-	<script>
-	$(function(){
-		$('input').each(function(){
-			if ($(this).attr('type') == 'text' || $(this).attr('type') == 'email') {
-				if (getCookie($(this).attr('id'))) {
-					$(this).val(getCookie($(this).attr('id')));
-					$('#cacheOn').attr('checked', true);
-				}
-			}
-		});	
-		$("#setuphub").on('shown.bs.modal', function(){
-			$(this).find('#peer').focus();
-		});
-	});
-	
-	function setCookie(key, value) {
-		var expires = new Date();
-		expires.setTime(expires.getTime() + (180 * 24 * 60 * 60 * 1000));
-		document.cookie = key + '=' + value + ';expires=' + expires.toUTCString();
-	}
+    <script>
+    $(function() {
+        $('input').each(function() {
+            if ($(this).attr('type') == 'text' || $(this).attr('type') == 'email') {
+                if (getCookie($(this).attr('id'))) {
+                    $(this).val(getCookie($(this).attr('id')));
+                    $('#cacheOn').attr('checked', true);
+                }
+            }
+        });
+        $("#setuphub").on('shown.bs.modal', function() {
+            $(this).find('#peer').focus();
+        });
+        $('#fbshare').css('top', 3);
+    });
 
-	function getCookie(key) {
-		var keyValue = document.cookie.match('(^|;) ?' + key + '=([^;]*)(;|$)');
-		return keyValue ? keyValue[2] : null;
-	}
-	
-	function validEmail(str) {
-	  var reg = /^([\w-\.]+@([\w-]+\.)+[\w-]{2,4})?$/;
-	  return reg.test(str);
-	}
-
-	function validateInput(){
-		if ($('#peer').val().trim().length == 0 || $('#email').val().trim().length == 0 || !validEmail($('#email').val())) {
-			alert('Please enter your name and valid email address!');
-			return false;
-		}
-
-		var hub = md5($('#email').val());
-		$('#hub').val(eval('0x' + hub.slice(hub.length/2)).toString().slice(0,10));
-		$('#newHub').attr('action', 'teleboard.php?hub=' + $('#hub').val());
-		
-		if ($('#cacheOn').is(':checked')) {
-			$('input').each(function(){
-				if ($(this).attr('type') == 'text' || $(this).attr('type') == 'email') {
-					if ($(this).val().length > 0) setCookie($(this).attr('id'), $(this).val());
-				}
-			});
-		}
-		else {
-			$('input').each(function(){
-				if ($(this).attr('type') == 'text' || $(this).attr('type') == 'email') {
-					setCookie($(this).attr('id'), '');
-				}
-			});
-		}
-
-		return true;
-	}
-	</script>
-	<style>
-	.banner {
-		font-size: 32px;
-		text-align: center;
-	}
-	.center {
-		text-align: center;
-	}
-    .vcenter {
-      position: relative;
-      top: 50%;
-      transform: translateY(-50%);
+    function setCookie(key, value) {
+        var expires = new Date();
+        expires.setTime(expires.getTime() + (180 * 24 * 60 * 60 * 1000));
+        document.cookie = key + '=' + value + ';expires=' + expires.toUTCString();
     }
-	</style>
-  </head>
-  <body>
-  <nav class="navbar navbar-default">
-    <div class="container-fluid">
-      <div class="navbar-header">
-        <a class="navbar-brand" href="/"><div class="vcenter" style="display: inline-block; float: left;">
-		  <img src="images/ghub-logo-c.png" width="40"/>
-		  <img src="images/ghub-banner.png" height="60"/>
-		</div></a>
-      </div>
-      <div>
-        <ul class="nav navbar-nav pull-right">
-          <li class="active"><a href="/">Home</a></li>
-          <li><a href="faq.html">FAQ</a></li>
-          <li><a href="about.html">About</a></li>
-          <li><a href="contact.php">Contact</a></li>
-          <li><a href="disclaimer.html">Disclaimer</a></li>
-        </ul>
-      </div>
-    </div>
-  </nav>
-  <div class="container-fluid">
-    <div class="row center">
-      <div class="col-sm-3"></div>
-      <div class="col-sm-2">
-	    <img src="images/screen-chat.svg" width="100px"/><br>
-		<span>Discussion</span>
-	  </div>
-      <div class="col-sm-2">
-	    <img src="images/screen-paint.svg" width="100px"/><br>
-		<span>Exchange Ideas</span>
-	  </div>
-      <div class="col-sm-2">
-	    <img src="images/screen-sharescn.svg" width="100px"/><br>
-		<span>Screen-cast</span>
-	  </div>
-      <div class="col-sm-2"></div>
-    </div>
-    <div class="row center">
-      <div class="col-sm-3"></div>
-      <div class="col-sm-2">
-	    <img src="images/screen-vchat.svg" width="100px"/><br>
-		<span>Video-cast</span>
-	  </div>
-      <div class="col-sm-2">
-	    <img src="images/screen-conf.svg" width="100px"/><br>
-		<span>P2P Conference</span>
-	  </div>
-      <div class="col-sm-2">
-	    <img src="images/screen-responsive.svg" width="100px"/><br>
-		<span>Responsive</span>
-	  </div>
-      <div class="col-sm-2"></div>
-    </div>
-	<div class="row banner">
-	  <br>
-	  <button type="button" class="btn btn-lg btn-primary" data-toggle="modal" data-target="#setuphub">Plug in to a hub now!</button>
-	</div>
-	<div class="row center">
-	  <br>By Gatherhub Team<br><br>
-	</div>
-	<div class="row center">
-		<div id="gpshare" class="col-xs-5" align="right">
-		<div class="g-plus" data-action="share" data-annotation="bubble" data-height="24"></div></div>
-		<div id="fbshare" class="col-xs-2" align="center" style="position: relative;">
-		<div class="fb-share-button" data-href="http://gatherhub.com/" data-layout="button_count"></div></div>
-		<div id="wbshare" class="col-xs-4" align="left">
-		<wb:share-button addition="number" type="button"></wb:share-button></div>
-		<script>$('#fbshare').css('top', 3);</script>
-	</div>
-  </div>
 
-  <div id="setuphub" class="modal fade" role="dialog">
-    <div class="modal-dialog">
-      <div class="modal-content">
-        <div class="modal-header">
-          <button type="button" class="close" data-dismiss="modal">&times;</button>
-          <h4 class="modal-title">Create a hub</h4>
-        </div>
-        <div class="modal-body">
-			<form id="newHub" role="form" method="post" action="teleboard.php">
-			  <div class="form-group">
-				<label for="text">Your Name:</label>
-				<input type="text" class="form-control" id="peer" name="peer">
-			  </div>
-			  <div class="form-group">
-				<label for="email">Your Email:</label>
-				<input type="email" class="form-control" id="email" name="email">
-				<input type="hidden" class="form-control" id="hub" name="hub">
-			  </div>
-			  <div class="form-group" style="text-align: right;">
-				  <div class="checkbox">
-					<label><input type="checkbox" id="cacheOn">Remember me</label>
-				  </div>
-				  <div class="checkbox">
-					<label><input type="checkbox" name="sendMail">Send email notification</label>
-				  </div>
-				  <button type="submit" class="btn btn-default" onclick="return validateInput()">Submit</button>
-			  </div>
-			</form>
-        </div>
-      </div>
-    </div>
-  </div>
-	<div id="fb-root"></div>
-	<script>(function(d, s, id) {
-	  var js, fjs = d.getElementsByTagName(s)[0];
-	  if (d.getElementById(id)) return;
-	  js = d.createElement(s); js.id = id;
-	  js.src = "//connect.facebook.net/zh_TW/sdk.js#xfbml=1&version=v2.5";
-	  fjs.parentNode.insertBefore(js, fjs);
-	}(document, 'script', 'facebook-jssdk'));
-	</script>
-	<script src="https://apis.google.com/js/platform.js" async defer></script>
-  </body>
+    function getCookie(key) {
+        var keyValue = document.cookie.match('(^|;) ?' + key + '=([^;]*)(;|$)');
+        return keyValue ? keyValue[2] : null;
+    }
+
+    function validEmail(str) {
+        var reg = /^([\w-\.]+@([\w-]+\.)+[\w-]{2,4})?$/;
+        return reg.test(str);
+    }
+
+    function validateInput() {
+        if ($('#peer').val().trim().length == 0 || $('#email').val().trim().length == 0 || !validEmail($('#email').val())) {
+            alert('Please enter your name and valid email address!');
+            return false;
+        }
+
+        var hub = md5($('#email').val());
+        $('#hub').val(eval('0x' + hub.slice(hub.length / 2)).toString().slice(0, 10));
+        $('#newHub').attr('action', 'teleboard.php?hub=' + $('#hub').val());
+
+        if ($('#cacheOn').is(':checked')) {
+            $('input').each(function() {
+                if ($(this).attr('type') == 'text' || $(this).attr('type') == 'email') {
+                    if ($(this).val().length > 0) setCookie($(this).attr('id'), $(this).val());
+                }
+            });
+        } else {
+            $('input').each(function() {
+                if ($(this).attr('type') == 'text' || $(this).attr('type') == 'email') {
+                    setCookie($(this).attr('id'), '');
+                }
+            });
+        }
+
+        return true;
+    }
+    </script>
+</body>
+
 </html>

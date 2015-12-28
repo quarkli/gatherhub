@@ -24,9 +24,7 @@ if (isset($_POST['email'])) {
 	<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1">
 	<link rel="icon" href="images/ghub-logo-c.png">
     <link rel="stylesheet" href="css/bootstrap.min.css">
-	<script src="scripts/jquery.min.js"></script>
-    <script src="js/bootstrap.min.js"></script>
-  </head>
+ </head>
   <style>
   .vcenter {
     position: relative;
@@ -34,11 +32,6 @@ if (isset($_POST['email'])) {
     transform: translateY(-50%);
   }
   </style>
-  <script>
-  $(function(){
-	  if (<?= $msgsent ?>) $('#msgok').show();
-  });
-  </script>
 <body>
   <nav class="navbar navbar-default">
     <div class="container-fluid">
@@ -98,5 +91,12 @@ if (isset($_POST['email'])) {
       <div class="col-sm-2"></div>
     </div>
   </div>
+  <script src="scripts/jquery.min.js"></script>
+  <script src="js/bootstrap.min.js"></script>
+  <script>
+  $(function(){
+	  if (<?= $msgsent ?>) $('#msgok').show();
+  });
+  </script>
 </body>
 </html>
