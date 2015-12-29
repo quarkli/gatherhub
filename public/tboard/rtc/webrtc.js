@@ -1,7 +1,7 @@
 /* 
 * @Author: Phenix Cai
 * @Date:   2015-11-13 19:14:00
-* @Last Modified time: 2015-12-23 18:08:25
+* @Last Modified time: 2015-12-28 16:03:12
 */
 
 'use strict';
@@ -80,6 +80,14 @@ var webRtc;
         }
         if(type=='called'){
             pc.setRmtDesc(sdp);
+            var as =this.ansStrm;
+            if(config.oneway == false && as){
+                if(as.cmd=='add'){
+                    pc.addStream(as.s);
+                }else{
+                    pc.removeStream(as.s);
+                }
+            }
             pc.makeAnswer();
         }
     };
@@ -114,11 +122,16 @@ var webRtc;
         pc.makeOffer();
     };
 
-    _proto.stopCall = function(s){
-        for(var i in this.peers){
-            if(s)this.peers[i].removeStream(s);
-            this.peers[i].makeOffer();
+    _proto.stopCall = function(id,s){
+        var pc = this.peers[id];
+        if(pc){
+            if(s)pc.removeStream(s);
+            pc.makeOffer();
         }
+    };
+
+    _proto.addAnsStrm = function(s,cmd){
+        this.ansStrm = {s:s,cmd:cmd};
     };
 
     _proto.remove = function(id){

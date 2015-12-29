@@ -101,7 +101,7 @@ Author: quarkli@gmail.com
 		height: 100%;
 		padding: 0px;
 		margin: 0px;
-		margin-bottom: -10px
+		margin-bottom: -10px;
 		border-style: solid;
 		border-width: 1px;
 		border-color: #CCC;
@@ -205,25 +205,47 @@ Author: quarkli@gmail.com
 		border-top-color: #CCC;
 		overflow: hidden;
 	}
-	#bm {
+	#mediaArea{
+		position: absolute;
+		bottom: 0;
+		left: -300px;
+		width: 300px;
+		height: 100px;
+		padding: 0px;
+		margin: 0px;
+		margin-bottom: -10px;
+		border-style: solid;
+		border-width: 1px;
+		border-color: #CCC;
+		border-top-right-radius:5px;
+		border-bottom-right-radius:5px;
+		background-color: auto;
+		z-index: 90;
+		overflow-x: hidden;
+		overflow-y: hidden;
+	}
+	#mtitle{
+		position: absolute;
+		height: 40px;
+	}
+	#media{
+		position: absolute;
+		bottom: 60px;
+		margin: 2px;
+		padding: 2px;
+		width: 100%;
+	}
+	#mbtns {
 		position: absolute;
 		bottom: 0;
 		margin: 2px;
 		padding: 2px;
-		height: 48px;
+		height: 60px;
 		width: 100%;
 		border-top-style: solid;
 		border-top-width: 1px;
 		border-top-color: #CCC;
 		overflow: hidden;
-	}
-	#media{
-		position: absolute;
-		bottom: 40px;
-		margin: 2px;
-		padding: 2px;
-		max-height: 230px;
-		width: 100%;
 	}
 	#scnshare{
 		position: absolute;
@@ -244,8 +266,6 @@ Author: quarkli@gmail.com
 		<div id="mlist" class="panel">
 			<div id="clist"></div>
 			<div id="plist"></div>
-			<div id="media"></div>
-			<div id="bm"></div>
 		</div>
 		<div id="msg" class="panel">
 			<div id="msgbox"></div>
@@ -254,6 +274,11 @@ Author: quarkli@gmail.com
 				<button id="send" type="button">Send</button>
 			</div>
 		</div>
+	</div>
+	<div id="mediaArea">
+		<div id='mtitle'></div>
+		<div id="media"></div>
+		<div id="mbtns"></div>
 	</div>
 	<div id="bgroup"></div>
 	<div id="joinhub" class="modal fade" role="dialog">
@@ -305,22 +330,6 @@ Author: quarkli@gmail.com
 			  <div id="rtcinfo"></div>
 			  <div class="form-group" style="text-align: right;">
 				  <button id="btnInfo" type="Button" class="btn btn-default">OK</button>
-			  </div>
-			</div>
-		  </div>
-		</div>
-	</div>
-	<div id="ivt2talk" class="modal fade" role="dialog">
-		<div class="modal-dialog">
-		  <div class="modal-content">
-			<div class="modal-header">
-			  <h4 class="modal-title" id="dlgIvtTt">Invite someone to talk?</h4>
-			</div>
-			<div class="modal-body alert alert-info">
-				<div id="ivtInfo"></div>
-			  <div class="form-group" style="text-align: center;">
-				  <button id="btnIvtA" type="Button" class="btn btn-default">Audio</button>
-				  <button id="btnIvtV" type="Button" class="btn btn-default">Video</button>
 			  </div>
 			</div>
 		  </div>

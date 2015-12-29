@@ -850,6 +850,134 @@ module.exports = {
 
 },{}],5:[function(require,module,exports){
 /* 
+* @Author: Phenix
+* @Date:   2015-12-28 12:34:55
+* @Last Modified time: 2015-12-28 16:42:08
+*/
+
+'use strict';
+var callCtrl;
+(function(){
+    var _proto, _debug;
+    _debug = true;
+    function CallCtrl(){
+        this.id = 0;
+        this.status = 'idle';
+        this.dst = 0;
+    }
+    
+    _proto = CallCtrl.prototype;
+    callCtrl = CallCtrl;
+
+    _proto.setId = function(id){
+        this.id = id;
+    };
+    //calling part
+    function callingEnd(){
+        var err = {name: this.dst+' is busy, try it later'};
+        this.onStartCb(err);
+        this.status = 'idle';
+    }
+    _proto.start = function(type,peer,cb){
+        var self = this;
+        this.onCmdSend({cmd:'start',from:this.id,to:peer,type:type});
+        this.status = 'trying';
+        this.onStartCb = cb;
+        this.dst = peer;
+        this.timer =setTimeout(function(){
+            callingEnd.call(self);
+        }, 30000);
+    };
+
+    _proto.stop = function(cb){
+        this.onCmdSend({cmd:'stop',from:id,to:peer});
+        if(this.status == 'active'){
+            if(cb)cb();
+            this.status = 'close';
+        }else{
+            //trying
+            this.status = 'idle';
+        }
+    };
+    // called part
+    _proto.answer = function(type){
+        var peer = this.dst;
+        if(type == 'deny'){
+            this.onCmdSend({cmd:'deny',from:this.id,to:peer});
+            this.status = 'idle';
+        }else{
+            this.onCmdSend({cmd:'accept',from:this.id,to:peer,type:type});
+            this.status = 'active';
+        }
+
+    };
+
+    _proto.reset = function(){
+        this.status = 'idle';
+    };
+
+    _proto.hdlMsg = function(msg){
+        var self = this;
+        var peer = msg.from;
+        var cmd = msg.cmd;
+
+        if(_debug)console.log('call ',peer,' status is ',this.status, ' cmd is ',cmd);
+        switch(this.status){
+            case 'idle':
+                switch(cmd){
+                    case 'start':
+                        if(this.onCallIn(peer,msg.type)){
+                            this.dst = peer,
+                            this.status = 'ringing';
+                        }else{
+                            this.onCmdSend({cmd:'deny',from:this.id,to:peer});
+                        }
+                    break;
+                }
+            break;
+            case 'trying':
+                switch(cmd){
+                    case 'deny':
+                        clearTimeout(this.timer);
+                        callingEnd.call(this);
+                    break;
+                    case 'accept':
+                        clearTimeout(this.timer);
+                        this.onStartCb(null,msg.type);
+                        this.status = 'active';
+                    break;
+                    default:
+                        this.onCmdSend({cmd:'deny',from:this.id,to:peer});
+                    break;
+                }
+            break;
+            case 'ringing':
+                if(cmd=='stop'){
+                    this.onCallInEnd();
+                    ths.status = 'idle';
+                }
+            break;
+            case 'active':
+                if(cmd == 'stop'){
+                    this.onTalkEnd();
+                    this.status = 'close';
+                }
+            break;
+
+        }
+
+    };
+    _proto.onCmdSend = function(){};
+    _proto.onCallIn = function(){};
+    _proto.onCallInEnd = function(){};
+    _proto.onCallStart = function(){};
+    _proto.onTalkEnd = function(){};
+
+})();
+
+module.exports = callCtrl;
+},{}],6:[function(require,module,exports){
+/* 
 * @Author: Phenix Cai
 * @Date:   2015-11-22 10:02:34
 * @Last Modified time: 2015-12-25 17:13:30
@@ -1074,7 +1202,7 @@ var castCtrl;
 })();
 
 module.exports = castCtrl;
-},{}],6:[function(require,module,exports){
+},{}],7:[function(require,module,exports){
 /* 
 * @Author: Phenix Cai
 * @Date:   2015-11-13 14:44:49
@@ -1160,7 +1288,7 @@ var localMedia;
     localMedia = LocalMedia;
 })();
 module.exports = localMedia;
-},{"getscreenmedia":1,"getusermedia":2}],7:[function(require,module,exports){
+},{"getscreenmedia":1,"getusermedia":2}],8:[function(require,module,exports){
 'use strict';
 var adapter = require('webrtc-adapter-test');
 var peerConn;
@@ -1230,7 +1358,6 @@ var peerConn;
           if(_debug)console.log('onIce: ', event);
           if (event.candidate) {
             self.onCmdSend('msg',{
-                    room: self.config.room,
                     to: self.config.id,
                     mid: self.config.mid,
                     sdp: {
@@ -1292,6 +1419,7 @@ var peerConn;
             self.onCmdSend('msg',{
                 to:self.config.id, 
                 mid:self.config.mid,
+                oneway:self.config.oneway,
                 sdp:desc
             });
         }, function(err){
@@ -1450,11 +1578,11 @@ var peerConn;
 
 module.exports = peerConn;
 
-},{"webrtc-adapter-test":3}],8:[function(require,module,exports){
+},{"webrtc-adapter-test":3}],9:[function(require,module,exports){
 /* 
 * @Author: Phenix
 * @Date:   2015-12-21 10:01:29
-* @Last Modified time: 2015-12-27 09:50:15
+* @Last Modified time: 2015-12-28 17:09:35
 */
 
 'use strict';
@@ -1464,6 +1592,7 @@ var WebRtc = require('./webrtc');
 var CastCtrl = require('./castctrl');
 var rtc = require('webrtcsupport');
 var adapter = require('webrtc-adapter-test');
+var CallCtrl = require('./callctrl');
 
 var teleCom;
 (function(){
@@ -1477,24 +1606,25 @@ var teleCom;
         w = this.webRtc = new WebRtc(config);
         this.myPid = 'default';
         this.streams = {default: w};
-        this.ctrls = []; //media controllers
+        this.castCtrls = []; //media controllers
         this.users = []; // array to store current peerids
         this.ready =  false;
-        this.actMedia = {status:'idle',idx:0};
-        this.actScn = {status:'idle',idx:0};
+        this.actMedia = {status:'idle'};
+        this.actScn = {status:'idle'};
         this.midx = 0;
         this.media =  new localMedia(); 
+
 
         function updateCastList(){
             var list = [];
             var iflag = true;
             var video;
 
-            self.ctrls[0].castList.forEach(function(p){
+            self.castCtrls[0].castList.forEach(function(p){
                 list.push({id:p.id,av:p.type,scn:false});
             });
 
-            self.ctrls[1].castList.forEach(function(p){
+            self.castCtrls[1].castList.forEach(function(p){
                 for(var i=0;i<list.length;i++){
                     if(list[i].id == p.id){
                         list[i].scn = true;
@@ -1540,7 +1670,7 @@ var teleCom;
             if(self.ready == false){
                 if(_debug)console.log('default rtc chan ready, now init cast controllers');
                 for(var i = 0;i < 2; i++){
-                    var m = self.ctrls[i] = new CastCtrl(i,self.myPeer());
+                    var m = self.castCtrls[i] = new CastCtrl(i,self.myPeer());
                     m.onSend = function(cmd){
                         var data = JSON.stringify(cmd);
                         w.sendData('castCtrl',data);
@@ -1552,13 +1682,51 @@ var teleCom;
                     m.onAddPr2Talk = addPeer2Talk;
                     w.setDCRcvCb('castCtrl',function(from,data){
                         var cmd = JSON.parse(data);
-                        var ctrl = self.ctrls[cmd.label];
+                        var ctrl = self.castCtrls[cmd.label];
                         if(ctrl)ctrl.hdlMsg(cmd);
                     });
                 }
+                //init call controllers
+                var cc = self.callCtrl = new CallCtrl();
+                cc.onCallIn = function(peer,type){
+                    if(self.actMedia.status != 'idle')return;
+                    self.onCallRing(peer,type);
+                    return true;
+                };
+                cc.onCallInEnd = function(){
+                    self.onCallInEnd();
+                };
+                cc.onCmdSend = function(cmd){
+                    var data = JSON.stringify(cmd);
+                    w.sendData('default',data,cmd.to);
+                };
+
+                cc.onTalkEnd = function(){
+                    self.media.stop(function(s){
+                        if(s){
+                            var wr = self.streams[cc.mid];
+                            var p = cc.dst;
+                            if(wr){
+                                if(wr.type =='calling'){
+                                    wr.stopCall(p,s);
+                                    setTimeout(function(){
+                                        wr.remove(p);
+                                        delete self.streams[cc.mid];
+                                        cc.reset();
+                                    }, 3000);
+                                }else{
+                                    wr.setAnsStrm(s,'del');
+                                }
+                            }
+                            // hide div ....
+                        }
+                    });
+                };
+
                 self.onReady();
+                self.callCtrl.setId(self.myPeer());
                 setTimeout(function(){
-                    for(var i=0;i<2;i++){self.ctrls[i].login();}
+                    for(var i=0;i<2;i++){self.castCtrls[i].login();}
                 }, 400);
             }
             self.ready = true;
@@ -1607,7 +1775,7 @@ var teleCom;
                     delete m[i];
                 }
             }
-            this.ctrls.forEach(function(p){
+            this.castCtrls.forEach(function(p){
                 p.rmPeer(peer);
             });
             var idx = this.users.indexOf(peer);
@@ -1639,18 +1807,25 @@ var teleCom;
     }
 
     _proto.hdlMsg = function(peer,data){
-        var msg,mid,self,scn;
+        var msg,mid,self,scn,oneway;
         if(!rtc.support) return;
         self = this;
-        // if(_debug)console.log(peer,' recv msg ',data);
+        var cc = this.callCtrl;
+       // if(_debug)console.log(peer,' recv msg ',data);
         if(this.users.indexOf(peer)<0)this.users.push(peer);
         mid = data.media;
+        if(mid==undefined){
+            // call ctrler msg;
+            if(cc)cc.hdlMsg(data);
+            return;
+        }
         scn = mid.indexOf(peer+'-scn-');
+        oneway = (data.oneway == false)? false: true;
         // console.log('mid is ',mid,' scn is ',scn);
         msg = {from:peer,mid:mid,sdp:data.sdp};
         if(mid!=undefined){
             if(this.streams[mid]==undefined){
-                var config = {mid:mid};
+                var config = {mid:mid,oneway:oneway};
                 if(msg.sdp.type != 'offer'){
                     console.log('could not init webrtc from msg ',msg);
                     return;
@@ -1664,6 +1839,10 @@ var teleCom;
                     w.onRMedAdd = this.onFrAvAdd;
                     w.onRMedDel = this.onFrAvRm;
                 }
+                if(oneway == false && cc && cc.status == 'active' && cc.strm){
+                    cc.mid = mid;
+                    w.setAnsStrm(cc.strm,'add');
+                }
             }else{
                 if(mid.indexOf(peer)==0 && msg.sdp.type == 'offer'){
                     //second offer, should be bye, destroy the streams[mid] after 3 seconds
@@ -1671,6 +1850,7 @@ var teleCom;
 
                     setTimeout(function(){
                         if(_debug)console.log('destroy stream ',mid, ' after 3 seconds ');
+                        if(cc.mid == mid)cc.reset();
                         delete self.streams[mid];
                     },3000);
                 }
@@ -1697,7 +1877,7 @@ var teleCom;
         return (v==undefined)? this.myPid : this.myPid = v;
     };
 
-    function startStream(type,oneway,strm){
+    function startStream(type,oneway,strm,id){
         var mid = this.myPeer()+'-'+type+'-'+(this.midx++);
         var config = {mid:mid,oneway:oneway};
         var w = this.streams[mid] = new WebRtc(config);
@@ -1705,16 +1885,23 @@ var teleCom;
         if(type == 'scn'){
             w.onRMedAdd = this.onFrScnAdd;
             w.onRMedDel = this.onFrScnRm;
-            this.actScn.mid = mid;
         }else{
             w.onRMedAdd = this.onFrAvAdd;
             w.onRMedDel = this.onFrAvRm;
-            this.actMedia.mid = mid;
         }
-        this.users.forEach(function(p){
-            w.addPeer(p,'calling');
-            w.startCall(p,strm);
-        });
+        if(id){
+            var pc = this.users[id];
+            if(pc){
+                w.addPeer(pc,'calling');
+                w.startCall(pc,strm);
+            }
+        }else{
+            this.users.forEach(function(p){
+                w.addPeer(p,'calling');
+                w.startCall(p,strm);
+            });
+        }
+        return mid;
     }
 
     _proto.startAVCast = function(cfg,errCb){
@@ -1723,15 +1910,17 @@ var teleCom;
         if(cfg.video) cs = { video: true, audio: true};
         type = (cfg.video)? 'video' : 'audio';
         var am = this.actMedia;
-        if(am.status != 'idle')return;
-        this.ctrls[0].start(function(){
+        var cc = this.callCtrl;
+        if(am.status != 'idle'|| cc.status != 'idle')return;
+        this.castCtrls[0].start(function(){
             am.status = 'trying';
             self.media.start(cs,function(err,s){
                 if(!err){
                     am.strm = s;
                     self.onMyAvAdd(s);
-                    startStream.call(self,type,true,s);
+                    am.mid = startStream.call(self,type,true,s);
                     am.status = 'active';
+
                 }else{
                     am.status = 'idle';
                     if(errCb)errCb(err);
@@ -1743,13 +1932,17 @@ var teleCom;
 
     _proto.stopAVCast = function(){
         var self = this;
-        var c = this.ctrls[0];
+        var c = this.castCtrls[0];
         var am = this.actMedia;
         var w = this.streams[am.mid];
         if(am.status == 'idle')return;
         c.stop(function(){
             self.media.stop(function(s){
-                if(s)w.stopCall(s);
+                if(s){
+                    self.users.forEach(function(p){
+                        w.stopCall(p,s);
+                    });
+                }
                 am.status = 'close';
                 delete am.strm;
                 setTimeout(function(){
@@ -1764,13 +1957,13 @@ var teleCom;
         var as = this.actScn;
         var type = 'scn';
         if(as.status != 'idle')return;
-        this.ctrls[1].start(function(){
+        this.castCtrls[1].start(function(){
             as.status = 'trying';
             self.media.getScn(function(err,s){
                 if(!err){
                     as.strm = s;
                     self.onMyScnAdd(s);
-                    startStream.call(self,type,true,s);
+                    as.mid = startStream.call(self,type,true,s);
                     as.status = 'active';
                 }else{
                     as.status = 'idle';
@@ -1784,13 +1977,17 @@ var teleCom;
     _proto.stopscnCast = function(){
         var self = this;
         var as = this.actScn;
-        var c = this.ctrls[1];
+        var c = this.castCtrls[1];
         var w = this.streams[as.mid];
         // console.log('w is ',w, ' as.mid ',as.mid);
         if(as.status == 'idle')return;
         c.stop(function(){
             self.media.rlsScn(function(s){
-                if(s)w.stopCall(s);
+                if(s){
+                    self.users.forEach(function(p){
+                        w.stopCall(p,s);
+                    });
+                }
                 as.status = 'close';
                 delete as.strm;
                 setTimeout(function(){
@@ -1799,6 +1996,71 @@ var teleCom;
 
             });
         });
+    };
+
+    _proto.startPrTalk = function(peer,type,errCb){
+        var self,cs;
+        self = this;
+        var cc = this.callCtrl;
+        var am = this.actMedia;
+        if(cc.status != 'idle' || am.status != 'idle')return;
+        cc.start(peer,type,function(err,type){
+            if(err){
+                if(_debug)console.log('call start failed : ',err.name);
+                if(errCb)errCb(err);
+            }else{
+                if(type=='video') cs = { video: true, audio: true};
+                self.media.start(cs,function(err,s){
+                    if(err){
+                        if(errCb)errCb(err);
+                        cc.reset();
+                    }else{
+                        self.onMyAvAdd(s);
+                        cc.mid = startStream.call(self,type,false,s,peer);
+                    }
+                });
+            }
+        });
+    };
+
+    _proto.stopPrTalk = function(){
+        var cc = this.callCtrl;
+        var w = this.streams[cc.mid];
+        var p = cc.dst;
+        if(cc.status == 'idle')return;
+        cc.stop(function(){
+            self.media.stop(function(s){
+                if(w.type == 'calling'){
+                    w.stopCall(p,s);
+                    setTimeout(function(){
+                        w.remove(p);
+                        delete self.streams[cc.mid];
+                        cc.reset();
+                    }, 3000);
+                }else{
+                    w.setAnsStrm(s,'del');
+                }
+            });
+        });
+    }
+
+    _proto.answerPrTalk = function(type){
+        var cc = this.callCtrl;
+        if(type=='deny'){
+            cc.answer(type);
+        }else{
+            if(type=='video')cs = { video: true, audio: true};
+            this.media.start(cs,function(err,s){
+                if(err){
+                    cc.answer('deny');
+                }else{
+                    self.onMyAvAdd(s);
+                    cc.answer(type);
+                    cc.strm = s;
+                }
+            });
+        }
+
     };
 
     _proto.getRtcCap = function(infCb){
@@ -1842,17 +2104,19 @@ var teleCom;
     _proto.onFrScnAdd = function(){};
     _proto.onFrScnRm = function(){};
     _proto.onDisconnect = function(){};
+    _proto.onCallIn = function(){};
+    _proto.onCallInEnd = function(){};
 
 })();
 
 module.exports = teleCom;
 
 
-},{"./castctrl":5,"./localmedia":6,"./webrtc":9,"webrtc-adapter-test":3,"webrtcsupport":4}],9:[function(require,module,exports){
+},{"./callctrl":5,"./castctrl":6,"./localmedia":7,"./webrtc":10,"webrtc-adapter-test":3,"webrtcsupport":4}],10:[function(require,module,exports){
 /* 
 * @Author: Phenix Cai
 * @Date:   2015-11-13 19:14:00
-* @Last Modified time: 2015-12-23 18:08:25
+* @Last Modified time: 2015-12-28 16:03:12
 */
 
 'use strict';
@@ -1931,6 +2195,14 @@ var webRtc;
         }
         if(type=='called'){
             pc.setRmtDesc(sdp);
+            var as =this.ansStrm;
+            if(config.oneway == false && as){
+                if(as.cmd=='add'){
+                    pc.addStream(as.s);
+                }else{
+                    pc.removeStream(as.s);
+                }
+            }
             pc.makeAnswer();
         }
     };
@@ -1965,11 +2237,16 @@ var webRtc;
         pc.makeOffer();
     };
 
-    _proto.stopCall = function(s){
-        for(var i in this.peers){
-            if(s)this.peers[i].removeStream(s);
-            this.peers[i].makeOffer();
+    _proto.stopCall = function(id,s){
+        var pc = this.peers[id];
+        if(pc){
+            if(s)pc.removeStream(s);
+            pc.makeOffer();
         }
+    };
+
+    _proto.addAnsStrm = function(s,cmd){
+        this.ansStrm = {s:s,cmd:cmd};
     };
 
     _proto.remove = function(id){
@@ -2062,7 +2339,7 @@ var webRtc;
 module.exports = webRtc;
 
 
-},{"./peerconn":7}],10:[function(require,module,exports){
+},{"./peerconn":8}],11:[function(require,module,exports){
 /*
 gatherhub.js is distributed under the permissive MIT License:
 
@@ -3152,7 +3429,7 @@ var Gatherhub = Gatherhub || {};
 if (typeof module !== 'undefined') {
 	module.exports = Gatherhub;
 }
-},{}],11:[function(require,module,exports){
+},{}],12:[function(require,module,exports){
 var svgicon = {
 	brushl: '<g><path d="M0.002,123.619C0,123.484,0,123.438,0.002,123.619L0.002,123.619z"/><path d="M134.563,5.449c0,0-7.158-0.347-10.589,3.085c-1.421,1.409-2.927,3.098-4.624,4.884c-6.754,7.176-15.693,16.809-24.558,26.519c-8.825,9.748-17.646,19.506-24.083,27c-3.234,3.733-5.933,6.838-7.821,9.012c-1.864,2.199-2.929,3.458-2.929,3.458c-2.169,2.555-2.258,6.376-0.04,9.047c2.485,2.983,6.922,3.39,9.907,0.908c0,0,1.266-1.059,3.483-2.901c2.194-1.866,5.324-4.537,9.081-7.74c7.551-6.375,17.382-15.105,27.206-23.846c9.784-8.78,19.497-17.635,26.728-24.33c1.802-1.679,3.502-3.17,4.923-4.578c3.18-3.014,3.18-7.529,3.18-8.885C144.436,11.628,142.333,6.109,134.563,5.449z"/><path d="M78.939,94.825c0,0-0.036-1.3-0.355-3.267c-0.146-0.896-0.765-1.646-1.615-1.962c-0.854-0.316-1.812-0.148-2.506,0.438l-2.382,2.017c-1.897,1.576-4.286,2.44-6.741,2.44c-3.142,0-6.094-1.383-8.104-3.793c-3.284-3.949-3.258-9.649,0.058-13.557l2.037-2.365c0.32-0.368,0.388-0.896,0.176-1.335c-0.216-0.442-0.671-0.714-1.161-0.691c0,0-36.537-0.976-38.566,30.112c-1.722,26.372-14.744,23.391-18.657,21.518c-0.107-0.05-0.234-0.043-0.332,0.021c-0.1,0.062-0.161,0.174-0.161,0.29c0,0.009,0,0.016,0,0.022c0,0.475,0.138,0.931,0.395,1.33c3.582,5.543,17.449,21.216,53.936,7.396C54.961,133.439,82.329,123.5,78.939,94.825z"/></g>',
 	brushm: '<g><path d="M0.002,123.619C0,123.484,0,123.438,0.002,123.619L0.002,123.619z"/><path d="M134.563,5.449c0,0-7.158-0.347-10.589,3.085c-1.421,1.409-2.927,3.098-4.624,4.884    c-6.754,7.176-15.693,16.809-24.558,26.519c-8.825,9.748-17.646,19.506-24.083,27c-3.234,3.733-5.933,6.838-7.821,9.012c-1.864,2.199-2.929,3.458-2.929,3.458c-2.169,2.555-2.258,6.376-0.04,9.047c2.485,2.983,6.922,3.39,9.907,0.908    c0,0,1.266-1.059,3.483-2.901c2.194-1.866,5.324-4.537,9.081-7.74c7.551-6.375,17.382-15.105,27.206-23.846    c9.784-8.78,19.497-17.635,26.728-24.33c1.802-1.679,3.502-3.17,4.923-4.578c3.18-3.014,3.18-7.529,3.18-8.885    C144.436,11.628,142.333,6.109,134.563,5.449z"/><path d="m 72.48768,92.615878 c 0.40784,0.945103-0.50676,-3.448052 -3.035056,-1.372983 -2.930824,1.009578 -4.79992,1.054676 -6.347345,0.491883 -1.915869,-0.543873 -3.00474,-1.171317 -4.27879,-2.714067 -0.910774,-1.789793 -2.301132,-3.097255 -1.24592,-7.427848 0.705561,-2.002175 0.885635,-3.486644 -1.863616,-3.394171 0,0 -19.441263,-0.338794 -20.727353,19.562038 -1.0915,16.88191 -9.34553,14.97364 -11.8258,13.77465 -0.0678,-0.032 -0.14832,-0.0275 -0.21044,0.0134 -0.0634,0.0397 -0.10205,0.11139 -0.10205,0.18564 l 0,0.0141 c 0,0.30406 0.0875,0.59597 0.25037,0.85139 2.27046,3.54832 11.06011,13.58132 34.18751,4.73451 0,0 17.34729,-6.3624 15.19853,-24.71857 z"/></g>',
@@ -3168,6 +3445,7 @@ var svgicon = {
 	eraser: '<g id="svgEraser"><path d="M348.994,102.946L250.04,3.993c-5.323-5.323-13.954-5.324-19.277,0l-153.7,153.701l118.23,118.23l153.701-153.7C354.317,116.902,354.317,108.271,348.994,102.946z"/><path d="M52.646,182.11l-41.64,41.64c-5.324,5.322-5.324,13.953,0,19.275l98.954,98.957c5.323,5.322,13.954,5.32,19.277,0l41.639-41.641L52.646,182.11z"/><polygon points="150.133,360 341.767,360 341.767,331.949 182.806,331.949"/></g>',
 	fit: '<g><polygon points="250.591,228.464 171.41,149.283 251.091,69.602 274.684,93.195 297.566,0.695 204.046,22.558 228.464,46.976 148.783,126.656 69.103,46.976 93.521,22.558 0,0.695 22.883,93.195 46.476,69.602 126.156,149.283 46.976,228.464 22.883,204.371 0,296.871 93.521,275.009 69.603,251.091 148.783,171.91 227.964,251.091 204.046,275.009 297.566,296.871 274.684,204.371 "/></g>',
 	geometrical: '<g><path d="M405.419,165.641V58.771H160.643v111.433l-8.251-14.295L0,419.859h260.975c29.303,32.634,71.032,51.317,114.736,51.317c85.051,0,154.236-69.191,154.236-154.235C529.959,243.019,477.732,179.791,405.419,165.641z M152.391,192.646l8.251,14.287v96.615h55.78l5.21,9.031l-0.042,0.898c-0.059,1.146-0.115,2.3-0.115,3.452c0,30.274,8.742,59.385,25.343,84.565H31.818L152.391,192.646zM387.048,77.139v208.038H179.01V77.139H387.048z M375.711,452.807c-74.912,0-135.864-60.952-135.864-135.865c0-1.844,0.104-3.659,0.192-5.479l0.033-0.573l1.034-1.312l-0.884-1.549c0.104-1.501,0.23-2.99,0.381-4.479h164.816V184.398c61.731,13.811,106.157,68.97,106.157,132.543C511.588,391.854,450.637,452.807,375.711,452.807z"/></g>',
+	hangup:'<g><path d="M0,17.783l0.02,2.637l0.003,0.004c0.006,0.603,0.498,1.033,1.047,1.027l0.007,0.004l7.489-0.06	c0.578-0.005,1.028-0.476,1.022-1.043l-0.021-2.64l-0.366,0.005c0.114-1.096,1.444-1.354,4.096-1.647l6.383-0.055 c1.534,0.149,3.022,0.425,3.129,1.617l-0.205,0.001l0.021,2.637l0.001,0.004c0.005,0.605,0.499,1.033,1.049,1.028l0.006,0.005	l7.488-0.062c0.579-0.002,1.027-0.474,1.023-1.041l-0.022-2.64l-0.271,0.002c-0.264-1.604-2.91-6.78-15.413-6.828 c-12.975-0.047-16.012,5.323-16.17,7.043L0,17.783z"/></g>',
 	line: '<line stroke-width="7" stroke-linecap="round" stroke="black" x1="150" y1="200" x2="250" y2="100"/>',
 	logout: '<g><path d="M61.168,83.92H11.364V13.025H61.17c1.104,0,2-0.896,2-2V3.66c0-1.104-0.896-2-2-2H2c-1.104,0-2,0.896-2,2v89.623c0,1.104,0.896,2,2,2h59.168c1.105,0,2-0.896,2-2V85.92C63.168,84.814,62.274,83.92,61.168,83.92z"/><path d="M96.355,47.058l-26.922-26.92c-0.75-0.751-2.078-0.75-2.828,0l-6.387,6.388c-0.781,0.781-0.781,2.047,0,2.828l12.16,12.162H19.737c-1.104,0-2,0.896-2,2v9.912c0,1.104,0.896,2,2,2h52.644L60.221,67.59c-0.781,0.781-0.781,2.047,0,2.828l6.387,6.389c0.375,0.375,0.885,0.586,1.414,0.586c0.531,0,1.039-0.211,1.414-0.586l26.922-26.92c0.375-0.375,0.586-0.885,0.586-1.414C96.943,47.941,96.73,47.433,96.355,47.058z"/></g>',
 	menu: '<g><path d="M89.834,1.75H3c-1.654,0-3,1.346-3,3v13.334c0,1.654,1.346,3,3,3h86.833c1.653,0,3-1.346,3-3V4.75C92.834,3.096,91.488,1.75,89.834,1.75z"/><path d="M89.834,36.75H3c-1.654,0-3,1.346-3,3v13.334c0,1.654,1.346,3,3,3h86.833c1.653,0,3-1.346,3-3V39.75C92.834,38.096,91.488,36.75,89.834,36.75z"/><path d="M89.834,71.75H3c-1.654,0-3,1.346-3,3v13.334c0,1.654,1.346,3,3,3h86.833c1.653,0,3-1.346,3-3V74.75C92.834,73.095,91.488,71.75,89.834,71.75z"/></g>',
@@ -3182,14 +3460,12 @@ var svgicon = {
 	scncast: '<g><path d="m228.101,288.368c0,-0.839 -0.685,-1.526 -1.524,-1.526l-32.514,0c-0.838,0 -1.523,0.686 -1.523,1.526l0,5.127c0,0.839 -0.685,1.526 -1.523,1.526l-23.238,0c-0.838,0 -1.523,0.686 -1.523,1.526l0,6.553c0,0.840 0.685,1.526 1.523,1.526l85.086,0c0.839,0 1.524,-0.685 1.524,-1.526l0,-6.553c0,-0.839 -0.685,-1.526 -1.524,-1.526l-23.236,0c-0.839,0 -1.524,-0.686 -1.524,-1.526l-0.000,-5.127l0,0z"/><path d="m307.388,119.010l-194.138,0c-6.754,0 -12.249,5.505 -12.249,12.271l0,135.151c0,6.766 5.495,12.271 12.249,12.271l194.139,0c6.754,0 12.249,-5.505 12.249,-12.271l0,-135.150c0,-6.767 -5.495,-12.272 -12.250,-12.272zm-194.138,9.288l194.139,0c1.614,0 2.979,1.366 2.979,2.983l0,119.815l-200.097,0l0,-119.815c0,-1.617 1.364,-2.983 2.979,-2.983zm91.550,134.281c0,-3.053 2.471,-5.529 5.518,-5.529c3.048,0 5.520,2.475 5.520,5.529s-2.472,5.529 -5.520,5.529c-3.047,-0.000 -5.518,-2.476 -5.518,-5.529z"/></g>',
 	setting: '<g><path d="M18.622,8.371l-0.545-1.295c0,0,1.268-2.861,1.156-2.971l-1.679-1.639c-0.116-0.113-2.978,1.193-2.978,1.193l-1.32-0.533c0,0-1.166-2.9-1.326-2.9H9.561c-0.165,0-1.244,2.906-1.244,2.906L6.999,3.667c0,0-2.922-1.242-3.034-1.131L2.289,4.177C2.173,4.29,3.507,7.093,3.507,7.093L2.962,8.386c0,0-2.962,1.141-2.962,1.295v2.322c0,0.162,2.969,1.219,2.969,1.219l0.545,1.291c0,0-1.268,2.859-1.157,2.969l1.678,1.643c0.114,0.111,2.977-1.195,2.977-1.195l1.321,0.535c0,0,1.166,2.898,1.327,2.898h2.369c0.164,0,1.244-2.906,1.244-2.906l1.322-0.535c0,0,2.916,1.242,3.029,1.133l1.678-1.641c0.117-0.115-1.22-2.916-1.22-2.916l0.544-1.293c0,0,2.963-1.143,2.963-1.299v-2.32C21.59,9.425,18.622,8.371,18.622,8.371z M14.256,10.794c0,1.867-1.553,3.387-3.461,3.387c-1.906,0-3.461-1.52-3.461-3.387s1.555-3.385,3.461-3.385C12.704,7.41,14.256,8.927,14.256,10.794z"/><g>',
 	square: '<g><path d="M0,0v533.333h533.333V0H0z M500,500H33.333V33.333H500V500z"/></g>',
-	stopmic: '<g><path d="m65.896,35.197c-3.972,-0.688 -7.732,-2.514 -10.727,-5.420c-2.991,-2.909 -4.867,-6.562 -5.573,-10.423c4.021,-2.448 9.851,-1.581 13.890,2.342c4.035,3.923 4.927,9.591 2.410,13.502zm-2.775,2.698c-3.814,-1.036 -7.391,-2.959 -10.327,-5.809c-2.932,-2.853 -4.911,-6.329 -5.972,-10.036c-2.516,3.910 -1.623,9.575 2.409,13.499c4.038,3.922 9.864,4.790 13.889,2.346zm-15.973,17.378c-5.017,0 -8.604,3.047 -11.770,5.735c-3.497,2.971 -6.528,5.548 -10.988,4.212c-0.882,-0.631 -0.908,-1.147 -0.918,-1.323c-0.062,-1.173 1.400,-2.748 2.119,-3.329c0.088,-0.070 0.139,-0.165 0.208,-0.251c1.177,0.398 2.530,0.168 3.474,-0.746l22.846,-18.279c-1.889,-0.779 -3.690,-1.908 -5.259,-3.435c-1.572,-1.527 -2.729,-3.279 -3.530,-5.112l-18.804,22.207c-0.836,0.813 -1.079,1.938 -0.851,2.983c-0.070,0.041 -0.149,0.060 -0.215,0.112c-0.359,0.286 -3.498,2.882 -3.342,6.003c0.055,1.097 0.548,2.681 2.586,4.008l0.402,0.190c1.307,0.424 2.526,0.609 3.671,0.609c4.468,0 7.801,-2.831 10.814,-5.391c2.983,-2.535 5.803,-4.929 9.559,-4.929c8.658,0 15.359,9.017 15.428,9.106c0.534,0.743 1.588,0.908 2.339,0.386c0.757,-0.520 0.934,-1.537 0.400,-2.273c-0.311,-0.427 -7.761,-10.484 -18.168,-10.484z"/><path d="m1.916,45.163l0,0c0,-23.403 19.083,-42.374 42.624,-42.374l0,0c11.304,0 22.146,4.464 30.140,12.411c7.993,7.946 12.484,18.725 12.484,29.963l0,0c0,23.403 -19.083,42.374 -42.624,42.374l0,0c-23.541,0 -42.624,-18.971 -42.624,-42.374l0,0zm68.829,18.956l0,0c9.384,-12.821 7.989,-30.525 -3.288,-41.737c-11.278,-11.212 -29.086,-12.599 -41.983,-3.269l45.272,45.007l0,0zm-52.409,-37.912c-9.384,12.821 -7.989,30.525 3.288,41.737c11.278,11.212 29.086,12.599 41.983,3.269l-45.272,-45.006l0,0z"/></g>',
 	stopscn:'<g><path d="m2.715,204.184l0,0c0,-111.284 89.542,-201.499 199.999,-201.499l0,0c53.044,0 103.915,21.229 141.421,59.018c37.508,37.788 58.579,89.040 58.579,142.481l0,0c0,111.285 -89.542,201.500 -200.000,201.500l0,0c-110.456,0 -199.999,-90.214 -199.999,-201.500l0,0zm322.954,90.141l0,0c44.033,-60.969 37.488,-145.153 -15.431,-198.469c-52.919,-53.316 -136.477,-59.910 -196.990,-15.546l212.422,214.016l0,0zm-245.907,-180.280c-44.034,60.968 -37.488,145.153 15.430,198.468c52.919,53.316 136.476,59.911 196.990,15.547l-212.421,-214.015l0,0z"/><path d="m228.101,288.368c0,-0.839 -0.685,-1.526 -1.524,-1.526l-32.514,0c-0.838,0 -1.523,0.686 -1.523,1.526l0,5.127c0,0.839 -0.685,1.526 -1.523,1.526l-23.238,0c-0.838,0 -1.523,0.686 -1.523,1.526l0,6.553c0,0.840 0.685,1.526 1.523,1.526l85.086,0c0.839,0 1.524,-0.685 1.524,-1.526l0,-6.553c0,-0.839 -0.685,-1.526 -1.524,-1.526l-23.236,0c-0.839,0 -1.524,-0.686 -1.524,-1.526l-0.000,-5.127l0,0z"/><path d="m307.388,119.010l-194.138,0c-6.754,0 -12.249,5.505 -12.249,12.271l0,135.151c0,6.766 5.495,12.271 12.249,12.271l194.139,0c6.754,0 12.249,-5.505 12.249,-12.271l0,-135.150c0,-6.767 -5.495,-12.272 -12.250,-12.272zm-194.138,9.288l194.139,0c1.614,0 2.979,1.366 2.979,2.983l0,119.815l-200.097,0l0,-119.815c0,-1.617 1.364,-2.983 2.979,-2.983zm91.550,134.281c0,-3.053 2.471,-5.529 5.518,-5.529c3.048,0 5.520,2.475 5.520,5.529s-2.472,5.529 -5.520,5.529c-3.047,-0.000 -5.518,-2.476 -5.518,-5.529z"/></g>',
-	stopvchat:'<g><path d="m353.300,129l-197.600,0c-13.584,0 -24.699,11.924 -24.699,26.5l0,238.5l49.400,-53l172.900,0c13.584,0 24.699,-11.925 24.699,-26.5l0,-159c0,-14.575 -11.115,-26.5 -24.699,-26.5zm-24.700,159l-49.399,-42.400l0,42.400l-98.800,0l0,-106l98.800,0l0,42.399l49.399,-42.399l0,106z"/><path d="m2.322,254.847l0,0c0,-139.451 113.047,-252.499 252.499,-252.499l0,0c66.967,0 131.192,26.601 178.544,73.955c47.354,47.353 73.955,111.578 73.955,178.544l0,0c0,139.452 -113.047,252.500 -252.499,252.500l0,0c-139.452,0 -252.499,-113.047 -252.499,-252.500l0,0zm407.730,112.955l0,0c55.591,-76.401 47.328,-181.892 -19.482,-248.702c-66.812,-66.811 -172.303,-75.074 -248.702,-19.481l268.185,268.184l0,0zm-310.460,-225.909c-55.591,76.399 -47.327,181.891 19.482,248.700c66.811,66.812 172.302,75.074 248.700,19.483l-268.183,-268.184l0,0z"/></g>',
 	textinput: '<g><polygon points="21,4 1,4 1,8 9,8 9,26 13,26 13,8 21,8"/><polygon points="27,2 27,0 21,0 21,2 23,2 23,26 21,26 21,28 27,28 27,26 25,26 25,2"/></g>',
 	triangle: '<g><path d="M251.093,37.38c-2.235-3.859-6.357-6.235-10.816-6.235s-8.582,2.376-10.816,6.235L1.684,430.645c-2.24,3.867-2.245,8.636-0.013,12.507s6.361,6.257,10.83,6.257h455.553c4.469,0,8.598-2.386,10.83-6.257c2.231-3.871,2.227-8.641-0.014-12.507L251.093,37.38z M34.186,424.409L240.276,68.585l206.091,355.824H34.186L34.186,424.409z"/></g>',
 	undo: '<g><path d="M26.105,21.891c-0.229,0-0.439-0.131-0.529-0.346l0,0c-0.066-0.156-1.716-3.857-7.885-4.59c-1.285-0.156-2.824-0.236-4.693-0.25v4.613c0,0.213-0.115,0.406-0.304,0.508c-0.188,0.098-0.413,0.084-0.588-0.033L0.254,13.815C0.094,13.708,0,13.528,0,13.339c0-0.191,0.094-0.365,0.254-0.477l11.857-7.979c0.175-0.121,0.398-0.129,0.588-0.029c0.19,0.102,0.303,0.295,0.303,0.502v4.293c2.578,0.336,13.674,2.33,13.674,11.674c0,0.271-0.191,0.508-0.459,0.562C26.18,21.891,26.141,21.891,26.105,21.891z"/></g>',
 	user: '<g id="contact"><path d="M 98.404813,84.45 C 111.92281,75.353 121.23881,57.42 121.23881,41.268 121.23781,18.48 102.76381,0 79.975813,0 c -22.789,0 -41.273,18.474 -41.273,41.269 0,16.152 9.31,34.084 22.834,43.182 -32.33,8.202 -56.2849997,36.261 -56.2849997,57.062 0,12.288 37.3539997,18.426 74.7109997,18.426 l -20.925,-20.922 17.622,-42.601 -0.183,0 -6.844,-7.854 c 3.315,1.193 6.765,1.906 10.343,1.906 3.574,0 7.018,-0.713 10.317,-1.895 l -6.838,7.837 -0.173,0 17.617997,42.6 -20.924997,20.917 c 16.151,0 74.079437,-5.84767 74.708997,-18.77927 C 154.96489,112.30443 129.79657,95.195415 98.404813,84.45 Z"/></g>',
-	vchat: '<g><path d="M459,0H51C22.95,0,0,22.95,0,51v459l102-102h357c28.05,0,51-22.95,51-51V51C510,22.95,487.05,0,459,0z M408,306l-102-81.6 V306H102V102h204v81.6L408,102V306z"/></g>',
+	vchat: '<g><polygon points="12,6.287 12,9.714 16,12 16,4"/><path d="M10,4H1C0.447,4,0,4.447,0,5v6c0,0.553,0.447,1,1,1h9c0.553,0,1-0.447,1-1v-1V9.143V6.857V6V5 C11,4.448,10.553,4,10,4z"/></g>',
 	zoom: '<g><path d="M352.464,302.966l-90.374-90.373c-6.689-6.69-15.414-10.097-24.182-10.238c33.904-50.513,28.561-119.733-16.045-164.339c-50.688-50.687-133.161-50.687-183.848,0c-50.688,50.687-50.688,133.161,0,183.848c44.606,44.606,113.826,49.95,164.339,16.045c0.142,8.767,3.548,17.492,10.238,24.182l90.373,90.374c13.669,13.668,35.829,13.668,49.498,0C366.132,338.795,366.132,316.634,352.464,302.966z M193.579,193.579c-35.091,35.091-92.188,35.091-127.279,0c-35.091-35.091-35.091-92.188,0-127.279c35.091-35.091,92.188-35.091,127.279,0C228.67,101.39,228.67,158.488,193.579,193.579z"/></g>',
 	zoomin: '<g><path d="M136.081,83.753h-22.326V61.427c0-8.284-6.716-15-15-15s-15,6.716-15,15v22.326H61.429c-8.284,0-15,6.716-15,15s6.716,15,15,15h22.326v22.326c0,8.284,6.716,15,15,15s15-6.716,15-15v-22.326h22.326c8.284,0,15-6.716,15-15S144.365,83.753,136.081,83.753z"/><path d="M267.306,230.535l-82.772-82.772c8.465-14.758,12.976-31.536,12.976-49.009C197.508,44.175,153.343,0,98.755,0C44.177,0,0.002,44.167,0,98.754c0,75.801,82.21,123.374,147.765,85.778l82.772,82.773c10.153,10.153,26.614,10.153,36.768,0C277.459,257.151,277.459,240.688,267.306,230.535z M30,98.755C30,60.756,60.751,30,98.755,30c37.997,0,68.755,30.749,68.755,68.754c0,18.365-7.151,35.631-20.138,48.616C103.897,190.846,30,159.43,30,98.755z"/></g>',
 	zoomout: '<g><path d="M136.081,83.753H61.429c-8.284,0-15,6.716-15,15c0,8.284,6.716,15,15,15h74.652c8.284,0,15-6.716,15-15C151.081,90.469,144.365,83.753,136.081,83.753z"/><path d="M267.306,230.535l-82.771-82.771c8.465-14.76,12.976-31.537,12.976-49.01C197.508,44.175,153.343,0,98.755,0C44.177,0,0.002,44.166,0,98.754c0,54.58,44.167,98.755,98.755,98.755c17.473,0,34.25-4.512,49.01-12.976l82.772,82.772c10.153,10.153,26.614,10.153,36.768,0C277.459,257.151,277.459,240.689,267.306,230.535z M30,98.755C30,60.756,60.751,30,98.755,30c37.997,0,68.755,30.75,68.755,68.754c0,37.998-30.751,68.755-68.755,68.755C60.757,167.509,30,136.759,30,98.755z"/></g>'
@@ -3197,7 +3473,7 @@ var svgicon = {
 if (typeof module !== 'undefined') {
 	module.exports = svgicon;
 }
-},{}],12:[function(require,module,exports){
+},{}],13:[function(require,module,exports){
 var Gatherhub = require('./gatherhub');
 var svgicon = require('./svgicons');
 var RtcCom = require('../rtc/telecom');
@@ -3236,8 +3512,9 @@ $(function(){
 	
 	var btnUser = addBtnToMenu({tip: 'Peer List', icon: svgicon.user, iconcolor: '#448', w: 40, h: 40, borderwidth: 2, bordercolor: '#448', borderradius: 1, bgcolor: '#FFF'}, '#mlist');
 	var btnMsg = addBtnToMenu({tip: 'Text Chatroom', icon: svgicon.chat, iconcolor: '#448', w: 40, h: 40, resize: .7, borderwidth: 2, bordercolor: '#448', borderradius: 1, bgcolor: '#FFF'}, '#msg');
-
+	var btnCast = addBtnToMenu({tip: 'Speaker Control Panel', icon: svgicon.mic, iconcolor: '#448', w: 40, h: 40, borderwidth: 2, bordercolor: '#448', borderradius: 1, bgcolor: '#FFF'}, '');
 	var btnVP = addBtnToMenu({tip: 'Show/Hide View-window', icon: svgicon.picture, iconcolor: '#448', w: 40, h: 40, borderwidth: 2, bordercolor: '#448', borderradius: 1, bgcolor: '#FFF'}, '');
+	btnCast.onclick = function(){toggleMedArea();}
 	btnVP.onclick = function(){vp.pad.toggle();sp.attachvp(vp);};
 		
 	var sp = msp = new Gatherhub.SketchPad();
@@ -3440,6 +3717,8 @@ $(function(){
 		var ln,m;
 		if(s.getVideoTracks().length>0){
 		    ln = '<video id="localMed"  width="292" height="220" autoplay muted></video>';
+			var h = parseInt($('#mediaArea').css('height'))+220;
+			$('#mediaArea').css({height:h});
 		}else{
 		    ln = "<audio id='localMed' autoplay muted></audio>";
 		}
@@ -3450,6 +3729,11 @@ $(function(){
 	};
 
 	function rmMyAv(){
+		var hs = parseInt($('#localMed').css('height'));
+		if(hs>0){
+			h = parseInt($('#mediaArea').css('height')) - hs;
+			$('#mediaArea').css({height:h});
+		}
 		$('#localMed').remove();
 	}
 
@@ -3457,6 +3741,8 @@ $(function(){
 		var ln,m;
 		if(s.getVideoTracks().length>0){
 		    ln = '<video id="remoteMed" width="292" height="220" autoplay></video>';
+			var h = parseInt($('#mediaArea').css('height'))+220;
+			$('#mediaArea').css({height:h});
 		}else{
 		    ln = "<audio id='remoteMed' autoplay></audio>";
 		}
@@ -3464,10 +3750,16 @@ $(function(){
 		$('#media').append(ln);
 		m = document.querySelector('#remoteMed');
 		attachMediaStream(m,s);
+		toggleMedArea('show');
 	};
 
 	rtc.onFrAvRm = function(){
 		console.log('remote stream deleted');
+		var hs = parseInt($('#remoteMed').css('height'));
+		if(hs>0){
+			h = parseInt($('#mediaArea').css('height')) - hs;
+			$('#mediaArea').css({height:h});
+		}
 		$('#remoteMed').remove();
 	};
 
@@ -3511,7 +3803,6 @@ $(function(){
 		$('#btnVchat').hide();
 		$('#btnScn').hide();
 		$('#btnMute').hide();
-		$('#btnMuteV').hide();
 		$('#btnMuteS').hide();
 		$('#localMed').remove();
 		$('#remoteMed').remove();
@@ -3564,18 +3855,19 @@ $(function(){
 	};
 
 
-	function addBtnToList(icon,id,func){
+	function addBtnToList(icon,id,cfg,func){
 		var config = {iconcolor: '#FFF', w: 40, h: 40, borderwidth: 2, bordercolor: '#FFF', borderradius: 1, bgcolor: sp.repcolor};
+		if(cfg){for(var i in cfg){config[i]=cfg[i]};};
 		config.icon = icon;
 		var btn = new Gatherhub.SvgButton(config);
 		btn.pad.css('padding', '5px');
 		btn.pad.attr('id', id);
 		if (func) btn.onclick = func;
-		btn.appendto('#bm');
+		btn.appendto('#mbtns');
 		$('#'+id).hide();
 		return btn;
 	}
-	var btnSpk = addBtnToList(svgicon.mic, 'btnSpk',function(){
+	var btnSpk = addBtnToList(svgicon.mic, 'btnSpk',{},function(){
 		if(rtc.startAVCast({oneway:true,video:false},function(){
 			console.log('start talking failed');
 			$('#btnMute').hide();
@@ -3587,7 +3879,7 @@ $(function(){
 			$('#btnMute').show();
 		}
 	});
-	var btnMute = addBtnToList(svgicon.stopmic,'btnMute',function(){
+	var btnMute = addBtnToList(svgicon.hangup,'btnMute',{bgcolor:'red'},function(){
 		$('#btnMute').hide();
 		$('#btnSpk').show();
 		$('#btnVchat').show();
@@ -3595,27 +3887,20 @@ $(function(){
 		rmMyAv();
 	});
 
-	var btnVchat = addBtnToList(svgicon.vchat,'btnVchat',function(){
+	var btnVchat = addBtnToList(svgicon.vchat,'btnVchat',{},function(){
 		if(rtc.startAVCast({oneway:true,video:true},function(){
 			console.log('start video failed');
-			$('#btnMuteV').hide();
+			$('#btnMute').hide();
 			$('#btnSpk').show();
 			$('#btnVchat').show();
 		})){
 			$('#btnSpk').hide();
 			$('#btnVchat').hide();
-			$('#btnMuteV').show();
+			$('#btnMute').show();
 		}
 	});
-	var btnMuteV = addBtnToList(svgicon.stopvchat,'btnMuteV',function(){
-		$('#btnMuteV').hide();
-		$('#btnSpk').show();
-		$('#btnVchat').show();
-		rtc.stopAVCast();
-		rmMyAv();
-	});
 
-	var btnScn = addBtnToList(svgicon.scncast,'btnScn',function(){
+	var btnScn = addBtnToList(svgicon.scncast,'btnScn',{},function(){
 		if(rtc.startscnCast(function(err){
 			console.log('start scn share failed');
 			$('#btnMuteS').hide();
@@ -3626,14 +3911,14 @@ $(function(){
 			$('#btnMuteS').show();
 		}
 	});
-	var btnMuteS = addBtnToList(svgicon.stopscn,'btnMuteS',function(){
+	var btnMuteS = addBtnToList(svgicon.stopscn,'btnMuteS',{bgcolor:'red'},function(){
 			$('#btnMuteS').hide();
 			$('#btnScn').show();
 			rtc.stopscnCast();
 			rmMyScn();
 	});
 
-	$('#bm').children().css({float: 'left', clear: ''});
+	$('#mbtns').children().css({float: 'left', clear: ''});
 	$('#btnInfo').click(function(){
 		$('#showrtc').modal('toggle');
 	});
@@ -3650,6 +3935,22 @@ $(function(){
 				// to do later...
 			}
 		}		
+	}
+
+	function toggleMedArea(act){
+		var area = '#mediaArea';
+		if(act == undefined){
+			if($(area).position().left == 55){
+				$(area).animate({left:-300});
+				console.log('hide');
+			}else{
+				$(area).animate({left:55});
+				console.log('show');
+			}
+		}else{
+			if(act == 'show')$(area).animate({left:55});
+			if(act == 'hide')$(area).animate({left:-300});
+		}
 	}
 
 	$('#btnclr').click(function(){cfmClear(1);});
@@ -3932,4 +4233,4 @@ function cfmClear(ok) {
 }
 
 
-},{"../rtc/telecom":8,"./gatherhub":10,"./svgicons":11}]},{},[12]);
+},{"../rtc/telecom":9,"./gatherhub":11,"./svgicons":12}]},{},[13]);

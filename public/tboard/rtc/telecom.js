@@ -1,7 +1,7 @@
 /* 
 * @Author: Phenix
 * @Date:   2015-12-21 10:01:29
-* @Last Modified time: 2015-12-27 09:50:15
+* @Last Modified time: 2015-12-28 17:09:35
 */
 
 'use strict';
@@ -11,6 +11,7 @@ var WebRtc = require('./webrtc');
 var CastCtrl = require('./castctrl');
 var rtc = require('webrtcsupport');
 var adapter = require('webrtc-adapter-test');
+var CallCtrl = require('./callctrl');
 
 var teleCom;
 (function(){
@@ -24,24 +25,25 @@ var teleCom;
         w = this.webRtc = new WebRtc(config);
         this.myPid = 'default';
         this.streams = {default: w};
-        this.ctrls = []; //media controllers
+        this.castCtrls = []; //media controllers
         this.users = []; // array to store current peerids
         this.ready =  false;
-        this.actMedia = {status:'idle',idx:0};
-        this.actScn = {status:'idle',idx:0};
+        this.actMedia = {status:'idle'};
+        this.actScn = {status:'idle'};
         this.midx = 0;
         this.media =  new localMedia(); 
+
 
         function updateCastList(){
             var list = [];
             var iflag = true;
             var video;
 
-            self.ctrls[0].castList.forEach(function(p){
+            self.castCtrls[0].castList.forEach(function(p){
                 list.push({id:p.id,av:p.type,scn:false});
             });
 
-            self.ctrls[1].castList.forEach(function(p){
+            self.castCtrls[1].castList.forEach(function(p){
                 for(var i=0;i<list.length;i++){
                     if(list[i].id == p.id){
                         list[i].scn = true;
@@ -87,7 +89,7 @@ var teleCom;
             if(self.ready == false){
                 if(_debug)console.log('default rtc chan ready, now init cast controllers');
                 for(var i = 0;i < 2; i++){
-                    var m = self.ctrls[i] = new CastCtrl(i,self.myPeer());
+                    var m = self.castCtrls[i] = new CastCtrl(i,self.myPeer());
                     m.onSend = function(cmd){
                         var data = JSON.stringify(cmd);
                         w.sendData('castCtrl',data);
@@ -99,13 +101,51 @@ var teleCom;
                     m.onAddPr2Talk = addPeer2Talk;
                     w.setDCRcvCb('castCtrl',function(from,data){
                         var cmd = JSON.parse(data);
-                        var ctrl = self.ctrls[cmd.label];
+                        var ctrl = self.castCtrls[cmd.label];
                         if(ctrl)ctrl.hdlMsg(cmd);
                     });
                 }
+                //init call controllers
+                var cc = self.callCtrl = new CallCtrl();
+                cc.onCallIn = function(peer,type){
+                    if(self.actMedia.status != 'idle')return;
+                    self.onCallRing(peer,type);
+                    return true;
+                };
+                cc.onCallInEnd = function(){
+                    self.onCallInEnd();
+                };
+                cc.onCmdSend = function(cmd){
+                    var data = JSON.stringify(cmd);
+                    w.sendData('default',data,cmd.to);
+                };
+
+                cc.onTalkEnd = function(){
+                    self.media.stop(function(s){
+                        if(s){
+                            var wr = self.streams[cc.mid];
+                            var p = cc.dst;
+                            if(wr){
+                                if(wr.type =='calling'){
+                                    wr.stopCall(p,s);
+                                    setTimeout(function(){
+                                        wr.remove(p);
+                                        delete self.streams[cc.mid];
+                                        cc.reset();
+                                    }, 3000);
+                                }else{
+                                    wr.setAnsStrm(s,'del');
+                                }
+                            }
+                            // hide div ....
+                        }
+                    });
+                };
+
                 self.onReady();
+                self.callCtrl.setId(self.myPeer());
                 setTimeout(function(){
-                    for(var i=0;i<2;i++){self.ctrls[i].login();}
+                    for(var i=0;i<2;i++){self.castCtrls[i].login();}
                 }, 400);
             }
             self.ready = true;
@@ -154,7 +194,7 @@ var teleCom;
                     delete m[i];
                 }
             }
-            this.ctrls.forEach(function(p){
+            this.castCtrls.forEach(function(p){
                 p.rmPeer(peer);
             });
             var idx = this.users.indexOf(peer);
@@ -186,18 +226,25 @@ var teleCom;
     }
 
     _proto.hdlMsg = function(peer,data){
-        var msg,mid,self,scn;
+        var msg,mid,self,scn,oneway;
         if(!rtc.support) return;
         self = this;
-        // if(_debug)console.log(peer,' recv msg ',data);
+        var cc = this.callCtrl;
+       // if(_debug)console.log(peer,' recv msg ',data);
         if(this.users.indexOf(peer)<0)this.users.push(peer);
         mid = data.media;
+        if(mid==undefined){
+            // call ctrler msg;
+            if(cc)cc.hdlMsg(data);
+            return;
+        }
         scn = mid.indexOf(peer+'-scn-');
+        oneway = (data.oneway == false)? false: true;
         // console.log('mid is ',mid,' scn is ',scn);
         msg = {from:peer,mid:mid,sdp:data.sdp};
         if(mid!=undefined){
             if(this.streams[mid]==undefined){
-                var config = {mid:mid};
+                var config = {mid:mid,oneway:oneway};
                 if(msg.sdp.type != 'offer'){
                     console.log('could not init webrtc from msg ',msg);
                     return;
@@ -211,6 +258,10 @@ var teleCom;
                     w.onRMedAdd = this.onFrAvAdd;
                     w.onRMedDel = this.onFrAvRm;
                 }
+                if(oneway == false && cc && cc.status == 'active' && cc.strm){
+                    cc.mid = mid;
+                    w.setAnsStrm(cc.strm,'add');
+                }
             }else{
                 if(mid.indexOf(peer)==0 && msg.sdp.type == 'offer'){
                     //second offer, should be bye, destroy the streams[mid] after 3 seconds
@@ -218,6 +269,7 @@ var teleCom;
 
                     setTimeout(function(){
                         if(_debug)console.log('destroy stream ',mid, ' after 3 seconds ');
+                        if(cc.mid == mid)cc.reset();
                         delete self.streams[mid];
                     },3000);
                 }
@@ -244,7 +296,7 @@ var teleCom;
         return (v==undefined)? this.myPid : this.myPid = v;
     };
 
-    function startStream(type,oneway,strm){
+    function startStream(type,oneway,strm,id){
         var mid = this.myPeer()+'-'+type+'-'+(this.midx++);
         var config = {mid:mid,oneway:oneway};
         var w = this.streams[mid] = new WebRtc(config);
@@ -252,16 +304,23 @@ var teleCom;
         if(type == 'scn'){
             w.onRMedAdd = this.onFrScnAdd;
             w.onRMedDel = this.onFrScnRm;
-            this.actScn.mid = mid;
         }else{
             w.onRMedAdd = this.onFrAvAdd;
             w.onRMedDel = this.onFrAvRm;
-            this.actMedia.mid = mid;
         }
-        this.users.forEach(function(p){
-            w.addPeer(p,'calling');
-            w.startCall(p,strm);
-        });
+        if(id){
+            var pc = this.users[id];
+            if(pc){
+                w.addPeer(pc,'calling');
+                w.startCall(pc,strm);
+            }
+        }else{
+            this.users.forEach(function(p){
+                w.addPeer(p,'calling');
+                w.startCall(p,strm);
+            });
+        }
+        return mid;
     }
 
     _proto.startAVCast = function(cfg,errCb){
@@ -270,15 +329,17 @@ var teleCom;
         if(cfg.video) cs = { video: true, audio: true};
         type = (cfg.video)? 'video' : 'audio';
         var am = this.actMedia;
-        if(am.status != 'idle')return;
-        this.ctrls[0].start(function(){
+        var cc = this.callCtrl;
+        if(am.status != 'idle'|| cc.status != 'idle')return;
+        this.castCtrls[0].start(function(){
             am.status = 'trying';
             self.media.start(cs,function(err,s){
                 if(!err){
                     am.strm = s;
                     self.onMyAvAdd(s);
-                    startStream.call(self,type,true,s);
+                    am.mid = startStream.call(self,type,true,s);
                     am.status = 'active';
+
                 }else{
                     am.status = 'idle';
                     if(errCb)errCb(err);
@@ -290,13 +351,17 @@ var teleCom;
 
     _proto.stopAVCast = function(){
         var self = this;
-        var c = this.ctrls[0];
+        var c = this.castCtrls[0];
         var am = this.actMedia;
         var w = this.streams[am.mid];
         if(am.status == 'idle')return;
         c.stop(function(){
             self.media.stop(function(s){
-                if(s)w.stopCall(s);
+                if(s){
+                    self.users.forEach(function(p){
+                        w.stopCall(p,s);
+                    });
+                }
                 am.status = 'close';
                 delete am.strm;
                 setTimeout(function(){
@@ -311,13 +376,13 @@ var teleCom;
         var as = this.actScn;
         var type = 'scn';
         if(as.status != 'idle')return;
-        this.ctrls[1].start(function(){
+        this.castCtrls[1].start(function(){
             as.status = 'trying';
             self.media.getScn(function(err,s){
                 if(!err){
                     as.strm = s;
                     self.onMyScnAdd(s);
-                    startStream.call(self,type,true,s);
+                    as.mid = startStream.call(self,type,true,s);
                     as.status = 'active';
                 }else{
                     as.status = 'idle';
@@ -331,13 +396,17 @@ var teleCom;
     _proto.stopscnCast = function(){
         var self = this;
         var as = this.actScn;
-        var c = this.ctrls[1];
+        var c = this.castCtrls[1];
         var w = this.streams[as.mid];
         // console.log('w is ',w, ' as.mid ',as.mid);
         if(as.status == 'idle')return;
         c.stop(function(){
             self.media.rlsScn(function(s){
-                if(s)w.stopCall(s);
+                if(s){
+                    self.users.forEach(function(p){
+                        w.stopCall(p,s);
+                    });
+                }
                 as.status = 'close';
                 delete as.strm;
                 setTimeout(function(){
@@ -346,6 +415,71 @@ var teleCom;
 
             });
         });
+    };
+
+    _proto.startPrTalk = function(peer,type,errCb){
+        var self,cs;
+        self = this;
+        var cc = this.callCtrl;
+        var am = this.actMedia;
+        if(cc.status != 'idle' || am.status != 'idle')return;
+        cc.start(peer,type,function(err,type){
+            if(err){
+                if(_debug)console.log('call start failed : ',err.name);
+                if(errCb)errCb(err);
+            }else{
+                if(type=='video') cs = { video: true, audio: true};
+                self.media.start(cs,function(err,s){
+                    if(err){
+                        if(errCb)errCb(err);
+                        cc.reset();
+                    }else{
+                        self.onMyAvAdd(s);
+                        cc.mid = startStream.call(self,type,false,s,peer);
+                    }
+                });
+            }
+        });
+    };
+
+    _proto.stopPrTalk = function(){
+        var cc = this.callCtrl;
+        var w = this.streams[cc.mid];
+        var p = cc.dst;
+        if(cc.status == 'idle')return;
+        cc.stop(function(){
+            self.media.stop(function(s){
+                if(w.type == 'calling'){
+                    w.stopCall(p,s);
+                    setTimeout(function(){
+                        w.remove(p);
+                        delete self.streams[cc.mid];
+                        cc.reset();
+                    }, 3000);
+                }else{
+                    w.setAnsStrm(s,'del');
+                }
+            });
+        });
+    }
+
+    _proto.answerPrTalk = function(type){
+        var cc = this.callCtrl;
+        if(type=='deny'){
+            cc.answer(type);
+        }else{
+            if(type=='video')cs = { video: true, audio: true};
+            this.media.start(cs,function(err,s){
+                if(err){
+                    cc.answer('deny');
+                }else{
+                    self.onMyAvAdd(s);
+                    cc.answer(type);
+                    cc.strm = s;
+                }
+            });
+        }
+
     };
 
     _proto.getRtcCap = function(infCb){
@@ -389,6 +523,8 @@ var teleCom;
     _proto.onFrScnAdd = function(){};
     _proto.onFrScnRm = function(){};
     _proto.onDisconnect = function(){};
+    _proto.onCallIn = function(){};
+    _proto.onCallInEnd = function(){};
 
 })();
 

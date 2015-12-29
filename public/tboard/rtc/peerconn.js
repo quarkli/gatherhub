@@ -67,7 +67,6 @@ var peerConn;
           if(_debug)console.log('onIce: ', event);
           if (event.candidate) {
             self.onCmdSend('msg',{
-                    room: self.config.room,
                     to: self.config.id,
                     mid: self.config.mid,
                     sdp: {
@@ -129,6 +128,7 @@ var peerConn;
             self.onCmdSend('msg',{
                 to:self.config.id, 
                 mid:self.config.mid,
+                oneway:self.config.oneway,
                 sdp:desc
             });
         }, function(err){

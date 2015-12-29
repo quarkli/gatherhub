@@ -36,8 +36,9 @@ $(function(){
 	
 	var btnUser = addBtnToMenu({tip: 'Peer List', icon: svgicon.user, iconcolor: '#448', w: 40, h: 40, borderwidth: 2, bordercolor: '#448', borderradius: 1, bgcolor: '#FFF'}, '#mlist');
 	var btnMsg = addBtnToMenu({tip: 'Text Chatroom', icon: svgicon.chat, iconcolor: '#448', w: 40, h: 40, resize: .7, borderwidth: 2, bordercolor: '#448', borderradius: 1, bgcolor: '#FFF'}, '#msg');
-
+	var btnCast = addBtnToMenu({tip: 'Speaker Control Panel', icon: svgicon.mic, iconcolor: '#448', w: 40, h: 40, borderwidth: 2, bordercolor: '#448', borderradius: 1, bgcolor: '#FFF'}, '');
 	var btnVP = addBtnToMenu({tip: 'Show/Hide View-window', icon: svgicon.picture, iconcolor: '#448', w: 40, h: 40, borderwidth: 2, bordercolor: '#448', borderradius: 1, bgcolor: '#FFF'}, '');
+	btnCast.onclick = function(){toggleMedArea();}
 	btnVP.onclick = function(){vp.pad.toggle();sp.attachvp(vp);};
 		
 	var sp = msp = new Gatherhub.SketchPad();
@@ -240,6 +241,8 @@ $(function(){
 		var ln,m;
 		if(s.getVideoTracks().length>0){
 		    ln = '<video id="localMed"  width="292" height="220" autoplay muted></video>';
+			var h = parseInt($('#mediaArea').css('height'))+220;
+			$('#mediaArea').css({height:h});
 		}else{
 		    ln = "<audio id='localMed' autoplay muted></audio>";
 		}
@@ -250,6 +253,11 @@ $(function(){
 	};
 
 	function rmMyAv(){
+		var hs = parseInt($('#localMed').css('height'));
+		if(hs>0){
+			h = parseInt($('#mediaArea').css('height')) - hs;
+			$('#mediaArea').css({height:h});
+		}
 		$('#localMed').remove();
 	}
 
@@ -257,6 +265,8 @@ $(function(){
 		var ln,m;
 		if(s.getVideoTracks().length>0){
 		    ln = '<video id="remoteMed" width="292" height="220" autoplay></video>';
+			var h = parseInt($('#mediaArea').css('height'))+220;
+			$('#mediaArea').css({height:h});
 		}else{
 		    ln = "<audio id='remoteMed' autoplay></audio>";
 		}
@@ -264,10 +274,16 @@ $(function(){
 		$('#media').append(ln);
 		m = document.querySelector('#remoteMed');
 		attachMediaStream(m,s);
+		toggleMedArea('show');
 	};
 
 	rtc.onFrAvRm = function(){
 		console.log('remote stream deleted');
+		var hs = parseInt($('#remoteMed').css('height'));
+		if(hs>0){
+			h = parseInt($('#mediaArea').css('height')) - hs;
+			$('#mediaArea').css({height:h});
+		}
 		$('#remoteMed').remove();
 	};
 
@@ -311,7 +327,6 @@ $(function(){
 		$('#btnVchat').hide();
 		$('#btnScn').hide();
 		$('#btnMute').hide();
-		$('#btnMuteV').hide();
 		$('#btnMuteS').hide();
 		$('#localMed').remove();
 		$('#remoteMed').remove();
@@ -364,18 +379,19 @@ $(function(){
 	};
 
 
-	function addBtnToList(icon,id,func){
+	function addBtnToList(icon,id,cfg,func){
 		var config = {iconcolor: '#FFF', w: 40, h: 40, borderwidth: 2, bordercolor: '#FFF', borderradius: 1, bgcolor: sp.repcolor};
+		if(cfg){for(var i in cfg){config[i]=cfg[i]};};
 		config.icon = icon;
 		var btn = new Gatherhub.SvgButton(config);
 		btn.pad.css('padding', '5px');
 		btn.pad.attr('id', id);
 		if (func) btn.onclick = func;
-		btn.appendto('#bm');
+		btn.appendto('#mbtns');
 		$('#'+id).hide();
 		return btn;
 	}
-	var btnSpk = addBtnToList(svgicon.mic, 'btnSpk',function(){
+	var btnSpk = addBtnToList(svgicon.mic, 'btnSpk',{},function(){
 		if(rtc.startAVCast({oneway:true,video:false},function(){
 			console.log('start talking failed');
 			$('#btnMute').hide();
@@ -387,7 +403,7 @@ $(function(){
 			$('#btnMute').show();
 		}
 	});
-	var btnMute = addBtnToList(svgicon.stopmic,'btnMute',function(){
+	var btnMute = addBtnToList(svgicon.hangup,'btnMute',{bgcolor:'red'},function(){
 		$('#btnMute').hide();
 		$('#btnSpk').show();
 		$('#btnVchat').show();
@@ -395,27 +411,20 @@ $(function(){
 		rmMyAv();
 	});
 
-	var btnVchat = addBtnToList(svgicon.vchat,'btnVchat',function(){
+	var btnVchat = addBtnToList(svgicon.vchat,'btnVchat',{},function(){
 		if(rtc.startAVCast({oneway:true,video:true},function(){
 			console.log('start video failed');
-			$('#btnMuteV').hide();
+			$('#btnMute').hide();
 			$('#btnSpk').show();
 			$('#btnVchat').show();
 		})){
 			$('#btnSpk').hide();
 			$('#btnVchat').hide();
-			$('#btnMuteV').show();
+			$('#btnMute').show();
 		}
 	});
-	var btnMuteV = addBtnToList(svgicon.stopvchat,'btnMuteV',function(){
-		$('#btnMuteV').hide();
-		$('#btnSpk').show();
-		$('#btnVchat').show();
-		rtc.stopAVCast();
-		rmMyAv();
-	});
 
-	var btnScn = addBtnToList(svgicon.scncast,'btnScn',function(){
+	var btnScn = addBtnToList(svgicon.scncast,'btnScn',{},function(){
 		if(rtc.startscnCast(function(err){
 			console.log('start scn share failed');
 			$('#btnMuteS').hide();
@@ -426,14 +435,14 @@ $(function(){
 			$('#btnMuteS').show();
 		}
 	});
-	var btnMuteS = addBtnToList(svgicon.stopscn,'btnMuteS',function(){
+	var btnMuteS = addBtnToList(svgicon.stopscn,'btnMuteS',{bgcolor:'red'},function(){
 			$('#btnMuteS').hide();
 			$('#btnScn').show();
 			rtc.stopscnCast();
 			rmMyScn();
 	});
 
-	$('#bm').children().css({float: 'left', clear: ''});
+	$('#mbtns').children().css({float: 'left', clear: ''});
 	$('#btnInfo').click(function(){
 		$('#showrtc').modal('toggle');
 	});
@@ -450,6 +459,22 @@ $(function(){
 				// to do later...
 			}
 		}		
+	}
+
+	function toggleMedArea(act){
+		var area = '#mediaArea';
+		if(act == undefined){
+			if($(area).position().left == 55){
+				$(area).animate({left:-300});
+				console.log('hide');
+			}else{
+				$(area).animate({left:55});
+				console.log('show');
+			}
+		}else{
+			if(act == 'show')$(area).animate({left:55});
+			if(act == 'hide')$(area).animate({left:-300});
+		}
 	}
 
 	$('#btnclr').click(function(){cfmClear(1);});
