@@ -22,26 +22,6 @@ if(isset($_POST['email']) && isset($_POST['sendMail'])) {
 	mail($to, $subject, $message, $headers);
 }
 ?>
-<!--
-teleboard.php is distributed under the permissive MIT License:
-
-Copyright (c) 2015, Quark Li, quarkli@gmail.com
-All rights reserved.
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. 
-
-Author: quarkli@gmail.com
--->
 <!DOCTYPE html>
 <html>
 <head>
@@ -50,17 +30,6 @@ Author: quarkli@gmail.com
 	<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1">
 	<link rel="icon" href="images/ghub-logo-c.png">
     <link rel="stylesheet" href="css/bootstrap.min.css">
-    <script src="scripts/jquery.min.js"></script>
-    <script src="js/bootstrap.min.js"></script>
-    <script src="scripts/jquery.nicescroll.min.js"></script>
-    <script src="scripts/Autolinker.min.js"></script>
-    <script src="scripts/svgicons.js"></script>
-    <script src="scripts/gatherhub.js"></script>
-    <script src="scripts/teleboard.js"></script>
-	<script>
-	var hub = '<?= $hub ?>';
-	var peer = '<?= $peer ?>';
-	</script>
 	<style>
 	body {
 		width: 100%;
@@ -132,7 +101,6 @@ Author: quarkli@gmail.com
 	}
 	#msg {
 		font-size: 16px;
-		background-color: #EED;
 		overflow: hidden;
 		z-index: 90;
 	}
@@ -148,7 +116,6 @@ Author: quarkli@gmail.com
 		max-width: 290px;
 		position: relative;
 		margin: 5px; 
-		font-weight: bold;
 		border-style: solid;
 		-moz-border-radius: 10px;
 		-webkit-border-radius: 10px;
@@ -160,7 +127,7 @@ Author: quarkli@gmail.com
 		left: 5; 
 		width: 0; 
 		height: 0; 
-		border-bottom: 13px solid black; 
+		border-bottom: 13px solid #AFA; 
 		border-right: 13px solid transparent; 
 		border-left: 0px solid transparent;
 	}
@@ -168,7 +135,6 @@ Author: quarkli@gmail.com
 		max-width: 290px;
 		position: relative;
 		margin: 5px; 
-		font-weight: bold;
 		border-style: solid;
 		-moz-border-radius: 10px;
 		-webkit-border-radius: 10px;
@@ -180,7 +146,7 @@ Author: quarkli@gmail.com
 		right: 0; 
 		width: 0; 
 		height: 0; 
-		border-bottom: 13px solid black; 
+		border-bottom: 13px solid #AAF; 
 		border-right: 0px solid transparent; 
 		border-left: 13px solid transparent;
 	}
@@ -263,5 +229,16 @@ Author: quarkli@gmail.com
 		  </div>
 		</div>
 	</div>
+    <script src="scripts/jquery.min.js"></script>
+    <script src="js/bootstrap.min.js"></script>
+    <script src="scripts/jquery.nicescroll.min.js"></script>
+    <script src="scripts/Autolinker.min.js"></script>
+    <script src="scripts/svgicons.js"></script>
+    <script src="scripts/gatherhub.js"></script>
+    <script src="scripts/teleboard.js"></script>
+	<script>
+	var hub = '<?= $hub ?>';
+	var peer = '<?= $peer ?>';
+	</script>
   </body>
 </html>
