@@ -1,7 +1,7 @@
 /* 
 * @Author: Phenix
 * @Date:   2015-12-28 12:34:55
-* @Last Modified time: 2015-12-28 16:42:08
+* @Last Modified time: 2016-01-02 21:39:40
 */
 
 'use strict';
@@ -27,7 +27,7 @@ var callCtrl;
         this.onStartCb(err);
         this.status = 'idle';
     }
-    _proto.start = function(type,peer,cb){
+    _proto.start = function(peer,type,cb){
         var self = this;
         this.onCmdSend({cmd:'start',from:this.id,to:peer,type:type});
         this.status = 'trying';
@@ -39,7 +39,7 @@ var callCtrl;
     };
 
     _proto.stop = function(cb){
-        this.onCmdSend({cmd:'stop',from:id,to:peer});
+        this.onCmdSend({cmd:'stop',from:this.id,to:this.dst});
         if(this.status == 'active'){
             if(cb)cb();
             this.status = 'close';

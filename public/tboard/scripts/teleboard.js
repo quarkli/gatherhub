@@ -36,9 +36,10 @@ $(function(){
 	
 	var btnUser = addBtnToMenu({tip: 'Peer List', icon: svgicon.user, iconcolor: '#448', w: 40, h: 40, borderwidth: 2, bordercolor: '#448', borderradius: 1, bgcolor: '#FFF'}, '#mlist');
 	var btnMsg = addBtnToMenu({tip: 'Text Chatroom', icon: svgicon.chat, iconcolor: '#448', w: 40, h: 40, resize: .7, borderwidth: 2, bordercolor: '#448', borderradius: 1, bgcolor: '#FFF'}, '#msg');
-	var btnCast = addBtnToMenu({tip: 'Speaker Control Panel', icon: svgicon.mic, iconcolor: '#448', w: 40, h: 40, borderwidth: 2, bordercolor: '#448', borderradius: 1, bgcolor: '#FFF'}, '');
+	var btnScn = addBtnToMenu({tip: 'Start Screen Sharing', icon: svgicon.scncast, iconcolor: '#448', w: 40, h: 40, borderwidth: 2, bordercolor: '#448', borderradius: 1, bgcolor: '#FFF'}, '');
+	var btnStopScn = addBtnToMenu({tip: 'Stop Screen Sharing', icon: svgicon.stopscn, iconcolor: 'red', w: 40, h: 40, borderwidth: 2, bordercolor: '#448', borderradius: 1, bgcolor: '#FFF'}, '');
 	var btnVP = addBtnToMenu({tip: 'Show/Hide View-window', icon: svgicon.picture, iconcolor: '#448', w: 40, h: 40, borderwidth: 2, bordercolor: '#448', borderradius: 1, bgcolor: '#FFF'}, '');
-	btnCast.onclick = function(){toggleMedArea();}
+	btnScn.pad.attr('id','btnScn');btnStopScn.pad.attr('id','btnStopScn');$('#btnStopScn').hide();
 	btnVP.onclick = function(){vp.pad.toggle();sp.attachvp(vp);};
 		
 	var sp = msp = new Gatherhub.SketchPad();
@@ -232,6 +233,7 @@ $(function(){
 	}	
 
 	// implement for webrtc
+	var call = {status:'idle',peer:'',name:'',timer:null}
 
 	function attachMediaStream (element, stream) {
 	  element.srcObject = stream;
@@ -250,6 +252,8 @@ $(function(){
 		$('#media').append(ln);
 		m = document.querySelector('#localMed');
 		attachMediaStream(m,s);
+		call.status = 'active';
+		if($('#callpanel').css('display')=='block')$('#callpanel').modal('toggle');
 	};
 
 	function rmMyAv(){
@@ -274,7 +278,6 @@ $(function(){
 		$('#media').append(ln);
 		m = document.querySelector('#remoteMed');
 		attachMediaStream(m,s);
-		toggleMedArea('show');
 	};
 
 	rtc.onFrAvRm = function(){
@@ -315,22 +318,8 @@ $(function(){
 		$('#pad').css({opacity:'1'});
 	};
 
-	rtc.onReady = function(){
-		console.log('rtc on Ready')
-		$('#btnSpk').show();
-		$('#btnVchat').show();
-		if(rtc.checkExtension()){$('#btnScn').show()};
-	};
-
 	rtc.onDisconnect = function(){
-		$('#btnSpk').hide();
-		$('#btnVchat').hide();
-		$('#btnScn').hide();
-		$('#btnMute').hide();
-		$('#btnMuteS').hide();
-		$('#localMed').remove();
 		$('#remoteMed').remove();
-	    $('#localScn').remove();
     	$('#remoteScn').remove();
 		$('.prstatus').remove();
 	};
@@ -378,74 +367,39 @@ $(function(){
 		});
 	};
 
+	rtc.onCallRing = function(peer,type){
+		if(call.status != 'idle'){rtc.answerPrTalk('deny');return;}
+		call.status = 'ringing';call.peer=peer; call.name= $('#'+peer).attr('uname');
+		showCallPanel({id:call.peer,uname:call.name,type:type});
 
-	function addBtnToList(icon,id,cfg,func){
-		var config = {iconcolor: '#FFF', w: 40, h: 40, borderwidth: 2, bordercolor: '#FFF', borderradius: 1, bgcolor: sp.repcolor};
-		if(cfg){for(var i in cfg){config[i]=cfg[i]};};
-		config.icon = icon;
-		var btn = new Gatherhub.SvgButton(config);
-		btn.pad.css('padding', '5px');
-		btn.pad.attr('id', id);
-		if (func) btn.onclick = func;
-		btn.appendto('#mbtns');
-		$('#'+id).hide();
-		return btn;
-	}
-	var btnSpk = addBtnToList(svgicon.mic, 'btnSpk',{},function(){
-		if(rtc.startAVCast({oneway:true,video:false},function(){
-			console.log('start talking failed');
-			$('#btnMute').hide();
-			$('#btnSpk').show();
-			$('#btnVchat').show();
-		})){
-			$('#btnSpk').hide();
-			$('#btnVchat').hide();
-			$('#btnMute').show();
-		}
-	});
-	var btnMute = addBtnToList(svgicon.hangup,'btnMute',{bgcolor:'red'},function(){
-		$('#btnMute').hide();
-		$('#btnSpk').show();
-		$('#btnVchat').show();
-		rtc.stopAVCast();
+	};
+
+	rtc.onTalkEnd = function(){
 		rmMyAv();
-	});
+		call.status = 'idle';
+	};
 
-	var btnVchat = addBtnToList(svgicon.vchat,'btnVchat',{},function(){
-		if(rtc.startAVCast({oneway:true,video:true},function(){
-			console.log('start video failed');
-			$('#btnMute').hide();
-			$('#btnSpk').show();
-			$('#btnVchat').show();
-		})){
-			$('#btnSpk').hide();
-			$('#btnVchat').hide();
-			$('#btnMute').show();
-		}
-	});
-
-	var btnScn = addBtnToList(svgicon.scncast,'btnScn',{},function(){
+	btnScn.onclick = function(){
 		if(rtc.startscnCast(function(err){
 			console.log('start scn share failed');
-			$('#btnMuteS').hide();
+			$('#btnStopScn').hide();
 			$('#btnScn').show();
 			if(err.name == 'EXTENSION_UNAVAILABLE')alert('Screen sharing needs to install Chrome extension');
 		})){
 			$('#btnScn').hide();
-			$('#btnMuteS').show();
+			$('#btnStopScn').show();
 		}
-	});
-	var btnMuteS = addBtnToList(svgicon.stopscn,'btnMuteS',{bgcolor:'red'},function(){
-			$('#btnMuteS').hide();
+	}
+	btnStopScn.onclick = function(){
+			$('#btnStopScn').hide();
 			$('#btnScn').show();
 			rtc.stopscnCast();
 			rmMyScn();
-	});
+	}
+
 
 	$('#mbtns').children().css({float: 'left', clear: ''});
-	$('#btnInfo').click(function(){
-		$('#showrtc').modal('toggle');
-	});
+	$('#btnInfo').click(function(){$('#showrtc').modal('toggle');});
 	function showRtcInfo(){
 		if(rtc.getRtcCap(function(inf){
 			$('#rtcinfo').html(inf);
@@ -461,21 +415,78 @@ $(function(){
 		}		
 	}
 
-	function toggleMedArea(act){
-		var area = '#mediaArea';
-		if(act == undefined){
-			if($(area).position().left == 55){
-				$(area).animate({left:-300});
-				console.log('hide');
-			}else{
-				$(area).animate({left:55});
-				console.log('show');
-			}
-		}else{
-			if(act == 'show')$(area).animate({left:55});
-			if(act == 'hide')$(area).animate({left:-300});
-		}
+	function addBtnToEl(icon,cfg,el,func){
+		var config = {iconcolor: '#FFF', w: 40, h: 40, borderwidth: 2, bordercolor: '#FFF', borderradius: 1, bgcolor: sp.repcolor};
+		if(cfg){for(var i in cfg){config[i]=cfg[i]};};
+		config.icon = icon;
+		var btn = new Gatherhub.SvgButton(config);
+		btn.pad.css('padding', '5px');
+		if (func) btn.onclick = func;
+		btn.appendto(el);
+		return btn;
 	}
+
+
+
+	function showCallPanel(opts){
+		var btna,btnv,btnc;
+
+		function startcall(otps,type){
+			if(rtc.startPrTalk(otps.id,type,function(err){
+				//start talk failed
+				console.log('start talk failed');
+				$('#callinfo').html('<h4>Call to '+ opts.uname +' failed</h4>');
+				$('#callbtns').empty();
+				btnc = addBtnToEl(svgicon.hangup,{bgcolor:'red'},'#callbtns',function(){
+					$('#callpanel').modal('toggle');
+				});
+				call.timer = setTimeout(function(){$('#callpanel').modal('toggle');}, 3000);
+			})){
+				console.log('start talk success');
+				call.peer = opts.id; call.name = opts.uname; call.status = 'trying';
+				$('#callpanel').modal('toggle');
+				call.timer = setTimeout(function(){showCallPanel({id:call.peer,uname:call.name});}, 100);
+			}
+		}
+
+		$('#callbtns').empty();
+		if(call.timer)clearTimeout(call.timer);
+		$('#callpanel').modal('toggle');
+		switch(call.status){
+			case 'idle':
+			$('#callinfo').html('<h4>Will you place a call to '+ opts.uname +' ?</h4>');
+			btna = addBtnToEl(svgicon.mic,{},'#callbtns',function(){startcall(opts,'audio');});
+			btnv = addBtnToEl(svgicon.vchat,{},'#callbtns',function(){startcall(opts,'video');});
+			break;
+			case 'trying':
+			$('#callinfo').html('<h4>Waiting for the response from '+ call.name +' </h4>');
+			btnc = addBtnToEl(svgicon.hangup,{bgcolor:'red'},'#callbtns',function(){
+					$('#callpanel').modal('toggle');
+					rtc.stopPrTalk();
+					call.status = 'idle';
+				});
+
+			break;
+			case 'active':
+			$('#callinfo').html('<h4>Talking with '+ call.name +' </h4>');
+			btnc = addBtnToEl(svgicon.hangup,{bgcolor:'red'},'#callbtns',function(){
+					$('#callpanel').modal('toggle');
+					rtc.stopPrTalk();
+					rmMyAv();
+					call.status = 'idle';
+				});
+			break;
+			case 'ringing':
+			$('#callinfo').html('<h4>A call is incoming from '+ call.name +', will you accept it ? </h4>');
+			btna = addBtnToEl(svgicon.mic,{},'#callbtns',function(){rtc.answerPrTalk('audio');});
+			if(opts.type=='video')btnv = addBtnToEl(svgicon.vchat,{},'#callbtns',function(){rtc.answerPrTalk('video');});
+			btnc = addBtnToEl(svgicon.hangup,{bgcolor:'red'},'#callbtns',function(){rtc.answerPrTalk('deny');});
+			break;
+		}
+		$('#callbtns').children().css({float:'left'});
+
+	}
+
 
 	$('#btnclr').click(function(){cfmClear(1);});
 	$('#btncancel').click(function(){cfmClear(0)});
@@ -522,6 +533,9 @@ $(function(){
 				case 'hello':
 					console.log(ctx.peer + ': hello!');
 					appendUser('#plist', ctx.peer, data.name, data.color);
+					$('#'+ctx.peer)[0].onclick = function(){
+						showCallPanel({id:this.getAttribute('id'),uname:this.getAttribute('uname')});
+					};
 					popupMsg(data.name + ' has entered this hub.', data.color);
 					dispatch({}, 'welcome', ctx.peer);
 					rtc.addPeer(ctx.peer);
@@ -529,6 +543,9 @@ $(function(){
 				case 'welcome':
 					console.log(ctx.peer + ': welcome!');
 					appendUser('#plist', ctx.peer, data.name, data.color);
+					$('#'+ctx.peer)[0].onclick = function(){
+						showCallPanel({id:this.getAttribute('id'),uname:this.getAttribute('uname')});
+					};
 					setTimeout(function(){
 						popupMsg(data.name + ' has entered this hub.', data.color);
 					}, Math.random() * 2500);

@@ -1,7 +1,7 @@
 /* 
 * @Author: Phenix Cai
 * @Date:   2015-11-13 19:14:00
-* @Last Modified time: 2015-12-28 16:03:12
+* @Last Modified time: 2016-01-03 22:04:55
 */
 
 'use strict';
@@ -27,6 +27,7 @@ var webRtc;
         }
 
         this.datChRecvCb = {};
+        this.prtypes = {};
     }
     // export obj
     webRtc = WebRtc;
@@ -78,6 +79,7 @@ var webRtc;
             this.peers[id] = pc;
             regPconnEvtCb.call(this,pc);
         }
+        this.prtypes[id] = type;
         if(type=='called'){
             pc.setRmtDesc(sdp);
             var as =this.ansStrm;
@@ -130,7 +132,7 @@ var webRtc;
         }
     };
 
-    _proto.addAnsStrm = function(s,cmd){
+    _proto.setAnsStrm = function(s,cmd){
         this.ansStrm = {s:s,cmd:cmd};
     };
 
@@ -155,6 +157,10 @@ var webRtc;
 
     _proto.setDCRcvCb = function(label,onRecv){
         this.datChRecvCb[label] = onRecv.bind(this);
+    };
+
+    _proto.getprtypes = function(id){
+        return this.prtypes[id];
     };
 
 

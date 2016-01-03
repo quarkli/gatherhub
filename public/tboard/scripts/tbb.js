@@ -852,7 +852,7 @@ module.exports = {
 /* 
 * @Author: Phenix
 * @Date:   2015-12-28 12:34:55
-* @Last Modified time: 2015-12-28 16:42:08
+* @Last Modified time: 2016-01-02 21:39:40
 */
 
 'use strict';
@@ -878,7 +878,7 @@ var callCtrl;
         this.onStartCb(err);
         this.status = 'idle';
     }
-    _proto.start = function(type,peer,cb){
+    _proto.start = function(peer,type,cb){
         var self = this;
         this.onCmdSend({cmd:'start',from:this.id,to:peer,type:type});
         this.status = 'trying';
@@ -890,7 +890,7 @@ var callCtrl;
     };
 
     _proto.stop = function(cb){
-        this.onCmdSend({cmd:'stop',from:id,to:peer});
+        this.onCmdSend({cmd:'stop',from:this.id,to:this.dst});
         if(this.status == 'active'){
             if(cb)cb();
             this.status = 'close';
@@ -980,7 +980,7 @@ module.exports = callCtrl;
 /* 
 * @Author: Phenix Cai
 * @Date:   2015-11-22 10:02:34
-* @Last Modified time: 2015-12-25 17:13:30
+* @Last Modified time: 2016-01-02 15:46:36
 */
 
 
@@ -994,7 +994,7 @@ var castCtrl;
     t1 = 150;
     t2 = 250;
     t3 = (t1+t2)*2;
-    _debug = true;
+    _debug = false;
 
     function objSetTimeout(obj,func,time){
         var t;
@@ -1582,7 +1582,7 @@ module.exports = peerConn;
 /* 
 * @Author: Phenix
 * @Date:   2015-12-21 10:01:29
-* @Last Modified time: 2015-12-28 17:09:35
+* @Last Modified time: 2016-01-03 22:16:12
 */
 
 'use strict';
@@ -1613,7 +1613,7 @@ var teleCom;
         this.actScn = {status:'idle'};
         this.midx = 0;
         this.media =  new localMedia(); 
-
+        this.callCtrl = new CallCtrl();
 
         function updateCastList(){
             var list = [];
@@ -1687,7 +1687,7 @@ var teleCom;
                     });
                 }
                 //init call controllers
-                var cc = self.callCtrl = new CallCtrl();
+                var cc = self.callCtrl; 
                 cc.onCallIn = function(peer,type){
                     if(self.actMedia.status != 'idle')return;
                     self.onCallRing(peer,type);
@@ -1698,6 +1698,7 @@ var teleCom;
                 };
                 cc.onCmdSend = function(cmd){
                     var data = JSON.stringify(cmd);
+                    console.log('cc send msg ',data);
                     w.sendData('default',data,cmd.to);
                 };
 
@@ -1707,7 +1708,7 @@ var teleCom;
                             var wr = self.streams[cc.mid];
                             var p = cc.dst;
                             if(wr){
-                                if(wr.type =='calling'){
+                                if(wr.getprtypes(p) =='calling'){
                                     wr.stopCall(p,s);
                                     setTimeout(function(){
                                         wr.remove(p);
@@ -1718,6 +1719,7 @@ var teleCom;
                                     wr.setAnsStrm(s,'del');
                                 }
                             }
+                            self.onTalkEnd();
                             // hide div ....
                         }
                     });
@@ -1800,7 +1802,8 @@ var teleCom;
 
     function dcSendMsg(h,d){
         if(d.to == undefined) return;
-        var data = JSON.stringify({media:d.mid,sdp:d.sdp});
+        var cmd = (d.oneway==undefined)? {media:d.mid,sdp:d.sdp}:{media:d.mid,oneway:d.oneway,sdp:d.sdp};
+        var data = JSON.stringify(cmd);
         var w = this.streams.default;
         w.sendData('default',data,d.to);    
         // if(_debug)console.log('dc send msg ',data,d.to);  
@@ -1811,7 +1814,7 @@ var teleCom;
         if(!rtc.support) return;
         self = this;
         var cc = this.callCtrl;
-       // if(_debug)console.log(peer,' recv msg ',data);
+        if(_debug)console.log(peer,' recv msg ',data);
         if(this.users.indexOf(peer)<0)this.users.push(peer);
         mid = data.media;
         if(mid==undefined){
@@ -1890,11 +1893,8 @@ var teleCom;
             w.onRMedDel = this.onFrAvRm;
         }
         if(id){
-            var pc = this.users[id];
-            if(pc){
-                w.addPeer(pc,'calling');
-                w.startCall(pc,strm);
-            }
+            w.addPeer(id,'calling');
+            w.startCall(id,strm);
         }else{
             this.users.forEach(function(p){
                 w.addPeer(p,'calling');
@@ -1912,44 +1912,38 @@ var teleCom;
         var am = this.actMedia;
         var cc = this.callCtrl;
         if(am.status != 'idle'|| cc.status != 'idle')return;
-        this.castCtrls[0].start(function(){
-            am.status = 'trying';
-            self.media.start(cs,function(err,s){
-                if(!err){
-                    am.strm = s;
-                    self.onMyAvAdd(s);
+        this.media.start(cs,function(err,s){
+            if(!err){
+                am.strm = s;
+                am.status = 'trying';
+                self.onMyAvAdd(s);
+                if(!self.ready)return;
+                self.castCtrls[0].start(function(){
                     am.mid = startStream.call(self,type,true,s);
                     am.status = 'active';
-
-                }else{
-                    am.status = 'idle';
-                    if(errCb)errCb(err);
-                }
-            });
-        }, type);
+                },type);
+            }else{if(errCb)errCb(err);}
+        });
         return true;
     };
 
     _proto.stopAVCast = function(){
         var self = this;
-        var c = this.castCtrls[0];
         var am = this.actMedia;
-        var w = this.streams[am.mid];
         if(am.status == 'idle')return;
-        c.stop(function(){
-            self.media.stop(function(s){
-                if(s){
-                    self.users.forEach(function(p){
-                        w.stopCall(p,s);
-                    });
-                }
+        this.media.stop(function(s){
+            if(!self.ready || am.status != 'active'){am.status = 'idle';return;}
+            var w = self.streams[am.mid];
+            var c = self.castCtrls[0];
+            c.stop(function(){
+                if(s){self.users.forEach(function(p){w.stopCall(p,s);});}
                 am.status = 'close';
                 delete am.strm;
-                setTimeout(function(){
-                    rlsMedia.call(self,'audio');
-                }, 2000);
+                setTimeout(function(){rlsMedia.call(self,'audio');}, 2000);
             });
+
         });
+
     };
 
     _proto.startscnCast = function(errCb){
@@ -1957,43 +1951,35 @@ var teleCom;
         var as = this.actScn;
         var type = 'scn';
         if(as.status != 'idle')return;
-        this.castCtrls[1].start(function(){
-            as.status = 'trying';
-            self.media.getScn(function(err,s){
-                if(!err){
-                    as.strm = s;
-                    self.onMyScnAdd(s);
+        this.media.getScn(function(err,s){
+            if(!err){
+                as.strm = s;
+                as.status = 'trying';
+                self.onMyScnAdd(s);
+                if(!self.ready)return;
+                self.castCtrls[1].start(function(){
                     as.mid = startStream.call(self,type,true,s);
                     as.status = 'active';
-                }else{
-                    as.status = 'idle';
-                    if(errCb)errCb(err);
-                }
-            });
-        },type);
+                },type);                
+            }else{if(errCb)errCb(err);}
+        });
         return true;
     };
 
     _proto.stopscnCast = function(){
         var self = this;
         var as = this.actScn;
-        var c = this.castCtrls[1];
-        var w = this.streams[as.mid];
-        // console.log('w is ',w, ' as.mid ',as.mid);
+
         if(as.status == 'idle')return;
-        c.stop(function(){
-            self.media.rlsScn(function(s){
-                if(s){
-                    self.users.forEach(function(p){
-                        w.stopCall(p,s);
-                    });
-                }
+        this.media.rlsScn(function(s){
+            if(!self.ready || as.status != 'active'){as.status='idle';return;}
+            var c = self.castCtrls[1];
+            var w = self.streams[as.mid];
+            c.stop(function(){
+                if(s){self.users.forEach(function(p){w.stopCall(p,s)});}
                 as.status = 'close';
                 delete as.strm;
-                setTimeout(function(){
-                    rlsMedia.call(self,'scn');
-                }, 2000);
-
+                setTimeout(function(){rlsMedia.call(self,'scn');}, 2000);
             });
         });
     };
@@ -2021,6 +2007,7 @@ var teleCom;
                 });
             }
         });
+        return true;
     };
 
     _proto.stopPrTalk = function(){
@@ -2030,7 +2017,8 @@ var teleCom;
         if(cc.status == 'idle')return;
         cc.stop(function(){
             self.media.stop(function(s){
-                if(w.type == 'calling'){
+                if(w.getprtypes(p) == 'calling'){
+                    console.log('stop call ',p,s);
                     w.stopCall(p,s);
                     setTimeout(function(){
                         w.remove(p);
@@ -2039,12 +2027,15 @@ var teleCom;
                     }, 3000);
                 }else{
                     w.setAnsStrm(s,'del');
+                    console.log('set ans del strm ',s);
                 }
             });
         });
     }
 
     _proto.answerPrTalk = function(type){
+        var self,cs;
+        self = this;
         var cc = this.callCtrl;
         if(type=='deny'){
             cc.answer(type);
@@ -2104,8 +2095,9 @@ var teleCom;
     _proto.onFrScnAdd = function(){};
     _proto.onFrScnRm = function(){};
     _proto.onDisconnect = function(){};
-    _proto.onCallIn = function(){};
+    _proto.onCallRing = function(){};
     _proto.onCallInEnd = function(){};
+    _proto.onTalkEnd = function(){};
 
 })();
 
@@ -2116,7 +2108,7 @@ module.exports = teleCom;
 /* 
 * @Author: Phenix Cai
 * @Date:   2015-11-13 19:14:00
-* @Last Modified time: 2015-12-28 16:03:12
+* @Last Modified time: 2016-01-03 22:04:55
 */
 
 'use strict';
@@ -2142,6 +2134,7 @@ var webRtc;
         }
 
         this.datChRecvCb = {};
+        this.prtypes = {};
     }
     // export obj
     webRtc = WebRtc;
@@ -2193,6 +2186,7 @@ var webRtc;
             this.peers[id] = pc;
             regPconnEvtCb.call(this,pc);
         }
+        this.prtypes[id] = type;
         if(type=='called'){
             pc.setRmtDesc(sdp);
             var as =this.ansStrm;
@@ -2245,7 +2239,7 @@ var webRtc;
         }
     };
 
-    _proto.addAnsStrm = function(s,cmd){
+    _proto.setAnsStrm = function(s,cmd){
         this.ansStrm = {s:s,cmd:cmd};
     };
 
@@ -2270,6 +2264,10 @@ var webRtc;
 
     _proto.setDCRcvCb = function(label,onRecv){
         this.datChRecvCb[label] = onRecv.bind(this);
+    };
+
+    _proto.getprtypes = function(id){
+        return this.prtypes[id];
     };
 
 
@@ -3512,9 +3510,10 @@ $(function(){
 	
 	var btnUser = addBtnToMenu({tip: 'Peer List', icon: svgicon.user, iconcolor: '#448', w: 40, h: 40, borderwidth: 2, bordercolor: '#448', borderradius: 1, bgcolor: '#FFF'}, '#mlist');
 	var btnMsg = addBtnToMenu({tip: 'Text Chatroom', icon: svgicon.chat, iconcolor: '#448', w: 40, h: 40, resize: .7, borderwidth: 2, bordercolor: '#448', borderradius: 1, bgcolor: '#FFF'}, '#msg');
-	var btnCast = addBtnToMenu({tip: 'Speaker Control Panel', icon: svgicon.mic, iconcolor: '#448', w: 40, h: 40, borderwidth: 2, bordercolor: '#448', borderradius: 1, bgcolor: '#FFF'}, '');
+	var btnScn = addBtnToMenu({tip: 'Start Screen Sharing', icon: svgicon.scncast, iconcolor: '#448', w: 40, h: 40, borderwidth: 2, bordercolor: '#448', borderradius: 1, bgcolor: '#FFF'}, '');
+	var btnStopScn = addBtnToMenu({tip: 'Stop Screen Sharing', icon: svgicon.stopscn, iconcolor: 'red', w: 40, h: 40, borderwidth: 2, bordercolor: '#448', borderradius: 1, bgcolor: '#FFF'}, '');
 	var btnVP = addBtnToMenu({tip: 'Show/Hide View-window', icon: svgicon.picture, iconcolor: '#448', w: 40, h: 40, borderwidth: 2, bordercolor: '#448', borderradius: 1, bgcolor: '#FFF'}, '');
-	btnCast.onclick = function(){toggleMedArea();}
+	btnScn.pad.attr('id','btnScn');btnStopScn.pad.attr('id','btnStopScn');$('#btnStopScn').hide();
 	btnVP.onclick = function(){vp.pad.toggle();sp.attachvp(vp);};
 		
 	var sp = msp = new Gatherhub.SketchPad();
@@ -3708,6 +3707,7 @@ $(function(){
 	}	
 
 	// implement for webrtc
+	var call = {status:'idle',peer:'',name:'',timer:null}
 
 	function attachMediaStream (element, stream) {
 	  element.srcObject = stream;
@@ -3726,6 +3726,8 @@ $(function(){
 		$('#media').append(ln);
 		m = document.querySelector('#localMed');
 		attachMediaStream(m,s);
+		call.status = 'active';
+		if($('#callpanel').css('display')=='block')$('#callpanel').modal('toggle');
 	};
 
 	function rmMyAv(){
@@ -3750,7 +3752,6 @@ $(function(){
 		$('#media').append(ln);
 		m = document.querySelector('#remoteMed');
 		attachMediaStream(m,s);
-		toggleMedArea('show');
 	};
 
 	rtc.onFrAvRm = function(){
@@ -3791,22 +3792,8 @@ $(function(){
 		$('#pad').css({opacity:'1'});
 	};
 
-	rtc.onReady = function(){
-		console.log('rtc on Ready')
-		$('#btnSpk').show();
-		$('#btnVchat').show();
-		if(rtc.checkExtension()){$('#btnScn').show()};
-	};
-
 	rtc.onDisconnect = function(){
-		$('#btnSpk').hide();
-		$('#btnVchat').hide();
-		$('#btnScn').hide();
-		$('#btnMute').hide();
-		$('#btnMuteS').hide();
-		$('#localMed').remove();
 		$('#remoteMed').remove();
-	    $('#localScn').remove();
     	$('#remoteScn').remove();
 		$('.prstatus').remove();
 	};
@@ -3854,74 +3841,39 @@ $(function(){
 		});
 	};
 
+	rtc.onCallRing = function(peer,type){
+		if(call.status != 'idle'){rtc.answerPrTalk('deny');return;}
+		call.status = 'ringing';call.peer=peer; call.name= $('#'+peer).attr('uname');
+		showCallPanel({id:call.peer,uname:call.name,type:type});
 
-	function addBtnToList(icon,id,cfg,func){
-		var config = {iconcolor: '#FFF', w: 40, h: 40, borderwidth: 2, bordercolor: '#FFF', borderradius: 1, bgcolor: sp.repcolor};
-		if(cfg){for(var i in cfg){config[i]=cfg[i]};};
-		config.icon = icon;
-		var btn = new Gatherhub.SvgButton(config);
-		btn.pad.css('padding', '5px');
-		btn.pad.attr('id', id);
-		if (func) btn.onclick = func;
-		btn.appendto('#mbtns');
-		$('#'+id).hide();
-		return btn;
-	}
-	var btnSpk = addBtnToList(svgicon.mic, 'btnSpk',{},function(){
-		if(rtc.startAVCast({oneway:true,video:false},function(){
-			console.log('start talking failed');
-			$('#btnMute').hide();
-			$('#btnSpk').show();
-			$('#btnVchat').show();
-		})){
-			$('#btnSpk').hide();
-			$('#btnVchat').hide();
-			$('#btnMute').show();
-		}
-	});
-	var btnMute = addBtnToList(svgicon.hangup,'btnMute',{bgcolor:'red'},function(){
-		$('#btnMute').hide();
-		$('#btnSpk').show();
-		$('#btnVchat').show();
-		rtc.stopAVCast();
+	};
+
+	rtc.onTalkEnd = function(){
 		rmMyAv();
-	});
+		call.status = 'idle';
+	};
 
-	var btnVchat = addBtnToList(svgicon.vchat,'btnVchat',{},function(){
-		if(rtc.startAVCast({oneway:true,video:true},function(){
-			console.log('start video failed');
-			$('#btnMute').hide();
-			$('#btnSpk').show();
-			$('#btnVchat').show();
-		})){
-			$('#btnSpk').hide();
-			$('#btnVchat').hide();
-			$('#btnMute').show();
-		}
-	});
-
-	var btnScn = addBtnToList(svgicon.scncast,'btnScn',{},function(){
+	btnScn.onclick = function(){
 		if(rtc.startscnCast(function(err){
 			console.log('start scn share failed');
-			$('#btnMuteS').hide();
+			$('#btnStopScn').hide();
 			$('#btnScn').show();
 			if(err.name == 'EXTENSION_UNAVAILABLE')alert('Screen sharing needs to install Chrome extension');
 		})){
 			$('#btnScn').hide();
-			$('#btnMuteS').show();
+			$('#btnStopScn').show();
 		}
-	});
-	var btnMuteS = addBtnToList(svgicon.stopscn,'btnMuteS',{bgcolor:'red'},function(){
-			$('#btnMuteS').hide();
+	}
+	btnStopScn.onclick = function(){
+			$('#btnStopScn').hide();
 			$('#btnScn').show();
 			rtc.stopscnCast();
 			rmMyScn();
-	});
+	}
+
 
 	$('#mbtns').children().css({float: 'left', clear: ''});
-	$('#btnInfo').click(function(){
-		$('#showrtc').modal('toggle');
-	});
+	$('#btnInfo').click(function(){$('#showrtc').modal('toggle');});
 	function showRtcInfo(){
 		if(rtc.getRtcCap(function(inf){
 			$('#rtcinfo').html(inf);
@@ -3937,21 +3889,78 @@ $(function(){
 		}		
 	}
 
-	function toggleMedArea(act){
-		var area = '#mediaArea';
-		if(act == undefined){
-			if($(area).position().left == 55){
-				$(area).animate({left:-300});
-				console.log('hide');
-			}else{
-				$(area).animate({left:55});
-				console.log('show');
-			}
-		}else{
-			if(act == 'show')$(area).animate({left:55});
-			if(act == 'hide')$(area).animate({left:-300});
-		}
+	function addBtnToEl(icon,cfg,el,func){
+		var config = {iconcolor: '#FFF', w: 40, h: 40, borderwidth: 2, bordercolor: '#FFF', borderradius: 1, bgcolor: sp.repcolor};
+		if(cfg){for(var i in cfg){config[i]=cfg[i]};};
+		config.icon = icon;
+		var btn = new Gatherhub.SvgButton(config);
+		btn.pad.css('padding', '5px');
+		if (func) btn.onclick = func;
+		btn.appendto(el);
+		return btn;
 	}
+
+
+
+	function showCallPanel(opts){
+		var btna,btnv,btnc;
+
+		function startcall(otps,type){
+			if(rtc.startPrTalk(otps.id,type,function(err){
+				//start talk failed
+				console.log('start talk failed');
+				$('#callinfo').html('<h4>Call to '+ opts.uname +' failed</h4>');
+				$('#callbtns').empty();
+				btnc = addBtnToEl(svgicon.hangup,{bgcolor:'red'},'#callbtns',function(){
+					$('#callpanel').modal('toggle');
+				});
+				call.timer = setTimeout(function(){$('#callpanel').modal('toggle');}, 3000);
+			})){
+				console.log('start talk success');
+				call.peer = opts.id; call.name = opts.uname; call.status = 'trying';
+				$('#callpanel').modal('toggle');
+				call.timer = setTimeout(function(){showCallPanel({id:call.peer,uname:call.name});}, 100);
+			}
+		}
+
+		$('#callbtns').empty();
+		if(call.timer)clearTimeout(call.timer);
+		$('#callpanel').modal('toggle');
+		switch(call.status){
+			case 'idle':
+			$('#callinfo').html('<h4>Will you place a call to '+ opts.uname +' ?</h4>');
+			btna = addBtnToEl(svgicon.mic,{},'#callbtns',function(){startcall(opts,'audio');});
+			btnv = addBtnToEl(svgicon.vchat,{},'#callbtns',function(){startcall(opts,'video');});
+			break;
+			case 'trying':
+			$('#callinfo').html('<h4>Waiting for the response from '+ call.name +' </h4>');
+			btnc = addBtnToEl(svgicon.hangup,{bgcolor:'red'},'#callbtns',function(){
+					$('#callpanel').modal('toggle');
+					rtc.stopPrTalk();
+					call.status = 'idle';
+				});
+
+			break;
+			case 'active':
+			$('#callinfo').html('<h4>Talking with '+ call.name +' </h4>');
+			btnc = addBtnToEl(svgicon.hangup,{bgcolor:'red'},'#callbtns',function(){
+					$('#callpanel').modal('toggle');
+					rtc.stopPrTalk();
+					rmMyAv();
+					call.status = 'idle';
+				});
+			break;
+			case 'ringing':
+			$('#callinfo').html('<h4>A call is incoming from '+ call.name +', will you accept it ? </h4>');
+			btna = addBtnToEl(svgicon.mic,{},'#callbtns',function(){rtc.answerPrTalk('audio');});
+			if(opts.type=='video')btnv = addBtnToEl(svgicon.vchat,{},'#callbtns',function(){rtc.answerPrTalk('video');});
+			btnc = addBtnToEl(svgicon.hangup,{bgcolor:'red'},'#callbtns',function(){rtc.answerPrTalk('deny');});
+			break;
+		}
+		$('#callbtns').children().css({float:'left'});
+
+	}
+
 
 	$('#btnclr').click(function(){cfmClear(1);});
 	$('#btncancel').click(function(){cfmClear(0)});
@@ -3998,6 +4007,9 @@ $(function(){
 				case 'hello':
 					console.log(ctx.peer + ': hello!');
 					appendUser('#plist', ctx.peer, data.name, data.color);
+					$('#'+ctx.peer)[0].onclick = function(){
+						showCallPanel({id:this.getAttribute('id'),uname:this.getAttribute('uname')});
+					};
 					popupMsg(data.name + ' has entered this hub.', data.color);
 					dispatch({}, 'welcome', ctx.peer);
 					rtc.addPeer(ctx.peer);
@@ -4005,6 +4017,9 @@ $(function(){
 				case 'welcome':
 					console.log(ctx.peer + ': welcome!');
 					appendUser('#plist', ctx.peer, data.name, data.color);
+					$('#'+ctx.peer)[0].onclick = function(){
+						showCallPanel({id:this.getAttribute('id'),uname:this.getAttribute('uname')});
+					};
 					setTimeout(function(){
 						popupMsg(data.name + ' has entered this hub.', data.color);
 					}, Math.random() * 2500);

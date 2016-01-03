@@ -208,7 +208,7 @@ Author: quarkli@gmail.com
 	#mediaArea{
 		position: absolute;
 		bottom: 0;
-		left: -300px;
+		left: 50%;
 		width: 300px;
 		height: 100px;
 		padding: 0px;
@@ -335,5 +335,16 @@ Author: quarkli@gmail.com
 		  </div>
 		</div>
 	</div>
+	<div id="callpanel" class="modal fade" role="dialog">
+		<div class="modal-dialog">
+		  <div class="modal-content">
+			<div class="modal-body alert alert-info">
+			  <div id="callinfo"></div>
+			  <div id="callbtns" class="form-group" style="text-align: center;">
+			  </div>
+			</div>
+		  </div>
+		</div>
+	</div>	
   </body>
 </html>

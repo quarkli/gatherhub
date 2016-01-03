@@ -1,7 +1,7 @@
 /* 
 * @Author: Phenix Cai
 * @Date:   2015-11-22 10:02:34
-* @Last Modified time: 2015-12-25 17:13:30
+* @Last Modified time: 2016-01-02 15:46:36
 */
 
 
@@ -15,7 +15,7 @@ var castCtrl;
     t1 = 150;
     t2 = 250;
     t3 = (t1+t2)*2;
-    _debug = true;
+    _debug = false;
 
     function objSetTimeout(obj,func,time){
         var t;
