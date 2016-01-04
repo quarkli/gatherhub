@@ -1,7 +1,7 @@
 /* 
 * @Author: Phenix
 * @Date:   2015-12-21 10:01:29
-* @Last Modified time: 2016-01-03 22:16:12
+* @Last Modified time: 2016-01-04 14:31:53
 */
 
 'use strict';
@@ -430,6 +430,7 @@ var teleCom;
     };
 
     _proto.stopPrTalk = function(){
+        var self = this;
         var cc = this.callCtrl;
         var w = this.streams[cc.mid];
         var p = cc.dst;
@@ -437,7 +438,6 @@ var teleCom;
         cc.stop(function(){
             self.media.stop(function(s){
                 if(w.getprtypes(p) == 'calling'){
-                    console.log('stop call ',p,s);
                     w.stopCall(p,s);
                     setTimeout(function(){
                         w.remove(p);
@@ -446,7 +446,6 @@ var teleCom;
                     }, 3000);
                 }else{
                     w.setAnsStrm(s,'del');
-                    console.log('set ans del strm ',s);
                 }
             });
         });

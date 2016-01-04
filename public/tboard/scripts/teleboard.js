@@ -374,9 +374,18 @@ $(function(){
 
 	};
 
+	function hidePanelOnCallEnd(){
+		if($('#callpanel').css('display')=='block')$('#callpanel').modal('toggle');
+		call.status = 'idle';
+	}
+
 	rtc.onTalkEnd = function(){
 		rmMyAv();
-		call.status = 'idle';
+		hidePanelOnCallEnd();
+	};
+
+	rtc.onCallInEnd = function(){
+		hidePanelOnCallEnd();
 	};
 
 	btnScn.onclick = function(){
@@ -438,9 +447,10 @@ $(function(){
 				$('#callinfo').html('<h4>Call to '+ opts.uname +' failed</h4>');
 				$('#callbtns').empty();
 				btnc = addBtnToEl(svgicon.hangup,{bgcolor:'red'},'#callbtns',function(){
-					$('#callpanel').modal('toggle');
+					hidePanelOnCallEnd();
+					if(call.timer)clearTimeout(call.timer);					
 				});
-				call.timer = setTimeout(function(){$('#callpanel').modal('toggle');}, 3000);
+				call.timer = setTimeout(function(){hidePanelOnCallEnd();}, 3000);
 			})){
 				console.log('start talk success');
 				call.peer = opts.id; call.name = opts.uname; call.status = 'trying';
@@ -480,7 +490,10 @@ $(function(){
 			$('#callinfo').html('<h4>A call is incoming from '+ call.name +', will you accept it ? </h4>');
 			btna = addBtnToEl(svgicon.mic,{},'#callbtns',function(){rtc.answerPrTalk('audio');});
 			if(opts.type=='video')btnv = addBtnToEl(svgicon.vchat,{},'#callbtns',function(){rtc.answerPrTalk('video');});
-			btnc = addBtnToEl(svgicon.hangup,{bgcolor:'red'},'#callbtns',function(){rtc.answerPrTalk('deny');});
+			btnc = addBtnToEl(svgicon.hangup,{bgcolor:'red'},'#callbtns',function(){
+				rtc.answerPrTalk('deny');
+				hidePanelOnCallEnd();
+			});
 			break;
 		}
 		$('#callbtns').children().css({float:'left'});

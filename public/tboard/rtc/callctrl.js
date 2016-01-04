@@ -1,7 +1,7 @@
 /* 
 * @Author: Phenix
 * @Date:   2015-12-28 12:34:55
-* @Last Modified time: 2016-01-02 21:39:40
+* @Last Modified time: 2016-01-04 12:49:25
 */
 
 'use strict';
@@ -35,6 +35,7 @@ var callCtrl;
         this.dst = peer;
         this.timer =setTimeout(function(){
             callingEnd.call(self);
+            self.onCmdSend({cmd:'stop',from:self.id,to:self.dst});
         }, 30000);
     };
 
@@ -103,7 +104,7 @@ var callCtrl;
             case 'ringing':
                 if(cmd=='stop'){
                     this.onCallInEnd();
-                    ths.status = 'idle';
+                    this.status = 'idle';
                 }
             break;
             case 'active':
