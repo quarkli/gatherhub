@@ -3898,80 +3898,77 @@ $(function(){
 		}		
 	}
 
-	function addBtnToEl(icon,cfg,el,func){
-		var config = {iconcolor: '#FFF', w: 40, h: 40, borderwidth: 2, bordercolor: '#FFF', borderradius: 1, bgcolor: sp.repcolor};
-		if(cfg){for(var i in cfg){config[i]=cfg[i]};};
-		config.icon = icon;
-		var btn = new Gatherhub.SvgButton(config);
-		btn.pad.css('padding', '5px');
-		if (func) btn.onclick = func;
-		btn.appendto(el);
-		return btn;
-	}
-
 
 
 	function showCallPanel(opts){
-		var btna,btnv,btnc;
 
 		function startcall(otps,type){
 			if(rtc.startPrTalk(otps.id,type,function(err){
 				//start talk failed
 				console.log('start talk failed');
-				$('#callinfo').html('<h4>Call to '+ opts.uname +' failed</h4>');
-				$('#callbtns').empty();
-				btnc = addBtnToEl(svgicon.hangup,{bgcolor:'red'},'#callbtns',function(){
+				$('#callinfo').html('Call to '+ opts.uname +' failed');
+				$('#btnAChat').hide();
+				$('#btnVChat').hide();
+				$('#btnStop').show();
+				$('#btnStop')[0].onclick = function(){
 					hidePanelOnCallEnd();
 					if(call.timer)clearTimeout(call.timer);					
-				});
+				};
 				call.timer = setTimeout(function(){hidePanelOnCallEnd();}, 3000);
 			})){
-				console.log('start talk success');
 				call.peer = opts.id; call.name = opts.uname; call.status = 'trying';
 				$('#callpanel').modal('toggle');
 				call.timer = setTimeout(function(){showCallPanel({id:call.peer,uname:call.name});}, 100);
 			}
 		}
-
-		$('#callbtns').empty();
 		if(call.timer)clearTimeout(call.timer);
 		$('#callpanel').modal('toggle');
 		switch(call.status){
 			case 'idle':
-			$('#callinfo').html('<h4>Will you place a call to '+ opts.uname +' ?</h4>');
-			btna = addBtnToEl(svgicon.mic,{},'#callbtns',function(){startcall(opts,'audio');});
-			btnv = addBtnToEl(svgicon.vchat,{},'#callbtns',function(){startcall(opts,'video');});
-			break;
+				$('#callinfo').html('Will you place a call to '+ opts.uname +' ?');
+				$('#btnAChat').show();
+				$('#btnVChat').show();
+				$('#btnStop').show();
+				$('#btnAChat')[0].onclick = function(){startcall(opts,'audio');};
+				$('#btnVChat')[0].onclick = function(){startcall(opts,'video');};
+				$('#btnStop')[0].onclick = function(){hidePanelOnCallEnd();};
+				break;
 			case 'trying':
-			$('#callinfo').html('<h4>Waiting for the response from '+ call.name +' </h4>');
-			btnc = addBtnToEl(svgicon.hangup,{bgcolor:'red'},'#callbtns',function(){
-					$('#callpanel').modal('toggle');
+				$('#callinfo').html('Waiting for the response from '+ call.name +' ');
+				$('#btnAChat').hide();
+				$('#btnVChat').hide();
+				$('#btnStop').show();
+				$('#btnStop')[0].onclick = function(){
 					rtc.stopPrTalk();
-					call.status = 'idle';
-				});
-
-			break;
+					hidePanelOnCallEnd();
+				};
+				break;
 			case 'active':
-			$('#callinfo').html('<h4>Talking with '+ call.name +' </h4>');
-			btnc = addBtnToEl(svgicon.hangup,{bgcolor:'red'},'#callbtns',function(){
-					$('#callpanel').modal('toggle');
+				$('#callinfo').html('Talking with '+ call.name +' ');
+				$('#btnAChat').hide();
+				$('#btnVChat').hide();
+				$('#btnStop').show();
+				$('#btnStop')[0].onclick = function(){
 					rtc.stopPrTalk();
 					rmMyAv();
-					call.status = 'idle';
-				});
-			break;
+					hidePanelOnCallEnd();
+				};
+				break;
 			case 'ringing':
-			$('#callinfo').html('<h4>A call is incoming from '+ call.name +', will you accept it ? </h4>');
-			btna = addBtnToEl(svgicon.mic,{},'#callbtns',function(){rtc.answerPrTalk('audio');});
-			if(opts.type=='video')btnv = addBtnToEl(svgicon.vchat,{},'#callbtns',function(){rtc.answerPrTalk('video');});
-			btnc = addBtnToEl(svgicon.hangup,{bgcolor:'red'},'#callbtns',function(){
-				rtc.answerPrTalk('deny');
-				hidePanelOnCallEnd();
-			});
-			break;
+				$('#callinfo').html('A call is incoming from '+ call.name +', will you accept it ? ');
+				$('#btnAChat').show();
+				$('#btnVChat').show();
+				$('#btnStop').show();
+				$('#btnAChat')[0].onclick = function(){rtc.answerPrTalk('audio');};
+				if(opts.type=='video'){
+					$('#btnVChat')[0].onclick = function(){rtc.answerPrTalk('video');};
+				}
+				$('#btnStop')[0].onclick = function(){
+					rtc.answerPrTalk('deny');
+					hidePanelOnCallEnd();
+				};
+				break;
 		}
-		$('#callbtns').children().css({float:'left'});
-
 	}
 
 

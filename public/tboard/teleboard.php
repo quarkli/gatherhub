@@ -339,8 +339,11 @@ Author: quarkli@gmail.com
 		<div class="modal-dialog">
 		  <div class="modal-content">
 			<div class="modal-body alert alert-info">
-			  <div id="callinfo"></div>
+			  <div><h4 id="callinfo"></h4></div>
 			  <div id="callbtns" class="form-group" style="text-align: center;">
+				  <button id="btnAChat" type="Button" class="btn btn-default">Audio Chat</button>
+				  <button id="btnVChat" type="Button" class="btn btn-default">Video Chat</button>
+				  <button id="btnStop" type="Button" class="btn btn-danger">Hang up</button>
 			  </div>
 			</div>
 		  </div>
