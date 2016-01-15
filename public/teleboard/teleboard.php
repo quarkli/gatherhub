@@ -186,8 +186,6 @@ if(isset($_POST['email']) && isset($_POST['sendMail'])) {
 				<button id="send" type="button">Send</button>
 			</div>
 		</div>
-		<div id="media" class="panel"><div class="alert alert-info">Screen-cast, Video-cast, and Audio speech features will be available soon!</div>
-		</div>
 	</div>
 	<div id="bgroup"></div>
 	<div id="joinhub" class="modal fade" role="dialog">

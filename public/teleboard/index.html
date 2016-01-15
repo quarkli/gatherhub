@@ -20,14 +20,14 @@
     .vcenter {
         position: relative;
         top: 50%;
-        -webkit-transform: translateY(-50%);
-                transform: translateY(-50%);
+        transform: translateY(-50%);
     }
     </style>
 </head>
 
 <body>
-    <nav class="navbar navbar-default">
+    <!-- NAVBAR -->
+    <nav class="navbar navbar-default" role="navigation">
         <div class="container-fluid">
             <div class="navbar-header">
                 <a class="navbar-brand" href="/">
@@ -36,8 +36,14 @@
                         <img src="images/ghub-banner.png" height="60" />
                     </div>
                 </a>
+                <button class="navbar-toggle" type="button" data-toggle="collapse" data-target="#nav-collapse">
+                    <span class="sr-only">Toggle navigation</span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                </button>
             </div>
-            <div>
+            <div class="collapse navbar-collapse" id="nav-collapse">
                 <ul class="nav navbar-nav pull-right">
                     <li class="active"><a href="/">Home</a></li>
                     <li><a href="faq.html">FAQ</a></li>
@@ -48,6 +54,7 @@
             </div>
         </div>
     </nav>
+    <!-- Page Content -->
     <div class="container-fluid">
         <div class="row center">
             <div class="col-sm-3"></div>
@@ -96,6 +103,7 @@
             <br>
             <br>
         </div>
+        <!-- Social Network Links -->
         <div class="row center">
             <div id="gpshare" class="col-xs-5" align="right">
                 <div class="g-plus" data-action="share" data-annotation="bubble" data-height="24"></div>
@@ -108,6 +116,7 @@
             </div>
         </div>
     </div>
+    <!-- Setup Hub Modal Dialog -->
     <div id="setuphub" class="modal fade" role="dialog">
         <div class="modal-dialog">
             <div class="modal-content">
@@ -142,6 +151,7 @@
             </div>
         </div>
     </div>
+    <!-- Facebook Like Component & Script -->
     <div id="fb-root"></div>
     <script>
     (function(d, s, id) {
@@ -153,11 +163,15 @@
         fjs.parentNode.insertBefore(js, fjs);
     }(document, 'script', 'facebook-jssdk'));
     </script>
+    <!-- Google Plus Like Script -->
     <script src="https://apis.google.com/js/platform.js" async defer></script>
+    <!-- Weibo Like Script -->
     <script src="http://tjs.sjs.sinajs.cn/open/api/js/wb.js" type="text/javascript" charset="utf-8"></script>
+    <!-- External Dependent Scripts -->
     <script src="scripts/jquery.min.js"></script>
     <script src="scripts/md5.min.js"></script>
     <script src="js/bootstrap.min.js"></script>
+    <!-- In-page Script -->
     <script>
     $(function() {
         $('input').each(function() {
