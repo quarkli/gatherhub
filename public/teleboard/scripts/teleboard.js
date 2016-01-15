@@ -53,32 +53,6 @@ $(function() {
         borderradius: 1,
         bgcolor: '#FFF'
     }, '#msg');
-    var btnSpk = addBtnToMenu({
-        tip: 'Speaker Control Panel',
-        icon: svgicon.mic,
-        iconcolor: '#448',
-        w: 40,
-        h: 40,
-        borderwidth: 2,
-        bordercolor: '#448',
-        borderradius: 1,
-        bgcolor: '#FFF'
-    }, '#media');
-    var btnVP = addBtnToMenu({
-        tip: 'Show/Hide View-window',
-        icon: svgicon.picture,
-        iconcolor: '#448',
-        w: 40,
-        h: 40,
-        borderwidth: 2,
-        bordercolor: '#448',
-        borderradius: 1,
-        bgcolor: '#FFF'
-    }, '');
-    btnVP.onclick = function() {
-        vp.pad.toggle();
-        sp.attachvp(vp);
-    };
 
     var sp = msp = new Gatherhub.SketchPad();
     sp.floating('absolute').pencolor(sp.repcolor).penwidth(1).appendto('#pad');
@@ -91,7 +65,50 @@ $(function() {
     vp.zmin = 1 / vp.zmax;
     vp.draggable = true;
     vp.floating('absolute').bgcolor('#FAFAFC').bordercolor('#888').borderwidth(3).borderradius(0.1);
-    vp.defsize(sp.width() / 4, sp.height() / 4).minimize().appendto('#pad');
+    if (sp.width() * 1 > sp.height()) vp.defsize(sp.width() / 4, sp.width() / 4 * 9 / 16);
+    else vp.defsize(sp.height() / 4, sp.height() / 4 * 9 / 16);
+    vp.minimize().appendto('#pad');
+
+    var vpbtn = {
+        tip: 'Full Scope Viewing Window',
+        icon: svgicon.picture,
+        iconcolor: '#FFF',
+        w: 50,
+        h: 50,
+        borderwidth: 0,
+        borderradius: 1,
+        bgcolor: '#CCC'
+    };
+
+    var vpon = new Gatherhub.SvgButton(vpbtn);
+    vpon.floating('absolute').appendto('body')
+    vpon.pad.css({top: 10, right: 10, left: '', 'border-radius': 50, 'box-shadow': '2px 3px 6px #888'}).toggle();
+    vpon.pad.off('mousedown touchstart mousewheel DOMMouseScroll mouseup mouseleave touchend mousemove touchmove');
+    vpon.pad.on('click', function() {
+        vp.pad.toggle();
+        sp.attachvp(vp);
+        vpon.pad.toggle();
+    });
+
+    var clsbtn = {
+        tip: 'Close',
+        icon: svgicon.no,
+        iconcolor: '#CCC',
+        w: 40,
+        h: 40,
+        borderwidth: 0,
+        bgcolor: 'transparent'
+    };
+
+    var vpoff = new Gatherhub.SvgButton(clsbtn);
+    vpoff.floating('absolute').appendto(vp.pad);
+    vpoff.pad.css({top: 0, right: 0, left: ''});
+    vpoff.pad.off('mousedown touchstart mousewheel DOMMouseScroll mouseup mouseleave touchend mousemove touchmove');
+    vpoff.pad.on('click touchend', function() {
+        vp.pad.toggle();
+        sp.attachvp(vp);
+        vpon.pad.toggle();
+    });
 
     sp.attachvp(vp);
     arrangemenu();
@@ -512,6 +529,7 @@ $(function() {
         'right': 0
     });
 
+    if (topmenu) vpon.pad.css('top', 65);
 
     $(window).on('resize', function() {
         toolBar.collapseall();

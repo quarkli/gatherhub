@@ -477,7 +477,7 @@ var Gatherhub = Gatherhub || {};
                 path.attr('stroke-width', pw);
                 path.attr('stroke-linecap', this.ps);
                 path.attr('stroke', this.pc);
-                path.attr('fill', 'none');
+                path.attr('fill', 'transparent');
                 path.attr({
                     x0: x,
                     y0: y
@@ -664,6 +664,17 @@ var Gatherhub = Gatherhub || {};
                         'font-size': 24,
                         fill: self.pc
                     }).html($(this).val()).appendTo(self.pathholder);
+
+                    t.on('touchstart touchend mouseover', function() {
+                        if (self.cutting) {
+                            $(this).appendTo(self.redocache);
+                            if (self.dispatch) self.dispatch({
+                                id: t.attr('id')
+                            }, 'undo');
+                            flush(self);
+                        }
+                    });
+
                     if (self.dispatch) self.dispatch(path2obj(t), 'graph');
                 }
                 $(this).val('').hide();
@@ -1026,7 +1037,7 @@ var Gatherhub = Gatherhub || {};
             g.VisualPad.prototype.mousedownHdl.call(this, x, y);
             this.fitcontent().zoom(this.zrate * this.resize);
             this.prevborderwd = this.borderwidth();
-            this.borderwidth(this.prevborderwd + 1);
+            if (this.borderwidth()) this.borderwidth(this.prevborderwd + 1);
         };
         _proto.mouseupHdl = function(x, y) {
             g.VisualPad.prototype.mouseupHdl.call(this, x, y);
