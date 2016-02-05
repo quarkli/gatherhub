@@ -24,6 +24,8 @@ var mpc;
 		console.log('\nfrom:', msg.from);
 		console.log('type:', msg.type);
 		console.log('data:', msg.data);
+		console.log('ts:', msg.ts);
+		console.log('via:', msg.via);
 		// Update message console in UI
 	};
 	pc.onmediarequest = function(req) {
