@@ -52,7 +52,13 @@ var Gatherhub = Gatherhub || {};
             Object.defineProperty(pc, 'id', {
                 get: function() { return id; },
                 set: function(x) {
-                    if (typeof(x) == 'string') { id = x; }
+                    if (typeof(x) == 'string') {
+                        id = x;
+                        if (state == 'started') {
+                            stop();
+                            start();
+                        }
+                    }
                     else { logWarn('id', 'PeerCom.id'); }
                     return id;
                 }
@@ -276,6 +282,7 @@ var Gatherhub = Gatherhub || {};
                         logWarn('send', 'PeerCom.send()');
                         return false;
                     }
+
                     return true;
                 }
 
@@ -284,11 +291,18 @@ var Gatherhub = Gatherhub || {};
             }
 
             function mediaRequest(req) {
-                // body...
+                var wmc = new _WMC(null);
+                // prepare media as requested
+                // construct offer as requested
+                // dispatch request to target peer
+                send({req: req}, 'media', req.to);
             }
 
-            function mediaResponse(rep) {
-                // body...
+            function mediaResponse(res) {
+                send({res: res}, 'media', res.from);
+                if (res.accept) {
+                    var wmc = new _WMC(null);
+                }
             }
 
             function mediaCtrl(arg) {
@@ -317,6 +331,19 @@ var Gatherhub = Gatherhub || {};
         base.prototype = func.prototype;
         return new base();
     }
+
+    // Module based internal object: _WMC, WebRTC Media Channel
+    var _WMC;
+    (function() {
+        // Object-base shared local variables and functions
+
+        // Export object Prototype to public namespace
+        _WMC = WMC;
+
+        // Object Constructor
+        function WMC(config) {
+        }
+     })();
 
     // Module based internal object: _WPC, WebRTC PeerConnection Channel
     var _WPC;
