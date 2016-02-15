@@ -123,22 +123,18 @@ var Gatherhub = Gatherhub || {};
                 // read-only property
                 Object.defineProperty(pc, 'id', {
                     get: function() { return id; },
-                    set: function() { return; }
                 });
                 // read-only property
                 Object.defineProperty(pc, 'peers', {
                     get: function() { return peers; },
-                    set: function() { return; }
                 });
                 // read-only property
                 Object.defineProperty(pc, 'medchans', {
                     get: function() { return medchans; },
-                    set: function() { return; }
                 });
                 // read-only property
                 Object.defineProperty(pc, 'state', {
                     get: function() { return state; },
-                    set: function() { return; }
                 });
 
                 // Callbacks declaration, type check: function
@@ -208,18 +204,17 @@ var Gatherhub = Gatherhub || {};
                             // if peer existed in peers, remove and replace
                             if (peers[msg.from]) { _removePeer(msg.from); }
                             _addPeer(msg.from, msg.data.peer);
-                            if (peers[msg.from]) { peers[msg.from].sigchan.open(); }
+                            peers[msg.from].sigchan.open();
                             break;
                         case 'bye':
                             if (peers[msg.from]) { _removePeer(msg.from); }
                             break;
                         case 'sdp':
-                        case 'conn':
                             if (peers[msg.from] === undefined) { _addPeer(msg.from, msg.data.peer); }
-                            if (peers[msg.from]) { peers[msg.from].sigchan.open(msg.data); }
+                            peers[msg.from].sigchan.open(msg.data);
                             break;
                         case 'media':
-                            if (pc.onmediarequest) { setTimeout(function() { pc.onmediarequest(msg); }, 0); }
+                            if (pc.onmediarequest) { setTimeout(function() { pc.onmediarequest(msg.data); }, 0); }
                             if (medchans[msg.data.id]) {
                                 medchans[msg.data.id].negotiate(msg.data);
                             }
@@ -351,7 +346,7 @@ var Gatherhub = Gatherhub || {};
             }
 
             // Private functions
-            function _addPeer(pid, pname, sdp) {
+            function _addPeer(pid, pname) {
                 if (!peers[pid]) {
                     var p = {peer: pname, sigchan: new _WPC(pid, _wcc, iceservers)};
                     p.sigchan.onmessage = function(msg) {
@@ -410,15 +405,6 @@ var Gatherhub = Gatherhub || {};
         }
     })();
 
-    // Module based public functions
-
-    // Module based internal functions
-    function extend(func) {
-        var base = function() {};
-        base.prototype = func.prototype;
-        return new base();
-    }
-
     // Module based internal object: _WMC, WebRTC Media Channel
     var _WMC;
     (function() {
@@ -432,34 +418,14 @@ var Gatherhub = Gatherhub || {};
             var wmc = this;
 
             var _pc = new RPC({iceServers: (iceservers || null)});
-            var _conn = [];
+            var _res = {};
 
-            _pc.onicecandidate = function(e) { if (e.candidate) { _conn.push(e.candidate); } };
-            _pc.onsignalingstatechange = function(e) {
-                if (e.type == 'signalingstatechange' && e.target.signalingState != 'closed') {
-                    if (_pc.signalingState == 'have-local-offer') {
-                        req.type = 'offer';
-                        req.sdp = _pc.localDescription;
-                        sigchan(req, 'media', to);
-                    }
-                    else if (_pc.signalingState == 'have-remote-offer') {
-                        _pc.createAnswer(
-                            function(sdp){
-                                _pc.setLocalDescription(sdp);
-                                req.type = 'answer';
-                                req.sdp = sdp;
-                                sigchan(req, 'media', to);
-                            },
-                            function(e) { console.error("Signal error: " + e.name);}
-                        );
-                    }
-                    else if (_pc.signalingState == 'stable') {
-                        req.type = 'conn'
-                        req.conn = _conn;
-                        if (req.sdp) { delete req.sdp; }
-                        sigchan(req, 'media', to);
-                        _changeState('opened');
-                    }
+            _pc.onicecandidate = function(e) {
+                if (e.candidate) {
+                    // req.type = 'conn'
+                    conn.push(e.candidate);
+                    // if (req.sdp) { delete req.sdp; }
+                    // sigchan(req, 'media', to);
                 }
             };
 
@@ -467,38 +433,44 @@ var Gatherhub = Gatherhub || {};
             _pc.onaddstream = function(e) { rstream = e.stream; };
             _pc.onremovestream = function(e) { console.log(e); };
 
-            var id, to, mdesc, state, lstream, rstream;
+            var id, to, from, mdesc, sdp, conn, lstream, rstream, state;
             var onstatechange;
             (function() {
                 // read-only property
                 Object.defineProperty(wmc, 'id', {
                     get: function() { return id; },
-                    set: function() { return; }
                 });
 
                 Object.defineProperty(wmc, 'to', {
                     get: function() { return to; },
-                    set: function() { return; }
+                });
+
+                Object.defineProperty(wmc, 'from', {
+                    get: function() { return from; },
                 });
 
                 Object.defineProperty(wmc, 'mdesc', {
                     get: function() { return mdesc; },
-                    set: function() { return; }
                 });
 
-                Object.defineProperty(wmc, 'state', {
-                    get: function() { return state; },
-                    set: function() { return; }
+                Object.defineProperty(wmc, 'sdp', {
+                    get: function() { return sdp; },
+                });
+
+                Object.defineProperty(wmc, 'conn', {
+                    get: function() { return conn; },
                 });
 
                 Object.defineProperty(wmc, 'lstream', {
                     get: function() { return lstream; },
-                    set: function() { return; }
                 });
 
                 Object.defineProperty(wmc, 'rstream', {
                     get: function() { return rstream; },
-                    set: function() { return; }
+                });
+
+                Object.defineProperty(wmc, 'state', {
+                    get: function() { return state; },
                 });
 
                 // Callbacks declaration, type check: function
@@ -511,8 +483,6 @@ var Gatherhub = Gatherhub || {};
                 });
 
                  // Methods declaration, read-only
-                Object.defineProperty(wmc, 'makereq', { value: makereq });
-                Object.defineProperty(wmc, 'makeres', { value: makeres });
                 Object.defineProperty(wmc, 'negotiate', { value: negotiate });
                 Object.defineProperty(wmc, 'cancel', { value: cancel });
                 Object.defineProperty(wmc, 'update', { value: update });
@@ -520,47 +490,12 @@ var Gatherhub = Gatherhub || {};
                 Object.defineProperty(wmc, 'mediaCtrl', { value: mediaCtrl });
             })();
 
-            function makereq() {
-                _changeState('requesting');
-
-                getUserMedia(
-                    mdesc,
-                    function(s) {
-                        lstream = s;
-                        _pc.addStream(s);
-                        _pc.createOffer(
-                            function(sdp) {
-                                _pc.setLocalDescription(sdp);
-                            },
-                            function(e) { console.error("Signal error: " + e.name); }
-                        );
-                    },
-                    function(e) {
-                        _changeState('failed');
-                    }
-                );
-            }
-
-            function makeres(req) {
-                getUserMedia(
-                    req.mdesc,
-                    function(s) {
-                        lstream = s;
-                        _pc.addStream(s);
-                        if (req.sdp.type == 'offer') {
-                            _pc.setRemoteDescription(new RTCSessionDescription(req.sdp));
-                        }
-                    },
-                    function(e) {
-                        _changeState('failed');
-                    }
-                );
-            }
-
             function negotiate(req) {
-                if (req.type == 'reject') {
-                    _changeState('rejected');
-                    setTimeout(_closechan, 1000);
+                if (req.type == 'answer') {
+                    from = _res.from = req.from;
+                    _pc.setRemoteDescription(new RTCSessionDescription(req.sdp));
+                    req.conn.forEach(function(e) { _pc.addIceCandidate(new RTCIceCandidate(e)); });
+                    _changeState('opened');
                 }
                 else if (req.type == 'cancel') {
                     _changeState('canceled');
@@ -570,18 +505,16 @@ var Gatherhub = Gatherhub || {};
                     _changeState('ended');
                     setTimeout(_closechan, 1000)
                 }
-                else if (req.sdp) {
-                    _pc.setRemoteDescription(new RTCSessionDescription(req.sdp));
-                }
-                else if (req.conn) {
-                    req.conn.forEach(function(e){ _pc.addIceCandidate(new RTCIceCandidate(e)); });
+                if (req.type == 'reject') {
+                    _changeState('rejected');
+                    setTimeout(_closechan, 1000);
                 }
             }
 
             function cancel() {
                 if (state == 'requesting') {
-                    req.type = 'cancel';
-                    sigchan(req, 'media', to);
+                    _res.type = 'cancel';
+                    sigchan(_res, 'media', to);
                     _changeState('canceled');
                     setTimeout(_closechan, 1000);
                     return true;
@@ -590,8 +523,8 @@ var Gatherhub = Gatherhub || {};
             }
 
             function end() {
-                req.type = 'end';
-                sigchan(req, 'media', to);
+                _res.type = 'end';
+                sigchan(_res, 'media', to);
                 _changeState('ended');
                 setTimeout(_closechan, 1000);
                 return true;
@@ -604,19 +537,69 @@ var Gatherhub = Gatherhub || {};
             }
 
             // Private functions
-            function _changeState(ste) {
-                state = ste;
-                if (wmc.onstatechange) { setTimeout(function() { wmc.onstatechange(state); }, 0); }
+            function _makereq() {
+                _changeState('requesting');
+
+                getUserMedia(
+                    mdesc,
+                    function(s) {
+                        lstream = s;
+                        _pc.addStream(s);
+                        _pc.createOffer(
+                            function(sdp) {
+                                _res.sdp = sdp;
+                                _negotiation(sdp);
+                            },
+                            function(e) { console.error("Signal error: " + e.name); }
+                        );
+                    },
+                    function(e) {
+                        _changeState('failed');
+                    }
+                );
             }
 
-            function _timeout() {
-                _changeState('timeout');
-                if (state == 'requesting') {
-                    setTimeout(cancel, 1000);
-                }
-                else {
-                    setTimeout(_closechan, 1000);
-                }
+            function _makeres() {
+                getUserMedia(
+                    mdesc,
+                    function(s) {
+                        lstream = s;
+                        _pc.addStream(s);
+                        _pc.createAnswer(
+                            function(sdp){
+                                // _pc.setLocalDescription(sdp);
+                                _res.sdp = sdp;
+                                // sigchan(req, 'media', to);
+                                _negotiation(sdp);
+                            },
+                            function(e) { console.error("Signal error: " + e.name);}
+                        );
+                        // if (sdp.type == 'offer') {
+                        //     _pc.setRemoteDescription(new RTCSessionDescription(sdp));
+                        // }
+                    },
+                    function(e) {
+                        _changeState('failed');
+                    }
+                );
+            }
+
+            function _negotiation(sdp) {
+                _pc.setLocalDescription(sdp);
+
+                var c = 0;
+                var wait = 3;
+                var disp = setInterval(function() {
+                    if (c == conn.length) { wait--; }
+                    else {
+                        c = conn.length;
+                        wait = 3;
+                    }
+                    if (!wait) {
+                        sigchan(_res, 'media', to);
+                        clearInterval(disp);
+                    }
+                }, 35);
             }
 
             function _closechan() {
@@ -637,18 +620,44 @@ var Gatherhub = Gatherhub || {};
                 _changeState('closed');
             }
 
+            function _timeout() {
+                _changeState('timeout');
+                if (state == 'requesting') {
+                    setTimeout(cancel, 1000);
+                }
+                else {
+                    setTimeout(_closechan, 1000);
+                }
+            }
+
+            function _changeState(ste) {
+                state = ste;
+                if (wmc.onstatechange) { setTimeout(function() { wmc.onstatechange(state); }, 0); }
+            }
+
             function _init() {
-                to = req.to;
-                id = req.id || (parseInt(req.to, 16) + Date.now()).toString(16);
-                mdesc = req.mdesc;
+                id = _res.id = req.id || (parseInt(req.to, 16) + Date.now()).toString(16);
+                to = _res.to = req.to || '';
+                from = _res.from = req.from || '';
+                mdesc = _res.mdesc = req.mdesc || {};
+                sdp = _res.sdp = req.sdp || null;
+                conn = _res.conn = req.conn || [];
+
                 _changeState('initialized');
 
                 if (req.id) {
-                    if (req.sdp && req.type == 'offer') { makeres(req); }
+                    if (req.type == 'offer') {
+                        _pc.setRemoteDescription(new RTCSessionDescription(req.sdp));
+                        req.conn.forEach(function(e) { _pc.addIceCandidate(new RTCIceCandidate(e)); });
+                        _res.type = 'answer';
+                        _makeres(sdp);
+                        _changeState('opened');
+                    }
                 }
                 else {
-                    req.id = id;
-                    makereq();
+                    req.id = _res.id;
+                    _res.type = 'offer';
+                    _makereq();
                 }
                 // Prepare a timeout method when request cannot be completed
                 // setTimeout(
@@ -677,7 +686,7 @@ var Gatherhub = Gatherhub || {};
             var wpc = this;
 
             // Private variables
-            var _pc = wpc.pc = new RPC({iceServers: (iceservers || null)});
+            var _pc = new RPC({iceServers: (iceservers || null)});
             var _sc = sigchan || null;
             var _dc = null;
             var _conn = [];
@@ -695,20 +704,11 @@ var Gatherhub = Gatherhub || {};
             };
             // Send datachannel negotiation infomration through WCC based on signaling state
             _pc.onsignalingstatechange = function(e) {
-                if (_pc.signalingState == 'have-local-offer') {
-                    _sc.send({'sdp': _pc.localDescription}, 'sdp', id);
-                }
-                else if (_pc.signalingState == 'have-remote-offer') {
+                if (_pc.signalingState == 'have-remote-offer') {
                     _pc.createAnswer(
-                        function(sdp){
-                            _pc.setLocalDescription(sdp);
-                            _sc.send({'sdp': sdp}, 'sdp', id);
-                        },
+                        function(sdp){ _negotiation(sdp); },
                         function(e) { console.error("Signal error: " + e.name);}
                     );
-                }
-                else if (_pc.signalingState == 'stable') {
-                    _sc.send({conn: _conn}, 'conn', id);
                 }
             };
 
@@ -719,7 +719,6 @@ var Gatherhub = Gatherhub || {};
                 // read-only property
                 Object.defineProperty(wpc, 'state', {
                     get: function() { return state; },
-                    set: function() { return; }
                 });
 
                 // Callbacks declaration, type check: function
@@ -758,8 +757,10 @@ var Gatherhub = Gatherhub || {};
                         _pc.setRemoteDescription(new RTCSessionDescription(offer.sdp));
                     }
 
-                    if (Array.isArray(offer.conn)) {
-                        offer.conn.forEach(function(e){ _pc.addIceCandidate(new RTCIceCandidate(e)); });
+                    if (offer.conn) {
+                        offer.conn.forEach(
+                            function(e) { _pc.addIceCandidate(new RTCIceCandidate(e)); }
+                        );
                     }
                 }
                 else {
@@ -769,7 +770,7 @@ var Gatherhub = Gatherhub || {};
                     }
 
                     _pc.createOffer(
-                        function(sdp) { _pc.setLocalDescription(sdp); },
+                        function(sdp) { _negotiation(sdp); },
                         function(e) { console.error("Signal error: " + e.name); }
                     );
                 }
@@ -792,6 +793,24 @@ var Gatherhub = Gatherhub || {};
             function _changeState(ste) {
                 state = ste;
                 if (wpc.onstatechange) { setTimeout(function() { wpc.onstatechange(state); }, 0); }
+            }
+
+            function _negotiation(sdp) {
+                _pc.setLocalDescription(sdp);
+
+                var c = 0;
+                var wait = 3;
+                var disp = setInterval(function() {
+                    if (c == _conn.length) { wait--; }
+                    else {
+                        c = _conn.length;
+                        wait = 3;
+                    }
+                    if (!wait) {
+                        _sc.send({'sdp': _pc.localDescription, conn: _conn}, 'sdp', id);
+                        clearInterval(disp);
+                    }
+                }, 35);
             }
 
             function _dcsetup() {
@@ -846,12 +865,10 @@ var Gatherhub = Gatherhub || {};
                 // read-only property
                 Object.defineProperty(wcc, 'id', {
                     get: function() { return id; },
-                    set: function() { return; }
                 });
                 // read-only property
                 Object.defineProperty(wcc, 'state', {
                     get: function() { return state; },
-                    set: function() { return; }
                 });
 
                 // Callbacks declaration, type check: function
