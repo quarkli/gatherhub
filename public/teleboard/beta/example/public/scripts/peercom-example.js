@@ -76,7 +76,7 @@ var reqpool = [];
                 break;
             case 'answer':
                 btncancel.appendTo(drawer);
-                $('#' + req.from).find('.btn-group').append(btnend);
+                $('#' + req.from).find('.btn-group').append(btnmute).append(btnend);
                 cparty.req = req;
                 addmedia();
                 cstate = 'busy';
@@ -98,6 +98,7 @@ var reqpool = [];
     var btncancel = $('<button>').addClass('btn btn-sm btn-danger').html('cancel').on('click', cancelcall);
     var btnaccept = $('<button>').addClass('btn btn-sm btn-success').html('accept').on('click', acceptcall);
     var btnreject = $('<button>').addClass('btn btn-sm btn-danger').html('reject').on('click', rejectcall);
+    var btnmute = $('<button>').addClass('btn btn-sm btn-warning').html('mute').on('click', mutecall);
     var btnend = $('<button>').addClass('btn btn-sm btn-danger').html('end').on('click', endcall);
     var vpad = $('<div align="center" >').width(w).height(h).css({position: 'relative', top: 0, left: ($(window).width() - w)/3, 'margin-top': 10});
     var rvid = $('<video autoplay>').width(w).height(h).css({position: 'absolute', top: 0, right: 0}).appendTo(vpad);
@@ -156,6 +157,7 @@ var reqpool = [];
 
         if (req) {
             pc.mediaResponse(req, 'accept');
+            btnaccept.parent().append(btnmute);
             btnaccept.parent().append(btnend);
             btnreject.appendTo(drawer);
             btnaccept.appendTo(drawer);
@@ -164,6 +166,14 @@ var reqpool = [];
             reqpool.push(req);
             cstate = 'busy';
         }
+    }
+
+    function mutecall() {
+        var req = reqpool.pop();
+        if (req) { pc.medchans[req.id].mute(); }
+        reqpool.push(req);
+        if (btnmute.html() == 'mute') { btnmute.removeClass('btn-warning').addClass('btn-success').html('unmute'); }
+        else { btnmute.removeClass('btn-success').addClass('btn-warning').html('mute'); }
     }
 
     function cancelcall() {
@@ -193,7 +203,11 @@ var reqpool = [];
         btnaccept.appendTo(drawer);
         btnreject.appendTo(drawer);
         btncancel.appendTo(drawer);
+        btnmute.appendTo(drawer);
         btnend.appendTo(drawer);
+
+        // restore mute button default
+        btnmute.removeClass('btn-success').addClass('btn-warning').html('mute');
 
         // recycle video element
         vpad.appendTo(drawer);
@@ -213,12 +227,7 @@ var reqpool = [];
         // add some delay to wait for stream ready, may be enhanced in the future
         setTimeout(
             function() {
-                var x = pc.medchans[cparty.req.id].lstream.getTracks().find(
-                    function(e) {
-                        return e.kind == 'video';
-                    }
-                );
-                if (x) {
+                if (pc.medchans[cparty.req.id].type == 'video') {
                     lvid.attr({src:  URL.createObjectURL(pc.medchans[cparty.req.id].lstream)});
                     rvid.attr({src:  URL.createObjectURL(pc.medchans[cparty.req.id].rstream)});
                     vpad.appendTo('#' + cparty.id);

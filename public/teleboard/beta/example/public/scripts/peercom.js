@@ -122,7 +122,7 @@ var Gatherhub = Gatherhub || {};
                         return iceservers;
                     }
                 });
-                
+
                 // read-only properties
                 Object.defineProperty(pc, 'id', {get: function() { return id; }});
                 Object.defineProperty(pc, 'peers', {get: function() { return peers; }});
@@ -192,7 +192,7 @@ var Gatherhub = Gatherhub || {};
                 _wcc.onerror = function(e) {
                     if (pc.onerror) {
                         setTimeout(function() {
-                            pc.onerror({code: -2, reason: 'Critical! WebSocket creation failed!', src: e);
+                            pc.onerror({code: -2, reason: 'Critical! WebSocket creation failed!', src: e});
                         }, 0);
                     }
                 };
@@ -435,7 +435,7 @@ var Gatherhub = Gatherhub || {};
             // not used yet, just log the event for now
             _pc.onremovestream = function(e) { console.log(e); };
 
-            var id, to, from, mdesc, sdp, conn, lstream, rstream, state;
+            var id, to, from, mdesc, sdp, conn, lstream, rstream, muted, type, state;
             var onstatechange;
             (function() {
                 // read-only properties
@@ -447,6 +447,8 @@ var Gatherhub = Gatherhub || {};
                 Object.defineProperty(wmc, 'conn', {get: function() { return conn; }});
                 Object.defineProperty(wmc, 'lstream', {get: function() { return lstream; }});
                 Object.defineProperty(wmc, 'rstream', {get: function() { return rstream; }});
+                Object.defineProperty(wmc, 'muted', {get: function() { return muted; }});
+                Object.defineProperty(wmc, 'type', {get: function() { return type; }});
                 Object.defineProperty(wmc, 'state', {get: function() { return state; }});
 
                 // Callbacks declaration, type check: function
@@ -463,7 +465,7 @@ var Gatherhub = Gatherhub || {};
                 Object.defineProperty(wmc, 'cancel', { value: cancel });
                 Object.defineProperty(wmc, 'update', { value: update });
                 Object.defineProperty(wmc, 'end', { value: end });
-                Object.defineProperty(wmc, 'mediaCtrl', { value: mediaCtrl });
+                Object.defineProperty(wmc, 'mute', { value: mute });
             })();
 
             function negotiate(req) {
@@ -509,7 +511,17 @@ var Gatherhub = Gatherhub || {};
             function update(req) {
             }
 
-            function mediaCtrl(ctrl) {
+            function mute(ctrl) {
+                var aud = lstream.getTracks().find(
+                    function(e) {
+                        return e.kind == 'audio';
+                    }
+                );
+
+                if (aud) {
+                    aud.enabled = muted;
+                    muted = !muted;
+                }
             }
 
             // Private functions
@@ -520,6 +532,8 @@ var Gatherhub = Gatherhub || {};
                     mdesc,
                     function(s) {
                         lstream = s;
+                        // this does not work for firefox when request for video
+                        // need a workaround if firefox needs to be supported
                         _pc.addStream(s);
                         _pc.createOffer(
                             function(sdp) {
@@ -540,6 +554,8 @@ var Gatherhub = Gatherhub || {};
                     mdesc,
                     function(s) {
                         lstream = s;
+                        // this does not work for firefox when request for video
+                        // need a workaround if firefox needs to be supported
                         _pc.addStream(s);
                         _pc.createAnswer(
                             function(sdp){
@@ -613,6 +629,8 @@ var Gatherhub = Gatherhub || {};
                 mdesc = _res.mdesc = req.mdesc || {};
                 sdp = _res.sdp = req.sdp || null;
                 conn = _res.conn = req.conn || [];
+                muted = false;
+                type = mdesc.video ? 'video' : 'audio';
 
                 _changeState('initialized');
 
