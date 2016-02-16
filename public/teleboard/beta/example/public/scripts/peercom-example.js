@@ -7,12 +7,13 @@ var reqpool = [];
     var hub = 'somehub';
     var servers = [
         'wss://localhost:55555',
+        'wss://192.168.11.3:55555',
         'wss://192.168.11.4:55555',
         'wss://192.168.11.5:55555',
         'wss://192.168.11.6:55555',
         'wss://192.168.11.7:55555',
         'wss://minichat.gatherhub.com:55555'];
-    var iceservers = [{'url': 'stun:stun.l.google.com:19302'}, {'url': 'stun:chi2-tftp2.starnetusa.net'}];
+    var iceservers = [{'urls': 'stun:stun.l.google.com:19302'}, {'urls': 'stun:chi2-tftp2.starnetusa.net'}];
     var pc = mpc = new Gatherhub.PeerCom({peer: peer, hub: hub, servers: servers, iceservers: iceservers});
     var _peers = {};
     var cstate = 'idle';
@@ -20,7 +21,10 @@ var reqpool = [];
     var w = $(window).width() > 360 ? 320 : (0 | ($(window).width() * 0.8) / 10) * 10;
     var h = 0 | (w / 8 * 5);
 
-    pc.onerror = function (e) { console.log(e); };
+    pc.onerror = function (e) {
+        console.log(e);
+        if (e.code < 0) { alert(e.reason); }
+    };
     pc.onstatechange = function (s) {
         // log PeerCom state in console
         console.log(s);
@@ -99,12 +103,14 @@ var reqpool = [];
     var rvid = $('<video autoplay>').width(w).height(h).css({position: 'absolute', top: 0, right: 0}).appendTo(vpad);
     var lvid = $('<video autoplay muted>').width(0 | (w/3)).height(0 | (h/3)).css({position: 'absolute', top: 0, right: 0}).appendTo(vpad);
 
+    // dynamically create peer elements in peer list panel group
     function addPeer(peer, host) {
         if (!peer || $('#' + peer.id).length) { return; }
 
         var panel = $('<div class="panel-heading" style="position: relative, width: 100%, display: table">').html(peer.peer).attr({id: peer.id});
         var d2 = $('<div>').css({'margin-top': -20, 'display': 'inline-block table-cell', 'text-align': 'right'}).appendTo(panel);
         var bgroup = $('<div class="btn-group">').appendTo(d2);
+
         if (host) {
             $('<div class="panel panel-primary">').appendTo('#pgroup').append(panel);
         }
@@ -121,15 +127,27 @@ var reqpool = [];
     }
 
     function makecall() {
+        // get target peer id from panel id
         var pid = cparty.id = $(this).parents('.panel-heading').attr('id');
+        // set media description by the button clicked
         var mdesc = $(this).html() == 'video' ? {audio: true, video: {mandatory: {minWidth: 160, minWidth: 100, maxWidth: 160, maxHeight:100}}} : {audio: true};
+
+        // hide default buttons and add cancel button
         $('.panel-heading').find('button').toggle();
         $('#' + pid).find('.btn-group').append(btncancel);
+
+        // hide rest peers but show only taget peer in the list
         $('.panel-heading').parent().first().toggle();
         $('#' + pid).parent().toggle();
         $('#' + pid).parent().parent().children().toggle();
+
+        // send request through PeerCom API
         var req = pc.mediaRequest({to: pid, mdesc: mdesc});
+
+        // queue reqest for later use
         reqpool.push({id: req, to: pid, mdesc: mdesc});
+
+        // change state
         cstate = 'calling';
     }
 
@@ -166,21 +184,33 @@ var reqpool = [];
         cleanup();
     }
 
+    // restore page layout and default elements
     function cleanup() {
+        // remove queued request
         reqpool.pop();
+
+        // recycle buttons
         btnaccept.appendTo(drawer);
         btnreject.appendTo(drawer);
         btncancel.appendTo(drawer);
         btnend.appendTo(drawer);
+
+        // recycle video element
         vpad.appendTo(drawer);
+
+        // show default buttons and hidden peers
         $('.panel-heading').find('button').toggle();
         $('.panel-heading').parent().first().toggle();
         $('#' + cparty.id).parent().toggle();
         $('#' + cparty.id).parent().parent().children().toggle();
+
+        // reset state
         cstate = 'idle';
     }
 
+    // dynamically insert media element to web page based on call type
     function addmedia() {
+        // add some delay to wait for stream ready, may be enhanced in the future
         setTimeout(
             function() {
                 var x = pc.medchans[cparty.req.id].lstream.getTracks().find(

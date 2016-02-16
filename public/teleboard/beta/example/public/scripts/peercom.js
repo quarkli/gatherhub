@@ -32,8 +32,10 @@ var Gatherhub = Gatherhub || {};
 
 (function() {
     // Browser Naming Converter
-    var RPC = window.mozRTCPeerConnection || window.webkitRTCPeerConnection;
-    var getUserMedia = (navigator.getUserMedia || navigator.webkitGetUserMedia).bind(navigator);
+    var RPC = window.webkitRTCPeerConnection || window.mozRTCPeerConnection;
+    var RTCSessionDescription = window.RTCSessionDescription || window.mozRTCSessionDescription;
+    var RTCIceCandidate = window.RTCIceCandidate || window.mozRTCIceCandidate;
+    var getUserMedia = (navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia).bind(navigator);
     var warn = (console.error).bind(console);
 
     var hint = {
@@ -120,22 +122,12 @@ var Gatherhub = Gatherhub || {};
                         return iceservers;
                     }
                 });
-                // read-only property
-                Object.defineProperty(pc, 'id', {
-                    get: function() { return id; },
-                });
-                // read-only property
-                Object.defineProperty(pc, 'peers', {
-                    get: function() { return peers; },
-                });
-                // read-only property
-                Object.defineProperty(pc, 'medchans', {
-                    get: function() { return medchans; },
-                });
-                // read-only property
-                Object.defineProperty(pc, 'state', {
-                    get: function() { return state; },
-                });
+                
+                // read-only properties
+                Object.defineProperty(pc, 'id', {get: function() { return id; }});
+                Object.defineProperty(pc, 'peers', {get: function() { return peers; }});
+                Object.defineProperty(pc, 'medchans', {get: function() { return medchans; }});
+                Object.defineProperty(pc, 'state', {get: function() { return state; }});
 
                 // Callbacks declaration, type check: function
                 Object.defineProperty(pc, 'onerror', {
@@ -184,6 +176,13 @@ var Gatherhub = Gatherhub || {};
 
             // Methods implementation
             function start() {
+                if (!(RPC && RTCSessionDescription && RTCIceCandidate && getUserMedia)) {
+                    setTimeout(function() {
+                        if (pc.onerror) { pc.onerror({code: -1, reason: 'Browser does not support WebRTC'}); }
+                    }, 0);
+                    return;
+                }
+
                 _changeState('starting');
 
                 // Create WCC Object and Initiate Registration Event
@@ -191,11 +190,11 @@ var Gatherhub = Gatherhub || {};
 
                 // Add Signal Handling
                 _wcc.onerror = function(e) {
-                    // other error, raise parent error
                     if (pc.onerror) {
-                        setTimeout(function() { pc.onerror(e); }, 0);
+                        setTimeout(function() {
+                            pc.onerror({code: -2, reason: 'Critical! WebSocket creation failed!', src: e);
+                        }, 0);
                     }
-                    // stop();
                 };
 
                 _wcc.onmessage = function(msg) {
@@ -395,12 +394,20 @@ var Gatherhub = Gatherhub || {};
             medchans = {};
             _changeState('stopped');
 
-            if (config) {
-                pc.peer = config.peer;
-                pc.hub = config.hub;
-                pc.servers = config.servers;
-                pc.iceservers = config.iceservers;
-                start();
+            // do not start if any of WebRTC API is not available
+            if (RPC && RTCSessionDescription && RTCIceCandidate && getUserMedia) {
+                if (config) {
+                    pc.peer = config.peer;
+                    pc.hub = config.hub;
+                    pc.servers = config.servers;
+                    pc.iceservers = config.iceservers;
+                    start();
+                }
+            }
+            else {
+                setTimeout(function() {
+                    if (pc.onerror) { pc.onerror({code: -1, reason: 'Browser does not support WebRTC'}); }
+                }, 100);
             }
         }
     })();
@@ -421,57 +428,26 @@ var Gatherhub = Gatherhub || {};
             var _res = {};
 
             _pc.onicecandidate = function(e) {
-                if (e.candidate) {
-                    // req.type = 'conn'
-                    conn.push(e.candidate);
-                    // if (req.sdp) { delete req.sdp; }
-                    // sigchan(req, 'media', to);
-                }
+                if (e.candidate) { conn.push(e.candidate); }
             };
-
-            // these event dumping is for tracing RTC sequence
             _pc.onaddstream = function(e) { rstream = e.stream; };
+
+            // not used yet, just log the event for now
             _pc.onremovestream = function(e) { console.log(e); };
 
             var id, to, from, mdesc, sdp, conn, lstream, rstream, state;
             var onstatechange;
             (function() {
-                // read-only property
-                Object.defineProperty(wmc, 'id', {
-                    get: function() { return id; },
-                });
-
-                Object.defineProperty(wmc, 'to', {
-                    get: function() { return to; },
-                });
-
-                Object.defineProperty(wmc, 'from', {
-                    get: function() { return from; },
-                });
-
-                Object.defineProperty(wmc, 'mdesc', {
-                    get: function() { return mdesc; },
-                });
-
-                Object.defineProperty(wmc, 'sdp', {
-                    get: function() { return sdp; },
-                });
-
-                Object.defineProperty(wmc, 'conn', {
-                    get: function() { return conn; },
-                });
-
-                Object.defineProperty(wmc, 'lstream', {
-                    get: function() { return lstream; },
-                });
-
-                Object.defineProperty(wmc, 'rstream', {
-                    get: function() { return rstream; },
-                });
-
-                Object.defineProperty(wmc, 'state', {
-                    get: function() { return state; },
-                });
+                // read-only properties
+                Object.defineProperty(wmc, 'id', {get: function() { return id; }});
+                Object.defineProperty(wmc, 'to', {get: function() { return to; }});
+                Object.defineProperty(wmc, 'from', {get: function() { return from; }});
+                Object.defineProperty(wmc, 'mdesc', {get: function() { return mdesc; }});
+                Object.defineProperty(wmc, 'sdp', {get: function() { return sdp; }});
+                Object.defineProperty(wmc, 'conn', {get: function() { return conn; }});
+                Object.defineProperty(wmc, 'lstream', {get: function() { return lstream; }});
+                Object.defineProperty(wmc, 'rstream', {get: function() { return rstream; }});
+                Object.defineProperty(wmc, 'state', {get: function() { return state; }});
 
                 // Callbacks declaration, type check: function
                 Object.defineProperty(wmc, 'onstatechange', {
@@ -567,16 +543,11 @@ var Gatherhub = Gatherhub || {};
                         _pc.addStream(s);
                         _pc.createAnswer(
                             function(sdp){
-                                // _pc.setLocalDescription(sdp);
                                 _res.sdp = sdp;
-                                // sigchan(req, 'media', to);
                                 _negotiation(sdp);
                             },
                             function(e) { console.error("Signal error: " + e.name);}
                         );
-                        // if (sdp.type == 'offer') {
-                        //     _pc.setRemoteDescription(new RTCSessionDescription(sdp));
-                        // }
                     },
                     function(e) {
                         _changeState('failed');
@@ -717,9 +688,7 @@ var Gatherhub = Gatherhub || {};
             // Properties / Event Callbacks/ Methods declaration
             (function() {
                 // read-only property
-                Object.defineProperty(wpc, 'state', {
-                    get: function() { return state; },
-                });
+                Object.defineProperty(wpc, 'state', {get: function() { return state; }});
 
                 // Callbacks declaration, type check: function
                 Object.defineProperty(wpc, 'onerror', {
@@ -824,6 +793,7 @@ var Gatherhub = Gatherhub || {};
                                 _dc.send(JSON.stringify(msg));
                                 break;
                             case 'pong':
+                                msg.data = {};
                                 msg.data.delay = Date.now() - msg.ts;
                                 // no break here to continue onmessage invoke for ping response
                             default:
@@ -862,14 +832,9 @@ var Gatherhub = Gatherhub || {};
             var id, state;
             var onerror, onmessage, onstatechange;
             (function() {
-                // read-only property
-                Object.defineProperty(wcc, 'id', {
-                    get: function() { return id; },
-                });
-                // read-only property
-                Object.defineProperty(wcc, 'state', {
-                    get: function() { return state; },
-                });
+                // read-only properties
+                Object.defineProperty(wcc, 'id', {get: function() { return id; }});
+                Object.defineProperty(wcc, 'state', {get: function() { return state; }});
 
                 // Callbacks declaration, type check: function
                 Object.defineProperty(wcc, 'onerror', {
@@ -941,6 +906,8 @@ var Gatherhub = Gatherhub || {};
                 };
                 _ws.onmessage = function(msg) {
                     var ctx = JSON.parse(msg.data);
+
+                    // Some control messaages/logics will be handled here without passing to upper application
                     switch (ctx.type) {
                         case 'ho':
                             // special reply from server for completing peer registration
@@ -957,6 +924,7 @@ var Gatherhub = Gatherhub || {};
                             _ws.send(JSON.stringify(ctx));
                             break;
                         case 'pong':
+                            ctx.data = {};
                             ctx.data.delay = Date.now() - ctx.ts;
                             // no break here to continue onmessage invoke for ping response
                         default:
