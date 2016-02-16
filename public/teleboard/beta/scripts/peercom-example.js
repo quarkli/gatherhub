@@ -72,6 +72,8 @@ var reqpool = [];
                     $('.panel-heading').parent().first().toggle();
                     $('#' + cparty.id).parent().toggle();
                     $('#' + cparty.id).parent().parent().children().toggle();
+
+                    ring.play();
                 }
                 break;
             case 'answer':
@@ -84,6 +86,7 @@ var reqpool = [];
             case 'cancel':
             case 'reject':
             case 'end':
+                ring.pause();
                 cleanup();
                 break;
         }
@@ -92,6 +95,12 @@ var reqpool = [];
     // create peer list container
     $('<h3>').html('Peer List:').appendTo('#layer1');
     $('<div class="panel-group" id="pgroup">').appendTo('#layer1');
+
+    // ringtone element
+    var ring = new Audio('/media/ring.mp3');
+    var lau = new Audio();
+    var rau = new Audio();
+    lau.muted = true;
 
     // create reusable html elements
     var drawer = $('<div>');
@@ -153,6 +162,7 @@ var reqpool = [];
     }
 
     function acceptcall() {
+        ring.pause();
         var req = reqpool.pop();
 
         if (req) {
@@ -183,6 +193,7 @@ var reqpool = [];
     }
 
     function rejectcall() {
+        ring.pause();
         var req = reqpool.pop();
         if (req) { pc.mediaResponse(req, 'reject'); }
         cleanup();
@@ -196,6 +207,10 @@ var reqpool = [];
 
     // restore page layout and default elements
     function cleanup() {
+        // stop audio
+        lau.pause();
+        rau.pause();
+
         // remove queued request
         reqpool.pop();
 
@@ -233,8 +248,10 @@ var reqpool = [];
                     vpad.appendTo('#' + cparty.id);
                 }
                 else {
-                    $('<audio autoplay muted>').attr({src: URL.createObjectURL(pc.medchans[cparty.req.id].lstream)}).appendTo('body').toggle();
-                    $('<audio autoplay>').attr({src: URL.createObjectURL(pc.medchans[cparty.req.id].rstream)}).appendTo('body').toggle();
+                    lau.src = URL.createObjectURL(pc.medchans[cparty.req.id].lstream);
+                    rau.src = URL.createObjectURL(pc.medchans[cparty.req.id].rstream);
+                    lau.play();
+                    rau.play();
                 }
             }
             , 1000);

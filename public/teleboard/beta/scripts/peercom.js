@@ -511,7 +511,7 @@ var Gatherhub = Gatherhub || {};
             function update(req) {
             }
 
-            function mute(ctrl) {
+            function mute() {
                 var aud = lstream.getTracks().find(
                     function(e) {
                         return e.kind == 'audio';
