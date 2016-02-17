@@ -5,15 +5,15 @@ var reqpool = [];
 (function() {
     var peer = 'p' + (0 | Math.random() * 900 + 100);
     var hub = 'somehub';
-    var servers = [
-        'wss://localhost:55555',
-        'wss://192.168.11.3:55555',
-        'wss://192.168.11.4:55555',
-        'wss://192.168.11.5:55555',
-        'wss://192.168.11.6:55555',
-        'wss://192.168.11.7:55555',
-        'wss://minichat.gatherhub.com:55555'];
-    var iceservers = [{'urls': 'stun:stun.l.google.com:19302'}, {'urls': 'stun:chi2-tftp2.starnetusa.net'}];
+    var servers = ['wss://www.gatherhub.com:55688'];
+    // var iceservers = [{'urls': 'stun:chi2-tftp2.starnetusa.net'}, {'urls': 'stun:stun.l.google.com:19302'}];
+    var iceservers = [
+        {'urls': 'stun:chi2-tftp2.starnetusa.net'},
+        {'urls': 'stun:stun01.sipphone.com'},
+        {'urls': 'stun:stun.fwdnet.net'},
+        {'urls': 'stun:stun.voxgratia.org'},
+        {'urls': 'stun:stun.xten.com'}
+    ];
     var pc = mpc = new Gatherhub.PeerCom({peer: peer, hub: hub, servers: servers, iceservers: iceservers});
     var _peers = {};
     var cstate = 'idle';
@@ -27,12 +27,20 @@ var reqpool = [];
     };
     pc.onstatechange = function (s) {
         // log PeerCom state in console
-        console.log(s);
+        $('#title').html('Peer List: (status: ' + s + ')');
 
         // clear peer list
-        if (s == 'starting') { $('#pgroup').children().remove(); }
+        if (s == 'starting') {
+            $('#pgroup').children().remove();
+        }
+        if (s == 'stopped') {
+            $('#pgroup').children().remove();
+            pc.start();
+        }
         // add myself as on top of peer list as the host
-        if (s == 'started') { addPeer(pc, 1); }
+        else if (s == 'started') {
+            addPeer(pc, 1);
+        }
     };
     pc.onpeerchange = function (peers) {
         // Check for new joined peers and add them to peer list
@@ -64,15 +72,15 @@ var reqpool = [];
         switch (req.type) {
             case 'offer':
                 if (cstate == 'idle') {
+                    var ctype = req.mdesc.video ? 'video' : 'audio';
                     reqpool.push(req);
                     cparty.id = req.from;
                     cstate = 'incoming';
                     $('.panel-heading').find('button').toggle();
                     $('#' + cparty.id).find('.btn-group').append(btnaccept).append(btnreject);
-                    $('.panel-heading').parent().first().toggle();
                     $('#' + cparty.id).parent().toggle();
-                    $('#' + cparty.id).parent().parent().children().toggle();
-
+                    $('#' + cparty.id).parent().parent().children('.panel-success').toggle();
+                    $('#' + cparty.id).children('span').html($('#' + cparty.id).children('span').html() + ' (' + ctype + ' call)');
                     ring.play();
                 }
                 break;
@@ -93,7 +101,7 @@ var reqpool = [];
     };
 
     // create peer list container
-    $('<h3>').html('Peer List:').appendTo('#layer1');
+    $('<h3 id="title">').html('Peer List:').appendTo('#layer1');
     $('<div class="panel-group" id="pgroup">').appendTo('#layer1');
 
     // ringtone element
@@ -117,7 +125,8 @@ var reqpool = [];
     function addPeer(peer, host) {
         if (!peer || $('#' + peer.id).length) { return; }
 
-        var panel = $('<div class="panel-heading" style="position: relative, width: 100%, display: table">').html(peer.peer).attr({id: peer.id});
+        var panel = $('<div class="panel-heading" style="position: relative, width: 100%, display: table">').attr({id: peer.id});
+        var s1 = $('<span>').html(peer.peer).appendTo(panel);
         var d2 = $('<div>').css({'margin-top': -20, 'display': 'inline-block table-cell', 'text-align': 'right'}).appendTo(panel);
         var bgroup = $('<div class="btn-group">').appendTo(d2);
 
@@ -147,9 +156,8 @@ var reqpool = [];
         $('#' + pid).find('.btn-group').append(btncancel);
 
         // hide rest peers but show only taget peer in the list
-        $('.panel-heading').parent().first().toggle();
         $('#' + pid).parent().toggle();
-        $('#' + pid).parent().parent().children().toggle();
+        $('#' + pid).parent().parent().children('.panel-success').toggle();
 
         // send request through PeerCom API
         var req = pc.mediaRequest({to: pid, mdesc: mdesc});
@@ -229,9 +237,9 @@ var reqpool = [];
 
         // show default buttons and hidden peers
         $('.panel-heading').find('button').toggle();
-        $('.panel-heading').parent().first().toggle();
         $('#' + cparty.id).parent().toggle();
-        $('#' + cparty.id).parent().parent().children().toggle();
+        $('#' + cparty.id).parent().parent().children('.panel-success').toggle();
+        $('#' + cparty.id).children('span').html($('#' + cparty.id).children('span').html().split(' (')[0]);
 
         // reset state
         cstate = 'idle';

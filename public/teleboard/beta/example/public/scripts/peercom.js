@@ -47,6 +47,13 @@ var Gatherhub = Gatherhub || {};
         peer: 'Warning: Peer does not exist >'
     };
 
+    // IMPORTANT: This function provides the timestamp for all message tag and timing calculation in PeerCom
+    // DO NOT USE Date.now() to get a timestamp, ALWAYS call getTs() instead in PeerCOM
+    // The _tsDiff will be set by WCC() when registered to WebSocket Server which correct the time difference among peers
+    var _tsDiff = 0;
+    function getTs() { return _tsDiff ? Date.now() - _tsDiff : 0; }
+    function logErr(e) { console.error("Signal error: " + e.name);}
+
     // Abbreviation
     var g = Gatherhub;
 
@@ -229,6 +236,9 @@ var Gatherhub = Gatherhub || {};
                         id = _wcc.id;
                         _changeState('started');
                     }
+                    else if (state == 'disconnected') {
+                        stop();
+                    }
                     else { _changeState(state); }
                 };
             }
@@ -237,7 +247,7 @@ var Gatherhub = Gatherhub || {};
                 _changeState('stopping');
 
                 // Notify peers of disconnection
-                _wcc.send({}, 'bye');
+                if (_wcc && _wcc.state == 'connected' || _wcc.state == 'registered') { _wcc.send({}, 'bye'); }
 
                 // Clear Peers
                 for (var i in peers) { _removePeer(i); }
@@ -428,14 +438,14 @@ var Gatherhub = Gatherhub || {};
             var _res = {};
 
             _pc.onicecandidate = function(e) {
-                if (e.candidate) { conn.push(e.candidate); }
+                if (e.candidate) { _res.conn.push(e.candidate); }
             };
             _pc.onaddstream = function(e) { rstream = e.stream; };
 
             // not used yet, just log the event for now
             _pc.onremovestream = function(e) { console.log(e); };
 
-            var id, to, from, mdesc, sdp, conn, lstream, rstream, muted, type, state;
+            var id, to, from, mdesc, lsdp, rsdp, lconn, rconn, lstream, rstream, muted, type, state;
             var onstatechange;
             (function() {
                 // read-only properties
@@ -443,8 +453,10 @@ var Gatherhub = Gatherhub || {};
                 Object.defineProperty(wmc, 'to', {get: function() { return to; }});
                 Object.defineProperty(wmc, 'from', {get: function() { return from; }});
                 Object.defineProperty(wmc, 'mdesc', {get: function() { return mdesc; }});
-                Object.defineProperty(wmc, 'sdp', {get: function() { return sdp; }});
-                Object.defineProperty(wmc, 'conn', {get: function() { return conn; }});
+                Object.defineProperty(wmc, 'lsdp', {get: function() { return lsdp; }});
+                Object.defineProperty(wmc, 'rsdp', {get: function() { return rsdp; }});
+                Object.defineProperty(wmc, 'lconn', {get: function() { return lconn; }});
+                Object.defineProperty(wmc, 'rconn', {get: function() { return rconn; }});
                 Object.defineProperty(wmc, 'lstream', {get: function() { return lstream; }});
                 Object.defineProperty(wmc, 'rstream', {get: function() { return rstream; }});
                 Object.defineProperty(wmc, 'muted', {get: function() { return muted; }});
@@ -470,9 +482,9 @@ var Gatherhub = Gatherhub || {};
 
             function negotiate(req) {
                 if (req.type == 'answer') {
-                    from = _res.from = req.from;
-                    _pc.setRemoteDescription(new RTCSessionDescription(req.sdp));
-                    req.conn.forEach(function(e) { _pc.addIceCandidate(new RTCIceCandidate(e)); });
+                    rsdp = new RTCSessionDescription(req.sdp);
+                    _pc.setRemoteDescription(rsdp);
+                    req.conn.forEach(_parseConn);
                     _changeState('opened');
                 }
                 else if (req.type == 'cancel') {
@@ -535,13 +547,7 @@ var Gatherhub = Gatherhub || {};
                         // this does not work for firefox when request for video
                         // need a workaround if firefox needs to be supported
                         _pc.addStream(s);
-                        _pc.createOffer(
-                            function(sdp) {
-                                _res.sdp = sdp;
-                                _negotiation(sdp);
-                            },
-                            function(e) { console.error("Signal error: " + e.name); }
-                        );
+                        _pc.createOffer(_negotiation, logErr);
                     },
                     function(e) {
                         _changeState('failed');
@@ -557,13 +563,7 @@ var Gatherhub = Gatherhub || {};
                         // this does not work for firefox when request for video
                         // need a workaround if firefox needs to be supported
                         _pc.addStream(s);
-                        _pc.createAnswer(
-                            function(sdp){
-                                _res.sdp = sdp;
-                                _negotiation(sdp);
-                            },
-                            function(e) { console.error("Signal error: " + e.name);}
-                        );
+                        _pc.createAnswer(_negotiation, logErr);
                     },
                     function(e) {
                         _changeState('failed');
@@ -572,17 +572,21 @@ var Gatherhub = Gatherhub || {};
             }
 
             function _negotiation(sdp) {
+                _res.conn = [];
                 _pc.setLocalDescription(sdp);
+
+                lsdp = _res.sdp = sdp;
 
                 var c = 0;
                 var wait = 3;
                 var disp = setInterval(function() {
-                    if (c == conn.length) { wait--; }
+                    if (c == _res.conn.length) { wait--; }
                     else {
-                        c = conn.length;
+                        c = _res.conn.length;
                         wait = 3;
                     }
                     if (!wait) {
+                        lconn = _res.conn;
                         sigchan(_res, 'media', to);
                         clearInterval(disp);
                     }
@@ -607,6 +611,12 @@ var Gatherhub = Gatherhub || {};
                 _changeState('closed');
             }
 
+            function _parseConn(c) {
+                var conn = new RTCIceCandidate(c);
+                _pc.addIceCandidate(conn);
+                rconn.push(conn);
+            }
+
             function _timeout() {
                 _changeState('timeout');
                 if (state == 'requesting') {
@@ -623,28 +633,28 @@ var Gatherhub = Gatherhub || {};
             }
 
             function _init() {
-                id = _res.id = req.id || (parseInt(req.to, 16) + Date.now()).toString(16);
-                to = _res.to = req.to || '';
-                from = _res.from = req.from || '';
+                id = _res.id = req.id || (parseInt(req.to, 16) + getTs()).toString(16);
+                to = _res.to = req.to;
+                from = _res.from = req.from;
                 mdesc = _res.mdesc = req.mdesc || {};
-                sdp = _res.sdp = req.sdp || null;
-                conn = _res.conn = req.conn || [];
+                rsdp = lsdp = _res.sdp = {};
+                rconn = lconn = [];
                 muted = false;
                 type = mdesc.video ? 'video' : 'audio';
 
                 _changeState('initialized');
 
-                if (req.id) {
-                    if (req.type == 'offer') {
-                        _pc.setRemoteDescription(new RTCSessionDescription(req.sdp));
-                        req.conn.forEach(function(e) { _pc.addIceCandidate(new RTCIceCandidate(e)); });
-                        _res.type = 'answer';
-                        _makeres(sdp);
-                        _changeState('opened');
-                    }
+                // This is an offer request, initiate make response
+                if (req.id && req.type == 'offer') {
+                    rsdp = new RTCSessionDescription(req.sdp);
+                    _pc.setRemoteDescription(rsdp);
+                    req.conn.forEach(_parseConn);
+                    _res.type = 'answer';
+                    _makeres(req.sdp);
+                    _changeState('opened');
                 }
+                // This is an new request, initiate make request
                 else {
-                    req.id = _res.id;
                     _res.type = 'offer';
                     _makereq();
                 }
@@ -694,10 +704,7 @@ var Gatherhub = Gatherhub || {};
             // Send datachannel negotiation infomration through WCC based on signaling state
             _pc.onsignalingstatechange = function(e) {
                 if (_pc.signalingState == 'have-remote-offer') {
-                    _pc.createAnswer(
-                        function(sdp){ _negotiation(sdp); },
-                        function(e) { console.error("Signal error: " + e.name);}
-                    );
+                    _pc.createAnswer(_negotiation, logErr);
                 }
             };
 
@@ -756,10 +763,7 @@ var Gatherhub = Gatherhub || {};
                         _dcsetup();
                     }
 
-                    _pc.createOffer(
-                        function(sdp) { _negotiation(sdp); },
-                        function(e) { console.error("Signal error: " + e.name); }
-                    );
+                    _pc.createOffer(_negotiation, logErr);
                 }
             }
 
@@ -770,7 +774,7 @@ var Gatherhub = Gatherhub || {};
 
             function send(data, type) {
                 if (_dc.readyState == 'open') {
-                    _dc.send(JSON.stringify({data: data, type: type, from: _sc.id, via: 'wpc', ts: _sc.getTs()}));
+                    _dc.send(JSON.stringify({data: data, type: type, from: _sc.id, via: 'wpc', ts: getTs()}));
                     return true;
                 }
                 return false;
@@ -797,7 +801,7 @@ var Gatherhub = Gatherhub || {};
                         _sc.send({'sdp': _pc.localDescription, conn: _conn}, 'sdp', id);
                         clearInterval(disp);
                     }
-                }, 35);
+                }, 100);
             }
 
             function _dcsetup() {
@@ -808,11 +812,11 @@ var Gatherhub = Gatherhub || {};
                             case 'ping':
                                 msg.from = _sc.id;
                                 msg.type = 'pong';
+                                msg.data = {};
                                 _dc.send(JSON.stringify(msg));
                                 break;
                             case 'pong':
-                                msg.data = {};
-                                msg.data.delay = Date.now() - msg.ts;
+                                msg.data.delay = getTs() - msg.ts;
                                 // no break here to continue onmessage invoke for ping response
                             default:
                                 setTimeout(function() { wpc.onmessage(msg); }, 0);
@@ -841,7 +845,6 @@ var Gatherhub = Gatherhub || {};
             // private variables
             var _ws = null;
             var _svrIdx = -1;
-            var _tsDiff = 0;
             var _beaconDur = 25000; // 25 seconds
             var _beaconTask = -1;
             var _peer, _hub, _servers;
@@ -879,7 +882,6 @@ var Gatherhub = Gatherhub || {};
 
                  // Methods declaration, read-only
                 Object.defineProperty(wcc, 'send', { value: send });
-                Object.defineProperty(wcc, 'getTs', { value: getTs });
             })();
 
             // Methods implementation
@@ -898,8 +900,6 @@ var Gatherhub = Gatherhub || {};
                 }
                 return false;
             }
-
-            function getTs() { return _tsDiff ? Date.now() - _tsDiff : 0; }
 
             // Private functions
             function _changeState(ste) {
@@ -930,20 +930,21 @@ var Gatherhub = Gatherhub || {};
                         case 'ho':
                             // special reply from server for completing peer registration
                             if (ctx.data.result && ctx.data.result == 'Success') {
-                                _tsDiff = Date.now() - ctx.ts;
+                                _tsDiff = getTs() - ctx.ts;
                                 id = ctx.from
                                 _changeState('registered');
                                 _beaconTask = setInterval(function() { send({}, 'beacon', id); }, _beaconDur);
                             }
                             break;
                         case 'ping':
+                            ctx.to = ctx.from;
                             ctx.from = id;
                             ctx.type = 'pong';
+                            ctx.data = {};
                             _ws.send(JSON.stringify(ctx));
                             break;
                         case 'pong':
-                            ctx.data = {};
-                            ctx.data.delay = Date.now() - ctx.ts;
+                            ctx.data.delay = getTs() - ctx.ts;
                             // no break here to continue onmessage invoke for ping response
                         default:
                             if (wcc.onmessage) {
@@ -957,7 +958,6 @@ var Gatherhub = Gatherhub || {};
                     _changeState('disconnected');
                     clearInterval(_beaconTask);
                     _ws = null;
-                    setTimeout(function() { _connect(); }, 0);
                 };
             }
 
