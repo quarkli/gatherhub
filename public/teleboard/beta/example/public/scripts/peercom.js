@@ -44,7 +44,8 @@ var Gatherhub = Gatherhub || {};
         fcb: 'Warning: Callback must be Function >',
         send: 'Warning: Message cannot be sent >',
         start: 'Warning: PeerCom is not started >',
-        peer: 'Warning: Peer does not exist >'
+        peer: 'Warning: Peer does not exist >',
+        medchan: 'Warning: Invalid media channel id >'
     };
 
     // IMPORTANT: This function provides the timestamp for all message tag and timing calculation in PeerCom
@@ -224,6 +225,18 @@ var Gatherhub = Gatherhub || {};
                             if (medchans[msg.data.id]) {
                                 medchans[msg.data.id].negotiate(msg.data);
                             }
+                            else if (msg.data.type == 'offer') {
+                                var wmc = new _WMC(msg.data, pc.send, iceservers);
+                                wmc.onstatechange = function(s) {
+                                    console.log('medchans[' + wmc.id + '].state:', s);
+                                    if (s == 'closed') {
+                                        delete medchans[wmc.id];
+                                        wmc = null;
+                                    }
+                                };
+
+                                medchans[wmc.id] = wmc;
+                            }
                             break;
                         default:
                             if (pc.onmessage) { setTimeout(function() { pc.onmessage(msg); }, 0); }
@@ -318,40 +331,11 @@ var Gatherhub = Gatherhub || {};
             }
 
             function mediaResponse(req, answer) {
-                var wmc = null;
-
-                if (state != 'started') {
-                    warn(hint.start, 'PeerCom.mediaResponse()');
-                    return false;
+                if (medchans[req.id]) {
+                    if (answer == 'accept') { medchans[req.id].accept(); }
+                    else { medchans[req.id].reject(); }
                 }
-
-                if (peers[req.from] && req.id && req.mdesc && req.type == 'offer') {
-                    if (answer == 'accept') {
-                        var tmp = req.to;
-                        req.to = req.from;
-                        req.from = tmp;
-                        var wmc = new _WMC(req, pc.send, iceservers);
-                        wmc.onstatechange = function(s) {
-                            console.log('medchans[' + wmc.id + '].state:', s);
-                            if (s == 'closed') {
-                                delete medchans[wmc.id];
-                                wmc = null;
-                            }
-                        };
-
-                        medchans[wmc.id] = wmc;
-                        return wmc.id;
-                    }
-                    else if (answer == 'reject') {
-                        req.type = 'reject';
-                        pc.send(req, 'media', req.from);
-                    }
-                }
-                else {
-                    warn(hint.peer, 'PeerCom.mediaResponse()');
-                }
-
-                return 0;
+                else { warn(hint.medchan, 'PeerCom.mediaResponse()'); }
             }
 
             // Private functions
@@ -363,6 +347,18 @@ var Gatherhub = Gatherhub || {};
                             if (pc.onmediarequest) { setTimeout(function() { pc.onmediarequest(msg.data); }, 0); }
                             if (medchans[msg.data.id]) {
                                 medchans[msg.data.id].negotiate(msg.data);
+                            }
+                            else if (msg.data.type == 'offer') {
+                                var wmc = new _WMC(msg.data, pc.send, iceservers);
+                                wmc.onstatechange = function(s) {
+                                    console.log('medchans[' + wmc.id + '].state:', s);
+                                    if (s == 'closed') {
+                                        delete medchans[wmc.id];
+                                        wmc = null;
+                                    }
+                                };
+
+                                medchans[wmc.id] = wmc;
                             }
                         }
                         else if (pc.onmessage) { setTimeout(function() { pc.onmessage(msg); }, 0); }
@@ -417,7 +413,7 @@ var Gatherhub = Gatherhub || {};
             else {
                 setTimeout(function() {
                     if (pc.onerror) { pc.onerror({code: -1, reason: 'Browser does not support WebRTC'}); }
-                }, 100);
+                }, 500);
             }
         }
     })();
@@ -434,11 +430,19 @@ var Gatherhub = Gatherhub || {};
         function WMC(req, sigchan, iceservers) {
             var wmc = this;
 
-            var _pc = new RPC({iceServers: (iceservers || null)});
+            var _pc = wmc._pc = new RPC({iceServers: (iceservers || null)});
             var _res = {};
 
             _pc.onicecandidate = function(e) {
-                if (e.candidate) { _res.conn.push(e.candidate); }
+                // if (e.candidate) { _res.conn.push(e.candidate);console.log('ie:',_res.conn) }
+                if (e.candidate) {
+                    lconn.push(e.candidate);
+                    _res.conn = e.candidate;
+                    _dispatch();
+                }
+                else {
+                    console.log('############# end of IceCandidate');
+                }
             };
             _pc.onaddstream = function(e) { rstream = e.stream; };
 
@@ -473,6 +477,8 @@ var Gatherhub = Gatherhub || {};
                 });
 
                  // Methods declaration, read-only
+                Object.defineProperty(wmc, 'accept', { value: accept });
+                Object.defineProperty(wmc, 'reject', { value: reject });
                 Object.defineProperty(wmc, 'negotiate', { value: negotiate });
                 Object.defineProperty(wmc, 'cancel', { value: cancel });
                 Object.defineProperty(wmc, 'update', { value: update });
@@ -480,33 +486,48 @@ var Gatherhub = Gatherhub || {};
                 Object.defineProperty(wmc, 'mute', { value: mute });
             })();
 
+            function accept() { _makeres(); }
+
+            function reject() {
+                _res.type = 'reject';
+                _dispatch();
+                _closechan();
+            }
+
             function negotiate(req) {
-                if (req.type == 'answer') {
-                    rsdp = new RTCSessionDescription(req.sdp);
-                    _pc.setRemoteDescription(rsdp);
-                    req.conn.forEach(_parseConn);
-                    _changeState('opened');
-                }
-                else if (req.type == 'cancel') {
-                    _changeState('canceled');
-                    setTimeout(_closechan, 1000);
-                }
-                else if (req.type == 'end') {
-                    _changeState('ended');
-                    setTimeout(_closechan, 1000)
-                }
-                if (req.type == 'reject') {
-                    _changeState('rejected');
-                    setTimeout(_closechan, 1000);
+                switch (req.type) {
+                    case 'offer':
+                    case 'answer':
+                        if (!_pc.remoteDescription.sdp) {
+                            rsdp = new RTCSessionDescription(req.sdp);
+                            _pc.setRemoteDescription(rsdp);
+                        }
+
+                        if (req.conn) {
+                            var c = new RTCIceCandidate(req.conn);
+                            _pc.addIceCandidate(c);
+                            rconn.push(c);
+                        }
+                        break;
+                    case 'cancel':
+                        _changeState('canceled');
+                    case 'reject':
+                        _changeState('rejected');
+                    case 'end':
+                        _changeState('ended');
+                        break;
+                    default:
+                        _closechan();
+                        break;
                 }
             }
 
             function cancel() {
                 if (state == 'requesting') {
                     _res.type = 'cancel';
-                    sigchan(_res, 'media', to);
+                    _dispatch();
                     _changeState('canceled');
-                    setTimeout(_closechan, 1000);
+                    _closechan();
                     return true;
                 }
                 return false;
@@ -514,9 +535,9 @@ var Gatherhub = Gatherhub || {};
 
             function end() {
                 _res.type = 'end';
-                sigchan(_res, 'media', to);
+                _dispatch();
                 _changeState('ended');
-                setTimeout(_closechan, 1000);
+                _closechan();
                 return true;
             }
 
@@ -572,25 +593,11 @@ var Gatherhub = Gatherhub || {};
             }
 
             function _negotiation(sdp) {
-                _res.conn = [];
+                _res.conn = null;
                 _pc.setLocalDescription(sdp);
 
                 lsdp = _res.sdp = sdp;
-
-                var c = 0;
-                var wait = 3;
-                var disp = setInterval(function() {
-                    if (c == _res.conn.length) { wait--; }
-                    else {
-                        c = _res.conn.length;
-                        wait = 3;
-                    }
-                    if (!wait) {
-                        lconn = _res.conn;
-                        sigchan(_res, 'media', to);
-                        clearInterval(disp);
-                    }
-                }, 35);
+                _dispatch();
             }
 
             function _closechan() {
@@ -606,15 +613,12 @@ var Gatherhub = Gatherhub || {};
                     );
                     rstream = null;
                 }
-                _pc.close();
-                _pc = null;
-                _changeState('closed');
-            }
 
-            function _parseConn(c) {
-                var conn = new RTCIceCandidate(c);
-                _pc.addIceCandidate(conn);
-                rconn.push(conn);
+                setTimeout(function() {
+                    _pc.close();
+                    _pc = null;
+                    _changeState('closed');
+                }, 500);
             }
 
             function _timeout() {
@@ -623,9 +627,11 @@ var Gatherhub = Gatherhub || {};
                     setTimeout(cancel, 1000);
                 }
                 else {
-                    setTimeout(_closechan, 1000);
+                    _closechan();
                 }
             }
+
+            function _dispatch() { sigchan(_res, 'media', _res.to); }
 
             function _changeState(ste) {
                 state = ste;
@@ -637,8 +643,10 @@ var Gatherhub = Gatherhub || {};
                 to = _res.to = req.to;
                 from = _res.from = req.from;
                 mdesc = _res.mdesc = req.mdesc || {};
-                rsdp = lsdp = _res.sdp = {};
-                rconn = lconn = [];
+                rsdp = {}
+                lsdp = _res.sdp = {};
+                rconn = [];
+                lconn = [];
                 muted = false;
                 type = mdesc.video ? 'video' : 'audio';
 
@@ -646,12 +654,12 @@ var Gatherhub = Gatherhub || {};
 
                 // This is an offer request, initiate make response
                 if (req.id && req.type == 'offer') {
+                    _res.to = req.from;
+                    _res.from = req.to;
+                    _res.type = 'answer';
                     rsdp = new RTCSessionDescription(req.sdp);
                     _pc.setRemoteDescription(rsdp);
-                    req.conn.forEach(_parseConn);
-                    _res.type = 'answer';
-                    _makeres(req.sdp);
-                    _changeState('opened');
+                    _changeState('preparing');
                 }
                 // This is an new request, initiate make request
                 else {

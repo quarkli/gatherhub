@@ -106,9 +106,9 @@ var reqpool = [];
 
     // ringtone element
     var ring = new Audio('/media/ring.mp3');
-    var lau = new Audio();
-    var rau = new Audio();
-    lau.muted = true;
+    var lau = $('<audio autoplay muted>');
+    var rau = $('<audio autoplay>');
+    // lau.muted = true;
 
     // create reusable html elements
     var drawer = $('<div>');
@@ -216,8 +216,10 @@ var reqpool = [];
     // restore page layout and default elements
     function cleanup() {
         // stop audio
-        lau.pause();
-        rau.pause();
+        lau.appendTo(drawer);
+        rau.appendTo(drawer);
+        // lau.pause();
+        // rau.pause();
 
         // remove queued request
         reqpool.pop();
@@ -256,10 +258,12 @@ var reqpool = [];
                     vpad.appendTo('#' + cparty.id);
                 }
                 else {
-                    lau.src = URL.createObjectURL(pc.medchans[cparty.req.id].lstream);
-                    rau.src = URL.createObjectURL(pc.medchans[cparty.req.id].rstream);
-                    lau.play();
-                    rau.play();
+                    lau.attr('src', URL.createObjectURL(pc.medchans[cparty.req.id].lstream));
+                    rau.attr('src', URL.createObjectURL(pc.medchans[cparty.req.id].rstream));
+                    lau.appendTo('body');
+                    rau.appendTo('body');
+                    // lau.play();
+                    // rau.play();
                 }
             }
             , 1000);
