@@ -3,6 +3,7 @@ require 'em-websocket'
 require 'rails'
 require 'json'
 require 'erb'
+require 'geoip'
 include ERB::Util
 
 wssCfg = {
@@ -10,10 +11,12 @@ wssCfg = {
   :port => 55555,
   :secure => true,
   :tls_options => {
-    :private_key_file => "./privateKey.key",
-    :cert_chain_file => "./certificate.crt"
+    :private_key_file => "./gatherhub.key",
+    :cert_chain_file => "./gatherhub.crt"
   }
 };
+
+geoip = GeoIP.new('GeoLiteCity.dat')
 
 class EventMachine::WebSocket::Connection
   def ip
@@ -43,31 +46,31 @@ EventMachine.run {
     
   EventMachine::WebSocket.start(wssCfg) do |ws|
     ws.onopen do 
-  	  begin
+      begin
         # puts "#{ws.ip}:#{ws.port} connected!"
-  	  rescue StandardError => e
-  	    puts "Error: #{e.backtrace}"
-  	  end
+      rescue StandardError => e
+        puts "Error: #{e.backtrace}"
+      end
     end
 
     ws.onclose do
       begin
         c = @peers.find{|p| p[:socket] == ws}
         if (c)
-  		    msg = {:hub => c[:hub], :type => "bye", :from => c[:peer]}.to_json
+          msg = {:hub => c[:hub], :type => "bye", :from => c[:peer]}.to_json
           @peers.delete(c)
           @peers.each do |p| 
-        	  if (p[:socket] !=ws && p[:hub] == c[:hub])  
-        	    p[:socket].send(msg) 
+            if (p[:socket] !=ws && p[:hub] == c[:hub])  
+              p[:socket].send(msg) 
             end
           end
           @act_peers -= 1
           puts "#{Time.now} / (#{c[:peer]})} @ #{c[:hub]} deregistered (#{@act_peers})"
         end
-  	  rescue StandardError => e
+      rescue StandardError => e
         puts "Error: #{e.message}"
         puts "Trace: #{e.backtrace}"
-  	  end
+      end
     end
 
     ws.onerror do |err|
@@ -78,22 +81,23 @@ EventMachine.run {
       if (pmsg.length > 0)  
         begin
           msg = JSON.parse(pmsg).symbolize_keys
-    		  if (msg[:type] == 'hi') 
+          if (msg[:type] == 'hi') 
             peer = "#{ws.ip16}#{ws.port16}"
             p = @peers.find{|p| p[:peer] == peer}
             if (p)  
-      			  @peers.delete(p)
+              @peers.delete(p)
               @act_peers -= 1
-      			end
-    		    @peers.push({:hub=>msg[:hub],  :peer=>peer, :socket=>ws})
-      			syncmsg = msg.clone
+            end
+            @loc = geoip.city("#{ws.ip}")
+            @peers.push({:hub=>msg[:hub], :peer=>peer, :socket=>ws, :city=>@loc.city_name, :country=>@loc.country_name})
+            syncmsg = msg.clone
             syncmsg[:data][:result] = "Success"
             syncmsg[:type] = "ho"
             syncmsg[:from] = msg[:from] = peer
             syncmsg[:ts] = (Time.now.getutc.to_f * 1000).to_i
             ws.send(syncmsg.to_json)
             @act_peers += 1
-    		    puts "#{Time.now} / (#{peer}) @ #{msg[:hub]} registered (#{@act_peers})"
+            puts "#{Time.now} / (#{peer}) @ #{msg[:hub]} from #{@loc.city_name}, #{@loc.country_name} registered (#{@act_peers})"
           elsif (msg[:type] == 'bye') 
             p = @peers.find{|p| p[:peer] == msg[:from]}
             if (p)  
@@ -129,7 +133,7 @@ EventMachine.run {
                 end
               end
             end
-          end	
+          end 
         rescue StandardError => e
           puts "Error: #{e.message}"
           puts "Trace: #{e.backtrace}"
