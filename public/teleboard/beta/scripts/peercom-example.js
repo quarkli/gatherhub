@@ -1,4 +1,6 @@
 'use strict'
+
+// declared variable in public space for the convenience of debugging
 var mpc;
 var reqpool = [];
 
@@ -6,30 +8,37 @@ var reqpool = [];
     var peer = 'p' + (0 | Math.random() * 900 + 100);
     var hub = 'somehub';
     var servers = ['wss://www.gatherhub.com:55688'];
-    // var iceservers = [{'urls': 'stun:chi2-tftp2.starnetusa.net'}, {'urls': 'stun:stun.l.google.com:19302'}];
     var iceservers = [
-        {'urls': 'stun:chi2-tftp2.starnetusa.net'},
         {'urls': 'stun:stun01.sipphone.com'},
         {'urls': 'stun:stun.fwdnet.net'},
         {'urls': 'stun:stun.voxgratia.org'},
-        {'urls': 'stun:stun.xten.com'}
+        {'urls': 'stun:stun.xten.com'},
+        {'urls': 'stun:chi2-tftp2.starnetusa.net'},
+        {'urls': 'stun:stun.l.google.com:19302'}
     ];
-    var pc = mpc = new Gatherhub.PeerCom({peer: peer, hub: hub, servers: servers, iceservers: iceservers});
-    var _peers = {};
-    var cstate = 'idle';
-    var cparty = {};
+    var _peers = {};        // a shadow copy of peers for comparison for changes
+    var cstate = 'idle';    // log call state
+    var cparty, cid, creq;  // calling party element, peer id, request
+    var retrymedia =  0;
+
+    // get the width and height (w, h) of video to better fit the device screen
+    // video source is set to 320:200 (16:10) ratio, so the w:h should be 16:10 too
     var w = $(window).width() > 360 ? 320 : (0 | ($(window).width() * 0.8) / 10) * 10;
     var h = 0 | (w / 8 * 5);
 
+    // create PeerCom Object and configure event handlers
+    var pc = mpc = new Gatherhub.PeerCom({peer: peer, hub: hub, servers: servers, iceservers: iceservers});
     pc.onerror = function (e) {
+        // just log error message in the console
         console.log(e);
+        // critical errors, such as browser not support webrtc, prompt in alert window
         if (e.code < 0) { alert(e.reason); }
     };
     pc.onstatechange = function (s) {
-        // log PeerCom state in console
+        // Update PeerCom state in Peer List Title
         $('#title').html('Peer List: (status: ' + s + ')');
 
-        // clear peer list
+        // clear peer list when PeerCom service starting or stopped
         if (s == 'starting') {
             $('#pgroup').children().remove();
         }
@@ -37,6 +46,7 @@ var reqpool = [];
             $('#pgroup').children().remove();
             pc.start();
         }
+
         // add myself as on top of peer list as the host
         else if (s == 'started') {
             addPeer(pc, 1);
@@ -54,14 +64,14 @@ var reqpool = [];
         keys = Object.keys(_peers).filter(function(e){return !(e in peers);});
         keys.forEach(function(i) {
             // if the left peer is currently on a call, end the call
-            if (cparty.id == i) { endcall(); }
+            if (cid == i) { endcall('end'); }      // if the left peer is current call party, end the call
             $('#' + i).parent().appendTo(drawer);
             delete _peers[i];
         });
     };
     pc.onmessage = function (msg) {
-        // show message in console
-        console.log('\nfrom:', msg.from);
+        // log message in console, may add text messaging feature later
+        console.log('from:', msg.from);
         console.log('type:', msg.type);
         console.log('data:', msg.data);
         console.log('ts:', msg.ts);
@@ -74,20 +84,22 @@ var reqpool = [];
                 if (cstate == 'idle') {
                     var ctype = req.mdesc.video ? 'video' : 'audio';
                     reqpool.push(req);
-                    cparty.id = req.from;
-                    cstate = 'incoming';
+                    cid = req.from;
+                    cparty = $('#' + cid);
+                    cstate = 'ringing';
                     $('.panel-heading').find('button').toggle();
-                    $('#' + cparty.id).find('.btn-group').append(btnaccept).append(btnreject);
-                    $('#' + cparty.id).parent().toggle();
-                    $('#' + cparty.id).parent().parent().children('.panel-success').toggle();
-                    $('#' + cparty.id).children('span').html($('#' + cparty.id).children('span').html() + ' (' + ctype + ' call)');
+                    cparty.find('.btn-group').append(btnaccept).append(btnreject);
+                    cparty.parent().toggle();
+                    cparty.parent().parent().children('.panel-success').toggle();
+                    cparty.children('span').html(cparty.children('span').html() + ' (' + ctype + ' call)');
                     ring.play();
                 }
                 break;
             case 'answer':
+                ringback.pause();
                 btncancel.appendTo(drawer);
                 $('#' + req.from).find('.btn-group').append(btnmute).append(btnend);
-                cparty.req = req;
+                creq = req;
                 addmedia();
                 cstate = 'busy';
                 break;
@@ -101,40 +113,48 @@ var reqpool = [];
     };
 
     // create peer list container
+    $('#layer1').attr('align', 'center');
     $('<h3 id="title">').html('Peer List:').appendTo('#layer1');
-    $('<div class="panel-group" id="pgroup">').appendTo('#layer1');
+    $('<div class="panel-group" id="pgroup" style="max-width: 640px" align="left">').appendTo('#layer1');
 
     // ringtone element
-    var ring = new Audio('/media/ring.mp3');
+    var ring = new Audio('http://gatherhub.com/ring.mp3');
+    var ringback = r = new Audio('http://gatherhub.com/ringback.mp3');
+    ring.load();
+    ringback.load();
+    ring.loop = true;
+    ringback.loop = true;
     var lau = $('<audio autoplay muted>');
     var rau = $('<audio autoplay>');
     // lau.muted = true;
 
     // create reusable html elements
     var drawer = $('<div>');
-    var btncancel = $('<button>').addClass('btn btn-sm btn-danger').html('cancel').on('click', cancelcall);
     var btnaccept = $('<button>').addClass('btn btn-sm btn-success').html('accept').on('click', acceptcall);
-    var btnreject = $('<button>').addClass('btn btn-sm btn-danger').html('reject').on('click', rejectcall);
+    var btnreject = $('<button>').addClass('btn btn-sm btn-danger').html('reject').on('click', function() { endcall('reject'); });
+    var btncancel = $('<button>').addClass('btn btn-sm btn-danger').html('cancel').on('click', function() { endcall('cancel'); });
+    var btnend = $('<button>').addClass('btn btn-sm btn-danger').html('end').on('click', function() { endcall('end'); });
     var btnmute = $('<button>').addClass('btn btn-sm btn-warning').html('mute').on('click', mutecall);
-    var btnend = $('<button>').addClass('btn btn-sm btn-danger').html('end').on('click', endcall);
-    var vpad = $('<div align="center" >').width(w).height(h).css({position: 'relative', top: 0, left: ($(window).width() - w)/3, 'margin-top': 10});
+    var vpad = $('<div>').width(w).height(h).css({position: 'relative'});
     var rvid = $('<video autoplay>').width(w).height(h).css({position: 'absolute', top: 0, right: 0}).appendTo(vpad);
-    var lvid = $('<video autoplay muted>').width(0 | (w/3)).height(0 | (h/3)).css({position: 'absolute', top: 0, right: 0}).appendTo(vpad);
+    var lvid = $('<video autoplay muted>').width(0 | (w/3)).height(0 | (h/3)).appendTo(vpad);
+    lvid.css({position: 'absolute', bottom: 0, right: 0, 'border-style': 'solid', 'border-width': 1, 'border-color': 'grey'});
 
     // dynamically create peer elements in peer list panel group
     function addPeer(peer, host) {
         if (!peer || $('#' + peer.id).length) { return; }
 
-        var panel = $('<div class="panel-heading" style="position: relative, width: 100%, display: table">').attr({id: peer.id});
+        var panel = $('<div class="panel-heading" style="position: relative, maxWidth: 100%, display: table">').attr({id: peer.id});
+        var pbody = $('<div class="panel-body" align="center">').hide();
         var s1 = $('<span>').html(peer.peer).appendTo(panel);
         var d2 = $('<div>').css({'margin-top': -20, 'display': 'inline-block table-cell', 'text-align': 'right'}).appendTo(panel);
         var bgroup = $('<div class="btn-group">').appendTo(d2);
 
         if (host) {
-            $('<div class="panel panel-primary">').appendTo('#pgroup').append(panel);
+            $('<div id="host" class="panel panel-primary">').on('click', ringtask).appendTo('#pgroup').append(panel);
         }
         else {
-            $('<div class="panel panel-success">').appendTo('#pgroup').append(panel);
+            $('<div class="panel panel-success">').appendTo('#pgroup').append(panel).append(pbody);
             $('<button>').addClass('btn btn-sm btn-warning').html('video').appendTo(bgroup).on('click', makecall);
             $('<button>').addClass('btn btn-sm btn-primary').html('audio').appendTo(bgroup).on('click', makecall);
             if (cstate != 'idle') {
@@ -147,79 +167,91 @@ var reqpool = [];
 
     function makecall() {
         // get target peer id from panel id
-        var pid = cparty.id = $(this).parents('.panel-heading').attr('id');
+        cid = $(this).parents('.panel-heading').attr('id');
+        cparty = $('#' + cid);
+
         // set media description by the button clicked
         var mdesc = $(this).html() == 'video' ? {audio: true, video: {mandatory: {minWidth: 160, minWidth: 100, maxWidth: 160, maxHeight:100}}} : {audio: true};
 
         // hide default buttons and add cancel button
         $('.panel-heading').find('button').toggle();
-        $('#' + pid).find('.btn-group').append(btncancel);
+        cparty.find('.btn-group').append(btncancel);
 
         // hide rest peers but show only taget peer in the list
-        $('#' + pid).parent().toggle();
-        $('#' + pid).parent().parent().children('.panel-success').toggle();
+        cparty.parent().toggle();
+        cparty.parent().parent().children('.panel-success').toggle();
+        cparty.children('span').html(cparty.children('span').html() + ' (' + $(this).html() + ' call)');
 
         // send request through PeerCom API
-        var req = pc.mediaRequest({to: pid, mdesc: mdesc});
+        var req = pc.mediaRequest({to: cid, mdesc: mdesc});
 
         // queue reqest for later use
-        reqpool.push({id: req, to: pid, mdesc: mdesc});
+        reqpool.push({id: req, to: cid, mdesc: mdesc});
 
         // change state
         cstate = 'calling';
+        ringback.play();
     }
 
     function acceptcall() {
+        // stop ringing
         ring.pause();
+        // pop out current request
         var req = reqpool.pop();
 
         if (req) {
+            // send response
             pc.mediaResponse(req, 'accept');
+
+            // change answering buttons to in-call buttons
             btnaccept.parent().append(btnmute);
             btnaccept.parent().append(btnend);
             btnreject.appendTo(drawer);
             btnaccept.appendTo(drawer);
-            cparty.req = req;
-            addmedia();
-            reqpool.push(req);
-            cstate = 'busy';
+
+            creq = req;         // set public variable of request
+            addmedia();         // insert media element to page
+            reqpool.push(req);  // put request back to queue
+            cstate = 'busy';    // change call state
         }
     }
 
     function mutecall() {
+        // pop out current request
         var req = reqpool.pop();
+        // mute microphone through PeerCom media channel
         if (req) { pc.medchans[req.id].mute(); }
+        // put reqeust back to queue
         reqpool.push(req);
+
+        // update mute button context
         if (btnmute.html() == 'mute') { btnmute.removeClass('btn-warning').addClass('btn-success').html('unmute'); }
         else { btnmute.removeClass('btn-success').addClass('btn-warning').html('mute'); }
     }
 
-    function cancelcall() {
+    function endcall(reason) {
         var req = reqpool.pop();
-        if (req) { pc.medchans[req.id].cancel(); }
-        cleanup();
-    }
+        if (req) {
+            if (reason == 'reject') { pc.mediaResponse(req, 'reject'); }
+            else if (reason == 'cancel') { pc.medchans[req.id].cancel(); }
+            else if (reason == 'end') { pc.medchans[req.id].end(); }
 
-    function rejectcall() {
-        ring.pause();
-        var req = reqpool.pop();
-        if (req) { pc.mediaResponse(req, 'reject'); }
-        cleanup();
-    }
-
-    function endcall() {
-        var req = reqpool.pop();
-        if (req) { pc.medchans[req.id].end(); }
+            if (cstate == 'ringing') { ring.pause(); }
+        }
         cleanup();
     }
 
     // restore page layout and default elements
     function cleanup() {
+        // stop ring/ringback tone();
+        ring.pause();
+        ringback.pause();
+
         // stop audio
+        lau[0].src = '';
+        rau[0].src = '';        
         lau.appendTo(drawer);
         rau.appendTo(drawer);
-        // lau.pause();
-        // rau.pause();
 
         // remove queued request
         reqpool.pop();
@@ -235,37 +267,55 @@ var reqpool = [];
         btnmute.removeClass('btn-success').addClass('btn-warning').html('mute');
 
         // recycle video element
+        lvid[0].src = '';
+        rvid[0].src = '';        
         vpad.appendTo(drawer);
 
         // show default buttons and hidden peers
-        $('.panel-heading').find('button').toggle();
-        $('#' + cparty.id).parent().toggle();
-        $('#' + cparty.id).parent().parent().children('.panel-success').toggle();
-        $('#' + cparty.id).children('span').html($('#' + cparty.id).children('span').html().split(' (')[0]);
+        $('.panel-heading').find('button').show();
+        cparty.parent().parent().children('.panel-success').show();
+        cparty.children('span').html(cparty.children('span').html().split(' (')[0]);
+        $('.panel-body').hide();
+
+        // in case there is a addMedia retry task, clear it out
+        clearTimeout(retrymedia);
 
         // reset state
         cstate = 'idle';
+
+        // reload ring/ringback tones
+        ring.load();
+        ringback.load();
     }
 
     // dynamically insert media element to web page based on call type
     function addmedia() {
-        // add some delay to wait for stream ready, may be enhanced in the future
-        setTimeout(
-            function() {
-                if (pc.medchans[cparty.req.id].type == 'video') {
-                    lvid.attr({src:  URL.createObjectURL(pc.medchans[cparty.req.id].lstream)});
-                    rvid.attr({src:  URL.createObjectURL(pc.medchans[cparty.req.id].rstream)});
-                    vpad.appendTo('#' + cparty.id);
-                }
-                else {
-                    lau.attr('src', URL.createObjectURL(pc.medchans[cparty.req.id].lstream));
-                    rau.attr('src', URL.createObjectURL(pc.medchans[cparty.req.id].rstream));
-                    lau.appendTo('body');
-                    rau.appendTo('body');
-                    // lau.play();
-                    // rau.play();
-                }
+        var lstream = pc.medchans[creq.id].lstream;
+        var rstream = pc.medchans[creq.id].rstream;
+
+        // make sure steams are ready or wait and retry
+        if (lstream && rstream) {
+            if (pc.medchans[creq.id].type == 'video') {
+                cparty.parent().find('.panel-body').append(vpad);
+                $('.panel-body').show();
+                lvid[0].src = URL.createObjectURL(lstream);
+                rvid[0].src = URL.createObjectURL(rstream);
             }
-            , 1000);
+            else {
+                lau.appendTo('body');
+                rau.appendTo('body');
+                lau[0].src = URL.createObjectURL(lstream);
+                rau[0].src = URL.createObjectURL(rstream);
+            }
+        }
+        else { retrymedia = setTimeout(function(){ addmedia() }, 100); }
+    }
+
+    // this function is reserved for mobile browser which requires user interaction to trigger audio play
+    function ringtask() {
+        ring.play();
+        ring.pause();
+        ringback.play();
+        ringback.pause();
     }
 })();

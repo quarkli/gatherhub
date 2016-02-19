@@ -440,9 +440,6 @@ var Gatherhub = Gatherhub || {};
                     _res.conn = e.candidate;
                     _dispatch();
                 }
-                else {
-                    console.log('############# end of IceCandidate');
-                }
             };
             _pc.onaddstream = function(e) { rstream = e.stream; };
 
@@ -515,7 +512,6 @@ var Gatherhub = Gatherhub || {};
                         _changeState('rejected');
                     case 'end':
                         _changeState('ended');
-                        break;
                     default:
                         _closechan();
                         break;
@@ -809,7 +805,7 @@ var Gatherhub = Gatherhub || {};
                         _sc.send({'sdp': _pc.localDescription, conn: _conn}, 'sdp', id);
                         clearInterval(disp);
                     }
-                }, 100);
+                }, 50);
             }
 
             function _dcsetup() {
@@ -820,7 +816,7 @@ var Gatherhub = Gatherhub || {};
                             case 'ping':
                                 msg.from = _sc.id;
                                 msg.type = 'pong';
-                                msg.data = {};
+                                msg.data = {tsArv: getTs()};
                                 _dc.send(JSON.stringify(msg));
                                 break;
                             case 'pong':
@@ -928,7 +924,7 @@ var Gatherhub = Gatherhub || {};
                 _ws.onerror = function(e) {};
                 _ws.onopen = function() {
                     _changeState('connected');
-                    send({}, 'hi');
+                    send({ts: Date.now()}, 'hi');
                 };
                 _ws.onmessage = function(msg) {
                     var ctx = JSON.parse(msg.data);
@@ -936,9 +932,9 @@ var Gatherhub = Gatherhub || {};
                     // Some control messaages/logics will be handled here without passing to upper application
                     switch (ctx.type) {
                         case 'ho':
-                            // special reply from server for completing peer registration
+                            // special reply from server for completing peer registration and clock sync
                             if (ctx.data.result && ctx.data.result == 'Success') {
-                                _tsDiff = getTs() - ctx.ts;
+                                _tsDiff = Date.now() - ctx.ts - (0 | ((Date.now() - ctx.data.ts + 1) / 2));
                                 id = ctx.from
                                 _changeState('registered');
                                 _beaconTask = setInterval(function() { send({}, 'beacon', id); }, _beaconDur);
@@ -948,7 +944,7 @@ var Gatherhub = Gatherhub || {};
                             ctx.to = ctx.from;
                             ctx.from = id;
                             ctx.type = 'pong';
-                            ctx.data = {};
+                            ctx.data = {tsArv: getTs()};
                             _ws.send(JSON.stringify(ctx));
                             break;
                         case 'pong':
