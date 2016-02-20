@@ -129,16 +129,27 @@ var reqpool = [];
 
     // Enable login button [Enter] when user name is not empty
     $('#enter').on('click', function() { login(); }).attr('disabled', true);
-    $('#user').on('keyup', function(e){
+    $('#user').on('keyup', function(e) {
         if (this.value.length) {
             $('#enter').attr('disabled', false);
             if (e.keyCode == 13) { login(); }
         }
+    }).on('focus blur', function() {
+        if (this.value.length) { $('#enter').attr('disabled', false); }
+        else { $('#enter').attr('disabled', true); }
     });
     $('#hub').on('keyup', function(e){
         if (!$('#enter').attr('disabled') && e.keyCode == 13) { login(); }
     });
-    $('#user').focus();
+    $('#cache').on('keyup', function(e){
+        if (!$('#enter').attr('disabled') && e.keyCode == 13) { login(); }
+    });
+    setTimeout(function() { $('#user').focus().select(); }, 100);
+
+    // load values from cookies if available
+    if (getCookie('user') && getCookie('user').length > 0) { $('#user').val(getCookie('user')); }
+    if (getCookie('hub') && getCookie('hub').length > 0) { $('#hub').val(getCookie('hub')); }
+    if (getCookie('cache')) { $('#cache').attr('checked', getCookie('cache')); }
 
     // create peer list container
     $('#layer1').attr('align', 'center').hide();
@@ -170,6 +181,18 @@ var reqpool = [];
 
     // Login to hub
     function login() {
+        // set/clear cookies
+        if ($('#cache').is(':checked')) {
+            setCookie('user', $('#user').val());
+            setCookie('hub', $('#hub').val());
+            setCookie('cache', $('#cache').is(':checked'));
+        }
+        else {
+            setCookie('user', '');
+            setCookie('hub', '');
+            setCookie('cache', '');
+        }
+
         peer = $('#user').val();
         if ($('#hub').val().length) { hub = $('#hub').val(); }
         $('#layer0').hide();
@@ -363,5 +386,16 @@ var reqpool = [];
         rau.pause();
 
         pc.start();
+    }
+
+    function setCookie(key, value) {
+        var expires = new Date();
+        expires.setTime(expires.getTime() + (180 * 24 * 60 * 60 * 1000));
+        document.cookie = key + '=' + value + ';expires=' + expires.toUTCString();
+    }
+
+    function getCookie(key) {
+        var keyValue = document.cookie.match('(^|;) ?' + key + '=([^;]*)(;|$)');
+        return keyValue ? keyValue[2] : null;
     }
 })();
