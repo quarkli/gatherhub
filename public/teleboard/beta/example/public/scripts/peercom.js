@@ -75,7 +75,7 @@ var Gatherhub = Gatherhub || {};
 
             // Properties declaration
             var id, peer, hub, servers, iceservers, peers, medchans, state;
-            var onerror, onpeerchange, onmessage, onmediarequest, onstatechange;
+            var onerror, onpeerchange, onmessage, onmediarequest, onstatechange, onpeerstatechange;
             // Properties / Event Callbacks/ Methods declaration
             (function() {
                 // tyep check: string
@@ -173,6 +173,13 @@ var Gatherhub = Gatherhub || {};
                         else { warn(hint.fcb, 'onstatechange'); }
                     }
                 });
+                Object.defineProperty(pc, 'onpeerstatechange', {
+                    get: function() { return onpeerstatechange; },
+                    set: function(x) {
+                        if (typeof(x) == 'function') { onpeerstatechange = x; }
+                        else { warn(hint.fcb, 'onpeerstatechange'); }
+                    }
+                });
 
                 // Methods declaration, read-only
                 Object.defineProperty(pc, 'start', { value: start });
@@ -226,18 +233,23 @@ var Gatherhub = Gatherhub || {};
                                 medchans[msg.data.id].negotiate(msg.data);
                             }
                             else if (msg.data.type == 'offer') {
-                                var wmc = new _WMC(msg.data, pc.send, iceservers);
-                                wmc.onstatechange = function(s) {
-                                    console.log('medchans[' + wmc.id + '].state:', s);
-                                    if (s == 'closed') {
-                                        delete medchans[wmc.id];
-                                        wmc = null;
-                                    }
-                                };
+                                if (peers[msg.from].sigchan.state == 'open') {
+                                    var wmc = new _WMC(msg.data, pc.send, iceservers);
+                                    wmc.onstatechange = function(s) {
+                                        console.log('medchans[' + wmc.id + '].state:', s);
+                                        if (s == 'closed') {
+                                            delete medchans[wmc.id];
+                                            wmc = null;
+                                        }
+                                    };
 
-                                medchans[wmc.id] = wmc;
+                                    medchans[wmc.id] = wmc;
+                                }
+                                else { logErr({name: 'Ice connection failed'}); }
                             }
                             break;
+                        case 'pong':
+                            peers[msg.from].td = msg.data.delay; 
                         default:
                             if (pc.onmessage) { setTimeout(function() { pc.onmessage(msg); }, 0); }
                             break;
@@ -310,18 +322,21 @@ var Gatherhub = Gatherhub || {};
                 }
 
                 if (peers[req.to]) {
-                    req.from = id;
-                    var wmc = new _WMC(req, pc.send, iceservers);
-                    wmc.onstatechange = function(s) {
-                        console.log('medchans[' + wmc.id + '].state:', s);
-                        if (s == 'closed') {
-                            delete medchans[wmc.id];
-                            wmc = null;
-                        }
-                    };
+                    if (peers[req.to].sigchan.state == 'open') {
+                        req.from = id;
+                        var wmc = new _WMC(req, pc.send, iceservers);
+                        wmc.onstatechange = function(s) {
+                            console.log('medchans[' + wmc.id + '].state:', s);
+                            if (s == 'closed') {
+                                delete medchans[wmc.id];
+                                wmc = null;
+                            }
+                        };
 
-                    medchans[wmc.id] = wmc;
-                    return wmc.id;
+                        medchans[wmc.id] = wmc;
+                        return wmc.id;
+                    }
+                    else { logErr({name: 'Ice connection failed'}); }
                 }
                 else {
                     warn(hint.peer, 'PeerCom.mediaRequest()');
@@ -361,9 +376,15 @@ var Gatherhub = Gatherhub || {};
                                 medchans[wmc.id] = wmc;
                             }
                         }
-                        else if (pc.onmessage) { setTimeout(function() { pc.onmessage(msg); }, 0); }
+                        else {
+                            if (msg.type == 'pong') { peers[msg.from].td = msg.data.delay; }
+                            if (pc.onmessage) { setTimeout(function() { pc.onmessage(msg); }, 0); }
+                        }
                     };
                     p.sigchan.onstatechange = function(s) {
+                        if (pc.onpeerstatechange) { setTimeout(function() {
+                            pc.onpeerstatechange({peer: pid, state: s}); }, 0);
+                    }
                         if (s == 'close') { _removePeer(pid); }
                     };
                     peers[pid] = p;
@@ -403,11 +424,12 @@ var Gatherhub = Gatherhub || {};
             // do not start if any of WebRTC API is not available
             if (RPC && RTCSessionDescription && RTCIceCandidate && getUserMedia) {
                 if (config) {
-                    pc.peer = config.peer;
-                    pc.hub = config.hub;
-                    pc.servers = config.servers;
+                    pc.peer = config.peer || '';
+                    pc.hub = config.hub || '';
+                    pc.servers = config.servers || null;
                     pc.iceservers = config.iceservers;
-                    start();
+
+                    if (pc.peer != ''  && pc.hub != '' && pc.servers) { start(); }
                 }
             }
             else {
@@ -777,7 +799,7 @@ var Gatherhub = Gatherhub || {};
             }
 
             function send(data, type) {
-                if (_dc.readyState == 'open') {
+                if (_dc && _dc.readyState == 'open') {
                     _dc.send(JSON.stringify({data: data, type: type, from: _sc.id, via: 'wpc', ts: getTs()}));
                     return true;
                 }

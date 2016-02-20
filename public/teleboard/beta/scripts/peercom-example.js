@@ -5,8 +5,8 @@ var mpc;
 var reqpool = [];
 
 (function() {
-    var peer = 'p' + (0 | Math.random() * 900 + 100);
-    var hub = 'somehub';
+    var peer;   // = 'p' + (0 | Math.random() * 900 + 100);
+    var hub = 'lobby';
     var servers = ['wss://www.gatherhub.com:55688'];
     var iceservers = [
         {'urls': 'stun:stun01.sipphone.com'},
@@ -36,7 +36,7 @@ var reqpool = [];
     };
     pc.onstatechange = function (s) {
         // Update PeerCom state in Peer List Title
-        $('#title').html('Peer List: (status: ' + s + ')');
+        $('#title').html('You are in Hub#[' + hub + '] (' + s + ')');
 
         // clear peer list when PeerCom service starting or stopped
         if (s == 'starting') {
@@ -68,6 +68,16 @@ var reqpool = [];
             $('#' + i).parent().appendTo(drawer);
             delete _peers[i];
         });
+
+        // sorting peers
+        $('.panel-success').sort(function(a, b){
+            return ($(a).find('span').html() > $(b).find('span').html()) ? 1 : -1;
+        }).appendTo('#pgroup');
+    };
+    pc.onpeerstatechange = function(s) {
+        if (s.state == 'open') {
+            $('#' + s.peer).parent().find('button').attr('disabled', false);
+        }
     };
     pc.onmessage = function (msg) {
         // log message in console, may add text messaging feature later
@@ -106,27 +116,45 @@ var reqpool = [];
             case 'cancel':
             case 'reject':
             case 'end':
-                ring.pause();
-                cleanup();
+                if (cstate == 'busy') {
+                    if (req.from == cid) { cleanup(); }
+                }
+                else {
+                    ring.pause();
+                    cleanup();
+                }
                 break;
         }
     };
 
+    // Enable login button [Enter] when user name is not empty
+    $('#enter').on('click', function() { login(); }).attr('disabled', true);
+    $('#user').on('keyup', function(e){
+        if (this.value.length) {
+            $('#enter').attr('disabled', false);
+            if (e.keyCode == 13) { login(); }
+        }
+    });
+    $('#hub').on('keyup', function(e){
+        if (!$('#enter').attr('disabled') && e.keyCode == 13) { login(); }
+    });
+    $('#user').focus();
+
     // create peer list container
-    $('#layer1').attr('align', 'center');
-    $('<h3 id="title">').html('Peer List:').appendTo('#layer1');
+    $('#layer1').attr('align', 'center').hide();
+    $('<h3 id="title">').appendTo('#layer1');
     $('<div class="panel-group" id="pgroup" style="max-width: 640px" align="left">').appendTo('#layer1');
 
     // ringtone element
     var ring = new Audio('http://gatherhub.com/ring.mp3');
-    var ringback = r = new Audio('http://gatherhub.com/ringback.mp3');
+    var ringback = new Audio('http://gatherhub.com/ringback.mp3');
+    var lau = new Audio();
+    var rau = new Audio();
     ring.load();
     ringback.load();
     ring.loop = true;
     ringback.loop = true;
-    var lau = $('<audio autoplay muted>');
-    var rau = $('<audio autoplay>');
-    // lau.muted = true;
+    lau.muted = true;
 
     // create reusable html elements
     var drawer = $('<div>');
@@ -140,6 +168,17 @@ var reqpool = [];
     var lvid = $('<video autoplay muted>').width(0 | (w/3)).height(0 | (h/3)).appendTo(vpad);
     lvid.css({position: 'absolute', bottom: 0, right: 0, 'border-style': 'solid', 'border-width': 1, 'border-color': 'grey'});
 
+    // Login to hub
+    function login() {
+        peer = $('#user').val();
+        if ($('#hub').val().length) { hub = $('#hub').val(); }
+        $('#layer0').hide();
+        $('#layer1').show();
+        pc.peer = peer;
+        pc.hub = hub;
+        svcStart();
+    }
+
     // dynamically create peer elements in peer list panel group
     function addPeer(peer, host) {
         if (!peer || $('#' + peer.id).length) { return; }
@@ -151,12 +190,12 @@ var reqpool = [];
         var bgroup = $('<div class="btn-group">').appendTo(d2);
 
         if (host) {
-            $('<div id="host" class="panel panel-primary">').on('click', ringtask).appendTo('#pgroup').append(panel);
+            $('<div id="host" class="panel panel-primary">').appendTo('#pgroup').append(panel);
         }
         else {
             $('<div class="panel panel-success">').appendTo('#pgroup').append(panel).append(pbody);
-            $('<button>').addClass('btn btn-sm btn-warning').html('video').appendTo(bgroup).on('click', makecall);
-            $('<button>').addClass('btn btn-sm btn-primary').html('audio').appendTo(bgroup).on('click', makecall);
+            $('<button>').addClass('btn btn-sm btn-warning').html('video').attr('disabled', true).appendTo(bgroup).on('click', makecall);
+            $('<button>').addClass('btn btn-sm btn-primary').html('audio').attr('disabled', true).appendTo(bgroup).on('click', makecall);
             if (cstate != 'idle') {
                 panel.find('button').toggle();
                 panel.parent().toggle();
@@ -185,12 +224,15 @@ var reqpool = [];
         // send request through PeerCom API
         var req = pc.mediaRequest({to: cid, mdesc: mdesc});
 
-        // queue reqest for later use
-        reqpool.push({id: req, to: cid, mdesc: mdesc});
+        if (req) {
+            // queue reqest for later use
+            reqpool.push({id: req, to: cid, mdesc: mdesc});
 
-        // change state
-        cstate = 'calling';
-        ringback.play();
+            // change state
+            cstate = 'calling';
+            ringback.play();
+        }
+        else { endcall('cancel'); }
     }
 
     function acceptcall() {
@@ -231,7 +273,7 @@ var reqpool = [];
 
     function endcall(reason) {
         var req = reqpool.pop();
-        if (req) {
+        if (req && pc.medchans[req.id]) {
             if (reason == 'reject') { pc.mediaResponse(req, 'reject'); }
             else if (reason == 'cancel') { pc.medchans[req.id].cancel(); }
             else if (reason == 'end') { pc.medchans[req.id].end(); }
@@ -248,10 +290,8 @@ var reqpool = [];
         ringback.pause();
 
         // stop audio
-        lau[0].src = '';
-        rau[0].src = '';        
-        lau.appendTo(drawer);
-        rau.appendTo(drawer);
+        lau.pause();
+        rau.pause();        
 
         // remove queued request
         reqpool.pop();
@@ -302,20 +342,26 @@ var reqpool = [];
                 rvid[0].src = URL.createObjectURL(rstream);
             }
             else {
-                lau.appendTo('body');
-                rau.appendTo('body');
-                lau[0].src = URL.createObjectURL(lstream);
-                rau[0].src = URL.createObjectURL(rstream);
+                lau.src = URL.createObjectURL(lstream);
+                rau.src = URL.createObjectURL(rstream);
+                lau.play();
+                rau.play();
             }
         }
         else { retrymedia = setTimeout(function(){ addmedia() }, 100); }
     }
 
     // this function is reserved for mobile browser which requires user interaction to trigger audio play
-    function ringtask() {
+    function svcStart() {
         ring.play();
         ring.pause();
         ringback.play();
         ringback.pause();
+        lau.play();
+        lau.pause();
+        rau.play();
+        rau.pause();
+
+        pc.start();
     }
 })();
