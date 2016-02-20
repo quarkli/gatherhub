@@ -20,6 +20,7 @@ var reqpool = [];
     var cstate = 'idle';    // log call state
     var cparty, cid, creq;  // calling party element, peer id, request
     var retrymedia =  0;
+    var confparty = {};
 
     // get the width and height (w, h) of video to better fit the device screen
     // video source is set to 320:200 (16:10) ratio, so the w:h should be 16:10 too
@@ -65,7 +66,7 @@ var reqpool = [];
         keys.forEach(function(i) {
             // if the left peer is currently on a call, end the call
             if (cid == i) { endcall('end'); }      // if the left peer is current call party, end the call
-            $('#' + i).parent().appendTo(drawer);
+            $('#' + i).parent().remove();
             delete _peers[i];
         });
 
@@ -75,8 +76,13 @@ var reqpool = [];
         }).appendTo('#pgroup');
     };
     pc.onpeerstatechange = function(s) {
-        if (s.state == 'open') {
-            $('#' + s.peer).parent().find('button').attr('disabled', false);
+        if (s.state == 'open') { 
+            if (pc.support.video && pc.peers[s.peer].support.video) {
+                $('#' + s.peer).find('.btn-warning').attr('disabled', false);
+            }
+            if (pc.support.audio && pc.peers[s.peer].support.audio) {
+                $('#' + s.peer).find('.btn-primary').attr('disabled', false);
+            }
         }
     };
     pc.onmessage = function (msg) {
@@ -97,10 +103,10 @@ var reqpool = [];
                     cid = req.from;
                     cparty = $('#' + cid);
                     cstate = 'ringing';
-                    $('.panel-heading').find('button').toggle();
+                    $('.panel-success').find('button').toggle();
                     cparty.find('.btn-group').append(btnaccept).append(btnreject);
-                    cparty.parent().toggle();
-                    cparty.parent().parent().children('.panel-success').toggle();
+                    cparty.parents('.panel-success').toggle();
+                    $('.panel-success').toggle();
                     cparty.children('span').html(cparty.children('span').html() + ' (' + ctype + ' call)');
                     ring.play();
                 }
@@ -214,17 +220,88 @@ var reqpool = [];
 
         if (host) {
             $('<div id="host" class="panel panel-primary">').appendTo('#pgroup').append(panel);
+                if (pc.support.video || pc.support.audio) {
+                $('<button>').addClass('btn btn-sm btn-success').html('conference').appendTo(bgroup).on('click', prepconf);
+                if (pc.support.video) {
+                    $('<button>').addClass('btn btn-sm btn-warning').html('video').attr('disabled', true).appendTo(bgroup).on('click', makeconf).toggle();
+                }
+                if (pc.support.audio) {
+                    $('<button>').addClass('btn btn-sm btn-primary').html('audio').attr('disabled', true).appendTo(bgroup).on('click', makeconf).toggle();
+                }
+                $('<button>').addClass('btn btn-sm btn-danger').html('cancel').appendTo(bgroup).on('click', cancelconf).toggle();
+            }
         }
         else {
             $('<div class="panel panel-success">').appendTo('#pgroup').append(panel).append(pbody);
             $('<button>').addClass('btn btn-sm btn-warning').html('video').attr('disabled', true).appendTo(bgroup).on('click', makecall);
             $('<button>').addClass('btn btn-sm btn-primary').html('audio').attr('disabled', true).appendTo(bgroup).on('click', makecall);
-            if (cstate != 'idle') {
+            $('<input type="checkbox" class="peersel">').appendTo(bgroup).on('click', validsel).toggle();
+
+            if (cstate == 'confprep') {
+                panel.find('button').toggle()
+                panel.find('.peersel').toggle()
+            }
+            else if (cstate != 'idle') {
                 panel.find('button').toggle();
                 panel.parent().toggle();
-            }
+            }            
         }
 
+    }
+
+    function prepconf() {
+        cstate = 'confprep';
+
+        // change buttons
+        $('#host').find('button').toggle();
+
+        // change peer list buttons to checkbox for conference parties selection
+        $('.peersel').attr('checked', false);
+        $('.panel-success').find('button').toggle()
+        $('.panel-success').find('.peersel').toggle()
+        $('#host').find('.btn-warning').attr('disabled', true);
+        $('#host').find('.btn-primary').attr('disabled', true);
+     }
+
+    function cancelconf() {
+        $('#host').find('button').toggle();
+
+        $('.panel-success').find('button').toggle()
+        $('.panel-success').find('.peersel').toggle()
+        confparty = {};
+        cstate = 'idle';
+    }
+
+    function makeconf() {
+        // make request to each selected peer
+
+        // check if all conference party support requested media, if not, prompt for user's option
+
+    }
+
+    function endconf() {
+        // end call and restore UI
+    }
+
+    function validsel() {
+        var cpid = $(this).parents('.panel-heading').attr('id');
+        if ($(this).is(':checked')) {
+            if (Object.keys(confparty).length < 3) { confparty[cpid] = cpid; }
+            else {
+                alert('You can select up to three peers at maximum.');
+                $(this).attr('checked', false);
+            }
+        }
+        else { delete confparty[cpid]; }
+
+        if (Object.keys(confparty).length) {
+            $('#host').find('.btn-warning').attr('disabled', false);
+            $('#host').find('.btn-primary').attr('disabled', false);
+        }
+        else {
+            $('#host').find('.btn-warning').attr('disabled', true);
+            $('#host').find('.btn-primary').attr('disabled', true);
+        }
     }
 
     function makecall() {
@@ -236,12 +313,12 @@ var reqpool = [];
         var mdesc = $(this).html() == 'video' ? {audio: true, video: {mandatory: {minWidth: 160, minWidth: 100, maxWidth: 160, maxHeight:100}}} : {audio: true};
 
         // hide default buttons and add cancel button
-        $('.panel-heading').find('button').toggle();
+        $('.panel-success').find('button').toggle();
         cparty.find('.btn-group').append(btncancel);
 
         // hide rest peers but show only taget peer in the list
-        cparty.parent().toggle();
-        cparty.parent().parent().children('.panel-success').toggle();
+        cparty.parents('.panel-success').toggle();
+        $('.panel-success').toggle();
         cparty.children('span').html(cparty.children('span').html() + ' (' + $(this).html() + ' call)');
 
         // send request through PeerCom API
@@ -335,8 +412,8 @@ var reqpool = [];
         vpad.appendTo(drawer);
 
         // show default buttons and hidden peers
-        $('.panel-heading').find('button').show();
-        cparty.parent().parent().children('.panel-success').show();
+        $('.panel-success').find('button').show();
+        $('.panel-success').show();
         cparty.children('span').html(cparty.children('span').html().split(' (')[0]);
         $('.panel-body').hide();
 

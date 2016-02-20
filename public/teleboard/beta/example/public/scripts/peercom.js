@@ -74,7 +74,7 @@ var Gatherhub = Gatherhub || {};
             var _wcc = null;
 
             // Properties declaration
-            var id, peer, hub, servers, iceservers, peers, medchans, state;
+            var id, peer, hub, servers, iceservers, peers, medchans, support, state;
             var onerror, onpeerchange, onmessage, onmediarequest, onstatechange, onpeerstatechange;
             // Properties / Event Callbacks/ Methods declaration
             (function() {
@@ -135,6 +135,7 @@ var Gatherhub = Gatherhub || {};
                 Object.defineProperty(pc, 'id', {get: function() { return id; }});
                 Object.defineProperty(pc, 'peers', {get: function() { return peers; }});
                 Object.defineProperty(pc, 'medchans', {get: function() { return medchans; }});
+                Object.defineProperty(pc, 'support', {get: function() { return support; }});
                 Object.defineProperty(pc, 'state', {get: function() { return state; }});
 
                 // Callbacks declaration, type check: function
@@ -198,10 +199,18 @@ var Gatherhub = Gatherhub || {};
                     return;
                 }
 
+                getUserMedia(
+                    {audio: true, video: true},
+                    function(s) {
+                        support.audio = s.getAudioTracks().length;
+                        support.video = s.getVideoTracks().length;
+                        s.getTracks().forEach(function(e) { e.stop(); });
+                    }, logErr);
+                
                 _changeState('starting');
 
                 // Create WCC Object and Initiate Registration Event
-                _wcc = new _WCC({peer: peer, hub: hub, servers: servers});
+                _wcc = new _WCC({peer: peer, hub: hub, servers: servers, support: support});
 
                 // Add Signal Handling
                 _wcc.onerror = function(e) {
@@ -217,14 +226,14 @@ var Gatherhub = Gatherhub || {};
                         case 'hi':
                             // if peer existed in peers, remove and replace
                             if (peers[msg.from]) { _removePeer(msg.from); }
-                            _addPeer(msg.from, msg.data.peer);
+                            _addPeer(msg.from, msg.data.peer, msg.data.support);
                             peers[msg.from].sigchan.open();
                             break;
                         case 'bye':
                             if (peers[msg.from]) { _removePeer(msg.from); }
                             break;
                         case 'sdp':
-                            if (peers[msg.from] === undefined) { _addPeer(msg.from, msg.data.peer); }
+                            if (peers[msg.from] === undefined) { _addPeer(msg.from, msg.data.peer, msg.data.support); }
                             peers[msg.from].sigchan.open(msg.data);
                             break;
                         case 'media':
@@ -354,9 +363,9 @@ var Gatherhub = Gatherhub || {};
             }
 
             // Private functions
-            function _addPeer(pid, pname) {
+            function _addPeer(pid, pname, spt) {
                 if (!peers[pid]) {
-                    var p = {peer: pname, sigchan: new _WPC(pid, _wcc, iceservers)};
+                    var p = {peer: pname, sigchan: new _WPC(pid, _wcc, iceservers, support), support: spt};
                     p.sigchan.onmessage = function(msg) {
                         if (msg.type == 'media') {
                             if (pc.onmediarequest) { setTimeout(function() { pc.onmediarequest(msg.data); }, 0); }
@@ -419,6 +428,7 @@ var Gatherhub = Gatherhub || {};
             iceservers = [];
             peers = {};
             medchans = {};
+            support = {audio: 0, video: 0};
             _changeState('stopped');
 
             // do not start if any of WebRTC API is not available
@@ -706,7 +716,7 @@ var Gatherhub = Gatherhub || {};
         _WPC = WPC;
 
         // Object Constructor
-        function WPC(id, sigchan, iceservers) {
+        function WPC(id, sigchan, iceservers, spt) {
             // Object sefl-reference
             var wpc = this;
 
@@ -795,7 +805,7 @@ var Gatherhub = Gatherhub || {};
 
             function close() {
                 if (_dc) _dc.close();
-                _pc.close();
+                if (_pc) _pc.close();
             }
 
             function send(data, type) {
@@ -824,7 +834,7 @@ var Gatherhub = Gatherhub || {};
                         wait = 3;
                     }
                     if (!wait) {
-                        _sc.send({'sdp': _pc.localDescription, conn: _conn}, 'sdp', id);
+                        _sc.send({'sdp': _pc.localDescription, conn: _conn, support: spt}, 'sdp', id);
                         clearInterval(disp);
                     }
                 }, 50);
@@ -873,7 +883,7 @@ var Gatherhub = Gatherhub || {};
             var _svrIdx = -1;
             var _beaconDur = 25000; // 25 seconds
             var _beaconTask = -1;
-            var _peer, _hub, _servers;
+            var _peer, _hub, _servers, _spt;
 
             // Properties / Event Callbacks / Methods declaration
             var id, state;
@@ -938,6 +948,7 @@ var Gatherhub = Gatherhub || {};
             function _connect() {
                 _peer = config.peer || 'unknown';
                 _hub = config.hub || 'unknown';
+                _spt = config.support || null;
                 _servers = config.servers || ['wss://localhost'];
                 _svrIdx = (_svrIdx + 1) % _servers.length;
                 _ws = new WebSocket(_servers[_svrIdx]);
@@ -946,7 +957,7 @@ var Gatherhub = Gatherhub || {};
                 _ws.onerror = function(e) {};
                 _ws.onopen = function() {
                     _changeState('connected');
-                    send({ts: Date.now()}, 'hi');
+                    send({ts: Date.now(), support: _spt}, 'hi');
                 };
                 _ws.onmessage = function(msg) {
                     var ctx = JSON.parse(msg.data);
