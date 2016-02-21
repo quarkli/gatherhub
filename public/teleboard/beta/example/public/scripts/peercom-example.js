@@ -3,6 +3,7 @@
 // declared variable in public space for the convenience of debugging
 var mpc;
 var reqpool = [];
+var confparty = [];
 
 (function() {
     var peer;   // = 'p' + (0 | Math.random() * 900 + 100);
@@ -20,7 +21,6 @@ var reqpool = [];
     var cstate = 'idle';    // log call state
     var cparty, cid, creq;  // calling party element, peer id, request
     var retrymedia =  0;
-    var confparty = {};
 
     // get the width and height (w, h) of video to better fit the device screen
     // video source is set to 320:200 (16:10) ratio, so the w:h should be 16:10 too
@@ -108,6 +108,7 @@ var reqpool = [];
                     cparty.parents('.panel-success').toggle();
                     $('.panel-success').toggle();
                     cparty.children('span').html(cparty.children('span').html() + ' (' + ctype + ' call)');
+                    $('#host').find('.btn-success').attr('disabled', true);
                     ring.play();
                 }
                 break;
@@ -162,28 +163,54 @@ var reqpool = [];
     $('<h3 id="title">').appendTo('#layer1');
     $('<div class="panel-group" id="pgroup" style="max-width: 640px" align="left">').appendTo('#layer1');
 
+    // create reusable html elements
+
     // ringtone element
     var ring = new Audio('http://gatherhub.com/ring.mp3');
     var ringback = new Audio('http://gatherhub.com/ringback.mp3');
-    var lau = new Audio();
-    var rau = new Audio();
     ring.load();
     ringback.load();
     ring.loop = true;
     ringback.loop = true;
-    lau.muted = true;
 
-    // create reusable html elements
+    // Audio elements
+    var au = [];
+    for (var i = 0; i < 16; i++) {
+        var a = new Audio();
+        au.push(a);
+    }
+
+    // drawer is virtual container which is never append to the page but to collect unused elements by $.appendTo(drawer)
     var drawer = $('<div>');
+    // buttons that will only have single appearance in the page
     var btnaccept = $('<button>').addClass('btn btn-sm btn-success').html('accept').on('click', acceptcall);
     var btnreject = $('<button>').addClass('btn btn-sm btn-danger').html('reject').on('click', function() { endcall('reject'); });
     var btncancel = $('<button>').addClass('btn btn-sm btn-danger').html('cancel').on('click', function() { endcall('cancel'); });
     var btnend = $('<button>').addClass('btn btn-sm btn-danger').html('end').on('click', function() { endcall('end'); });
     var btnmute = $('<button>').addClass('btn btn-sm btn-warning').html('mute').on('click', mutecall);
+    // css for video frame arrangement
+    var tlalign = {position: 'absolute', top: 0, left: 0}
+    var tralign = {position: 'absolute', top: 0, right: 0}
+    var blalign = {position: 'absolute', bottom: 0, left: 0};
+    var bralign = {position: 'absolute', bottom: 0, right: 0};
+    var bcalign = {position: 'absolute', bottom: 0, left: '25%'};
+    var vborder = {'border-style': 'solid', 'border-width': 1, 'border-color': 'grey'};
+
+    // window size for video frames
+    var hw = 0 | (w/2);
+    var hh = 0 | (h/2);
+    var sw = 0 | (w/3);
+    var sh = 0 | (h/3);
+
+    // video frames
     var vpad = $('<div>').width(w).height(h).css({position: 'relative'});
-    var rvid = $('<video autoplay>').width(w).height(h).css({position: 'absolute', top: 0, right: 0}).appendTo(vpad);
-    var lvid = $('<video autoplay muted>').width(0 | (w/3)).height(0 | (h/3)).appendTo(vpad);
-    lvid.css({position: 'absolute', bottom: 0, right: 0, 'border-style': 'solid', 'border-width': 1, 'border-color': 'grey'});
+    var fullview = $('<video autoplay>').width(w).height(h).css(tlalign).hide().appendTo(vpad);
+    var localview = $('<video autoplay>').width(sw).height(sh).css(bralign).css(vborder).hide().appendTo(vpad);
+    var tlview = $('<video autoplay>').width(hw).height(hh).css(tlalign).hide().appendTo(vpad);
+    var trview = $('<video autoplay>').width(hw).height(hh).css(tralign).hide().appendTo(vpad);
+    var blview = $('<video autoplay>').width(hw).height(hh).css(blalign).hide().appendTo(vpad);
+    var brview = $('<video autoplay>').width(hw).height(hh).css(bralign).css(vborder).hide().appendTo(vpad);
+    var bcview = $('<video autoplay>').width(hw).height(hh).css(bcalign).css(vborder).hide().appendTo(vpad);
 
     // Login to hub
     function login() {
@@ -240,6 +267,9 @@ var reqpool = [];
             if (cstate == 'confprep') {
                 panel.find('button').toggle()
                 panel.find('.peersel').toggle()
+                if (!pc.peers[peer.id].support.video && !pc.peers[peer.id].support.audio) {
+                    panel.parent().hide();
+                }
             }
             else if (cstate != 'idle') {
                 panel.find('button').toggle();
@@ -261,40 +291,67 @@ var reqpool = [];
         $('.panel-success').find('.peersel').toggle()
         $('#host').find('.btn-warning').attr('disabled', true);
         $('#host').find('.btn-primary').attr('disabled', true);
+
+        for (var k in pc.peers) {
+            if (!pc.peers[k].support.video && !pc.peers[k].audio) { $('#' + k).parent().hide(); }
+        }
      }
 
     function cancelconf() {
-        $('#host').find('button').toggle();
-
-        $('.panel-success').find('button').toggle()
-        $('.panel-success').find('.peersel').toggle()
-        confparty = {};
-        cstate = 'idle';
+        cleanconf();
     }
 
     function makeconf() {
         // make request to each selected peer
+        var ctype = $(this).html();
+        var mdesc = ctype == 'video' ? {audio: true, video: {mandatory: {minWidth: 160, minWidth: 100, maxWidth: 160, maxHeight:100}}} : {audio: true};
 
+        if (confparty.length == 1) {
+            cid = confparty[0];
+            cancelconf();
+            if (ctype == 'video') {
+                $('#' + cid).find('.btn-warning').click();
+            }
+            else {
+                $('#' + cid).find('.btn-primary').click();
+            }
+        }
+        else {
+            confparty.forEach(function(e) {
+                var req = pc.mediaRequest({to: e, mdesc: mdesc});
+                if (req) {
+                    // queue reqest for later use
+                    reqpool.push({id: req, to: cid, mdesc: mdesc});
+                }
+                else { endcall('cancel'); }
+            });
+
+            if (reqpool.length) {
+                // change state
+                cstate = 'calling';
+                ringback.play();
+            }
+        }
         // check if all conference party support requested media, if not, prompt for user's option
-
+        cstate ='confrequest'
     }
 
     function endconf() {
-        // end call and restore UI
+        cleanconf();
     }
 
     function validsel() {
         var cpid = $(this).parents('.panel-heading').attr('id');
         if ($(this).is(':checked')) {
-            if (Object.keys(confparty).length < 3) { confparty[cpid] = cpid; }
+            if (confparty.length < 3) { confparty.push(cpid); }
             else {
                 alert('You can select up to three peers at maximum.');
                 $(this).attr('checked', false);
             }
         }
-        else { delete confparty[cpid]; }
+        else { if (confparty.indexOf(cpid) > -1) { confparty.splice(confparty.indexOf(cpid), 1); } }
 
-        if (Object.keys(confparty).length) {
+        if (confparty.length) {
             $('#host').find('.btn-warning').attr('disabled', false);
             $('#host').find('.btn-primary').attr('disabled', false);
         }
@@ -302,6 +359,16 @@ var reqpool = [];
             $('#host').find('.btn-warning').attr('disabled', true);
             $('#host').find('.btn-primary').attr('disabled', true);
         }
+    }
+
+    function cleanconf() {
+        $('#host').find('button').toggle();
+
+        $('.panel-success').find('button').toggle()
+        $('.panel-success').find('.peersel').toggle()
+        $('.panel-success').show();
+        confparty = [];
+        cstate = 'idle';
     }
 
     function makecall() {
@@ -315,6 +382,9 @@ var reqpool = [];
         // hide default buttons and add cancel button
         $('.panel-success').find('button').toggle();
         cparty.find('.btn-group').append(btncancel);
+
+        // disable conference button
+        $('#host').find('.btn-success').attr('disabled', true);
 
         // hide rest peers but show only taget peer in the list
         cparty.parents('.panel-success').toggle();
@@ -343,6 +413,7 @@ var reqpool = [];
 
         if (req) {
             // send response
+            // req.mdesc = {audio: true}   // one-way video test
             pc.mediaResponse(req, 'accept');
 
             // change answering buttons to in-call buttons
@@ -389,9 +460,20 @@ var reqpool = [];
         ring.pause();
         ringback.pause();
 
-        // stop audio
-        lau.pause();
-        rau.pause();        
+        // stop and clear all audios
+        au.forEach(function(e) {
+            e.pause();
+            e.src = '';
+            e.muted = false;
+        });
+
+        // stop and clear all videos
+        vpad.find('video').each(function(k, e){
+            $(e).hide();
+            e.pause();
+            e.src = ''
+            e.muted = false;
+        });
 
         // remove queued request
         reqpool.pop();
@@ -407,8 +489,8 @@ var reqpool = [];
         btnmute.removeClass('btn-success').addClass('btn-warning').html('mute');
 
         // recycle video element
-        lvid[0].src = '';
-        rvid[0].src = '';        
+        localview[0].src = '';
+        fullview[0].src = '';        
         vpad.appendTo(drawer);
 
         // show default buttons and hidden peers
@@ -416,6 +498,9 @@ var reqpool = [];
         $('.panel-success').show();
         cparty.children('span').html(cparty.children('span').html().split(' (')[0]);
         $('.panel-body').hide();
+
+        // disable conference button
+        $('#host').find('.btn-success').attr('disabled', false);
 
         // in case there is a addMedia retry task, clear it out
         clearTimeout(retrymedia);
@@ -429,23 +514,31 @@ var reqpool = [];
     }
 
     // dynamically insert media element to web page based on call type
-    function addmedia() {
+    function addmedia(ls, rs) {
         var lstream = pc.medchans[creq.id].lstream;
         var rstream = pc.medchans[creq.id].rstream;
 
         // make sure steams are ready or wait and retry
         if (lstream && rstream) {
+            // console.log(lstream.getTracks().length
+            //     rstream.getTracks().length)
             if (pc.medchans[creq.id].type == 'video') {
                 cparty.parent().find('.panel-body').append(vpad);
                 $('.panel-body').show();
-                lvid[0].src = URL.createObjectURL(lstream);
-                rvid[0].src = URL.createObjectURL(rstream);
+                fullview.show();
+                fullview[0].src = URL.createObjectURL(rstream);
+
+                localview.show();
+                localview[0].muted = true;
+                localview[0].src = URL.createObjectURL(lstream);
             }
             else {
-                lau.src = URL.createObjectURL(lstream);
-                rau.src = URL.createObjectURL(rstream);
-                lau.play();
-                rau.play();
+                au[1].src = URL.createObjectURL(rstream);
+                au[1].play();
+
+                au[0].src = URL.createObjectURL(lstream);
+                au[0].muted = true;
+                au[0].play();
             }
         }
         else { retrymedia = setTimeout(function(){ addmedia() }, 100); }
@@ -457,10 +550,6 @@ var reqpool = [];
         ring.pause();
         ringback.play();
         ringback.pause();
-        lau.play();
-        lau.pause();
-        rau.play();
-        rau.pause();
 
         pc.start();
     }

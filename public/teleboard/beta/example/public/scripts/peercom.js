@@ -206,7 +206,7 @@ var Gatherhub = Gatherhub || {};
                         support.video = s.getVideoTracks().length;
                         s.getTracks().forEach(function(e) { e.stop(); });
                     }, logErr);
-                
+
                 _changeState('starting');
 
                 // Create WCC Object and Initiate Registration Event
@@ -356,7 +356,7 @@ var Gatherhub = Gatherhub || {};
 
             function mediaResponse(req, answer) {
                 if (medchans[req.id]) {
-                    if (answer == 'accept') { medchans[req.id].accept(); }
+                    if (answer == 'accept') { medchans[req.id].accept(req.mdesc); }
                     else { medchans[req.id].reject(); }
                 }
                 else { warn(hint.medchan, 'PeerCom.mediaResponse()'); }
@@ -473,6 +473,9 @@ var Gatherhub = Gatherhub || {};
                     _dispatch();
                 }
             };
+            _pc.oniceconnectionstatechange =_pc.onsignalingstatechange = function(e) {
+                if (_pc && _pc.iceConnectionState == 'connected') { _changeState('open'); }
+            };
             _pc.onaddstream = function(e) { rstream = e.stream; };
 
             // not used yet, just log the event for now
@@ -515,7 +518,12 @@ var Gatherhub = Gatherhub || {};
                 Object.defineProperty(wmc, 'mute', { value: mute });
             })();
 
-            function accept() { _makeres(); }
+            function accept(desc) {
+                mdesc = desc;
+                rsdp = new RTCSessionDescription(req.sdp);
+                _pc.setRemoteDescription(rsdp);
+                _makeres();
+            }
 
             function reject() {
                 _res.type = 'reject';
@@ -685,8 +693,6 @@ var Gatherhub = Gatherhub || {};
                     _res.to = req.from;
                     _res.from = req.to;
                     _res.type = 'answer';
-                    rsdp = new RTCSessionDescription(req.sdp);
-                    _pc.setRemoteDescription(rsdp);
                     _changeState('preparing');
                 }
                 // This is an new request, initiate make request
