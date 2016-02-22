@@ -650,16 +650,17 @@ var vpad;
                 e.pause();
                 e.src = ''
                 e.muted = false;
+                rvideo--;
             }
         });
 
         au.forEach(function(e) {
-            if ($(e).attr(id) == id) {
-                au.forEach(function(e) {
-                    e.pause();
-                    e.src = '';
-                    e.muted = false;
-                });
+            if ($(e).attr('id') == id) {
+                $(e).attr('id', '');
+                e.pause();
+                e.src = '';
+                e.muted = false;
+                raudio--;
             }
         });
     }
