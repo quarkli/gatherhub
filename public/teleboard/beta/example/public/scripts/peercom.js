@@ -38,6 +38,7 @@ var Gatherhub = Gatherhub || {};
     var getUserMedia = (navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia).bind(navigator);
     var warn = (console.error).bind(console);
 
+    // global variables
     var hint = {
         fpeer: 'Warning: PeerCom.peer must be String >',
         fhub: 'Warning: PeerCom.hub must be String >',
@@ -47,6 +48,8 @@ var Gatherhub = Gatherhub || {};
         peer: 'Warning: Peer does not exist >',
         medchan: 'Warning: Invalid media channel id >'
     };
+
+    var localstream;    // cache local stream object for reuse in conference request
 
     // IMPORTANT: This function provides the timestamp for all message tag and timing calculation in PeerCom
     // DO NOT USE Date.now() to get a timestamp, ALWAYS call getTs() instead in PeerCOM
@@ -539,7 +542,7 @@ var Gatherhub = Gatherhub || {};
                 mdesc = desc;
                 rsdp = new RTCSessionDescription(req.sdp);
                 _pc.setRemoteDescription(rsdp);
-                _makeres();
+                _makereq(false);
             }
 
             function reject() {
@@ -611,40 +614,35 @@ var Gatherhub = Gatherhub || {};
             }
 
             // Private functions
-            function _makereq() {
-                _changeState('requesting');
-
-                getUserMedia(
-                    mdesc,
-                    function(s) {
-                        lstream = s;
-                        if (onlstreamready) { onlstreamready(lstream); }
-                        // this does not work for firefox when request for video
-                        // need a workaround if firefox needs to be supported
-                        _pc.addStream(s);
-                        _pc.createOffer(_negotiation, logErr);
-                    },
-                    function(e) {
-                        _changeState('failed');
-                    }
-                );
+            function _makereq(isOffer) {
+                if (localstream) {
+                    _setlstream(localstream, isOffer);
+                }
+                else {
+                    getUserMedia(
+                        mdesc,
+                        function(s) { _setlstream(s, isOffer); },
+                        function(e) { _changeState('failed'); }
+                    );
+                }
             }
 
-            function _makeres() {
-                getUserMedia(
-                    mdesc,
-                    function(s) {
-                        lstream = s;
-                        if (onlstreamready) { onlstreamready(lstream); }
-                        // this does not work for firefox when request for video
-                        // need a workaround if firefox needs to be supported
-                        _pc.addStream(s);
-                        _pc.createAnswer(_negotiation, logErr);
-                    },
-                    function(e) {
-                        _changeState('failed');
-                    }
-                );
+            function _setlstream(s, isOffer) {
+                lstream = localstream = s;
+                if (onlstreamready) { onlstreamready(lstream); }
+
+                // according to pcai, addStream does not work for firefox when request for video
+                // need a workaround if firefox needs to be supported
+                _pc.addStream(lstream);
+
+                if (isOffer) {
+                    _changeState('requesting');
+                    _pc.createOffer(_negotiation, logErr);
+                }
+                else {
+                    _changeState('accepting');
+                    _pc.createAnswer(_negotiation, logErr);
+                }
             }
 
             function _negotiation(sdp) {
@@ -660,7 +658,7 @@ var Gatherhub = Gatherhub || {};
                     lstream.getTracks().forEach(
                         function(e) { e.stop(); }
                     );
-                    lstream = null;
+                    localstream = lstream = null;
                 }
                 if (rstream) {
                     rstream.getTracks().forEach(
@@ -717,7 +715,7 @@ var Gatherhub = Gatherhub || {};
                 // This is an new request, initiate make request
                 else {
                     _res.type = 'offer';
-                    _makereq();
+                    _makereq(true);
                 }
                 // Prepare a timeout method when request cannot be completed
                 // setTimeout(
