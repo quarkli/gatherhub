@@ -30,6 +30,7 @@ Author: quarkli@gmail.com
 var mpc;
 var reqpool = [];
 var confparty = [];
+var vpad;
 
 (function() {
     var peer;   // = 'p' + (0 | Math.random() * 900 + 100);
@@ -46,6 +47,7 @@ var confparty = [];
     var _peers = {};        // a shadow copy of peers for comparison for changes
     var cstate = 'idle';    // log call state
     var cparty, cid, creq;  // calling party element, peer id, request
+    var rvideo = 0, raudio = 0;
 
     // get the width and height (w, h) of video to better fit the device screen
     // video source is set to 320:200 (16:10) ratio, so the w:h should be 16:10 too
@@ -233,6 +235,10 @@ var confparty = [];
     var btnend = $('<button>').addClass('btn btn-sm btn-danger').html('end').on('click', function() { endcall('end'); });
     var btnmute = $('<button>').addClass('btn btn-sm btn-warning').html('mute').on('click', mutecall);
     // css for video frame arrangement
+    var szfull = {width: w, height: h};
+    var szhalf = {width: (0 | w / 2), height: (0 | h / 2)};
+    var szthird = {width: (0 | w / 3), height: (0 | h / 3)};
+
     var tlalign = {position: 'absolute', top: 0, left: 0}
     var tralign = {position: 'absolute', top: 0, right: 0}
     var blalign = {position: 'absolute', bottom: 0, left: 0};
@@ -240,21 +246,15 @@ var confparty = [];
     var bcalign = {position: 'absolute', bottom: 0, left: '25%'};
     var vborder = {'border-style': 'solid', 'border-width': 1, 'border-color': 'grey'};
 
-    // window size for video frames
-    var hw = 0 | (w/2);
-    var hh = 0 | (h/2);
-    var sw = 0 | (w/3);
-    var sh = 0 | (h/3);
+    // video elements
+    vpad = $('<div>').css(szfull).css({position: 'relative'}).hide();
+    for (var i = 0; i < 4; i++) {
+        var v = $('<video autoplay>').hide().appendTo(vpad);
+    }
+    var vid = vpad.children();
 
-    // video frames
-    var vpad = $('<div>').width(w).height(h).css({position: 'relative'});
-    var fullview = $('<video autoplay>').width(w).height(h).css(tlalign).hide().appendTo(vpad);
-    var localview = $('<video autoplay>').width(sw).height(sh).css(bralign).css(vborder).hide().appendTo(vpad);
-    var tlview = $('<video autoplay>').width(hw).height(hh).css(tlalign).hide().appendTo(vpad);
-    var trview = $('<video autoplay>').width(hw).height(hh).css(tralign).hide().appendTo(vpad);
-    var blview = $('<video autoplay>').width(hw).height(hh).css(blalign).hide().appendTo(vpad);
-    var brview = $('<video autoplay>').width(hw).height(hh).css(bralign).css(vborder).hide().appendTo(vpad);
-    var bcview = $('<video autoplay>').width(hw).height(hh).css(bcalign).css(vborder).hide().appendTo(vpad);
+    // vid[3] is dedicated for local video which was appended las as on the toppest layer
+    $(vid[3]).css(vborder);
 
     // Login to hub
     function login() {
@@ -538,12 +538,15 @@ var confparty = [];
         });
 
         // stop and clear all videos
-        vpad.find('video').each(function(k, e){
+        vid.each(function(k, e){
             $(e).hide();
             e.pause();
             e.src = ''
             e.muted = false;
         });
+        vpad.hide();
+        rvideo = 0;
+        raudio = 0;
 
         // remove queued request
         reqpool.pop();
@@ -557,11 +560,6 @@ var confparty = [];
 
         // restore mute button default
         btnmute.removeClass('btn-success').addClass('btn-warning').html('mute');
-
-        // recycle video element
-        localview[0].src = '';
-        fullview[0].src = '';        
-        vpad.appendTo(drawer);
 
         // show default buttons and hidden peers
         $('.panel-success').find('button').show();
@@ -580,17 +578,42 @@ var confparty = [];
         ringback.load();
     }
 
+    function vframearrange() {
+        switch (rvideo) {
+            case 0:
+                $(vid[3]).css(szfull).css(bralign);
+                break;
+            case 1:
+                $(vid[0]).css(szfull).css(tlalign);
+                $(vid[3]).css(szthird).css(bralign);
+                break;
+            case 2:
+                $(vid[0]).css(szhalf).css(tlalign);
+                $(vid[1]).css(szhalf).css(tralign);
+                $(vid[3]).css(szhalf).css(bcalign);
+                break;
+            case 3:
+                $(vid[0]).css(szhalf).css(tlalign);
+                $(vid[1]).css(szhalf).css(tralign);
+                $(vid[2]).css(szhalf).css(blalign);
+                $(vid[3]).css(szhalf).css(bralign);
+                break;
+        }
+    }
+
     function addlmedia(s) {
         var src = URL.createObjectURL(s);
         if (s.getVideoTracks().length) {
-            if (!cparty.parent().find(vpad).length){
+            if (!vpad.is(':visible')){
                 cparty.parent().find('.panel-body').append(vpad);
-                $('.panel-body').show();              
+                $('.panel-body').show();
+                vpad.show();
             }
 
-            localview.show();
-            localview[0].muted = true;
-            localview[0].src = src;
+            $(vid[3]).show();
+            vframearrange();
+            vid[3].muted = true;
+            vid[3].src = src;
         }
         else {
             au[0].src = src;
@@ -602,17 +625,21 @@ var confparty = [];
     function addrmedia(s) {
         var src = URL.createObjectURL(s);
         if (s.getVideoTracks().length) {
-            if (!cparty.parent().find(vpad).length){
+            if (!vpad.is(':visible')){
                 cparty.parent().find('.panel-body').append(vpad);
-                $('.panel-body').show();              
+                $('.panel-body').show();
+                vpad.show();
             }
 
-            fullview.show();
-            fullview[0].src = src;
+            rvideo++;
+            $(vid[rvideo-1]).show();
+            vframearrange();
+            vid[rvideo-1].src = src;
         }
         else {
-            au[1].src = src
-            au[1].play();
+            raudio++;
+            au[raudio].src = src
+            au[raudio].play();
         }
     }
 
