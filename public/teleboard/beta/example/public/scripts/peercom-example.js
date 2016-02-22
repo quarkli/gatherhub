@@ -239,11 +239,11 @@ var vpad;
     var szhalf = {width: (0 | w / 2), height: (0 | h / 2)};
     var szthird = {width: (0 | w / 3), height: (0 | h / 3)};
 
-    var tlalign = {position: 'absolute', top: 0, left: 0}
-    var tralign = {position: 'absolute', top: 0, right: 0}
-    var blalign = {position: 'absolute', bottom: 0, left: 0};
-    var bralign = {position: 'absolute', bottom: 0, right: 0};
-    var bcalign = {position: 'absolute', bottom: 0, left: '25%'};
+    var tlalign = {position: 'absolute', top: 0, left: 0, buttom: '', right: ''};
+    var tralign = {position: 'absolute', top: 0, right: 0, bottom: '', left: ''};
+    var blalign = {position: 'absolute', bottom: 0, left: 0, top: '', right: ''};
+    var bralign = {position: 'absolute', bottom: 0, right: 0, top: '', left: ''};
+    var bcalign = {position: 'absolute', bottom: 0, left: '25%', top: '', right: ''};
     var vborder = {'border-style': 'solid', 'border-width': 1, 'border-color': 'grey'};
 
     // video elements
