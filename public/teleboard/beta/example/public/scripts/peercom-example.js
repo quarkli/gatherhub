@@ -517,7 +517,10 @@ var vpad;
         if (req && pc.medchans[req.id]) {
             if (reason == 'reject') { pc.mediaResponse(req, 'reject'); }
             else if (reason == 'cancel') { pc.medchans[req.id].cancel(); }
-            else if (reason == 'end') { pc.medchans[req.id].end(); }
+            else if (reason == 'end') {
+                removermedia(pc.medchans[req.id].rstream.id);
+                pc.medchans[req.id].end();
+            }
 
             if (cstate == 'ringing') { ring.pause(); }
         }
@@ -530,20 +533,14 @@ var vpad;
         ring.pause();
         ringback.pause();
 
-        // stop and clear all audios
-        au.forEach(function(e) {
-            e.pause();
-            e.src = '';
-            e.muted = false;
-        });
+        // reset local media
+        au[0].pause();
+        au[0].src = '';
 
-        // stop and clear all videos
-        vid.each(function(k, e){
-            $(e).hide();
-            e.pause();
-            e.src = ''
-            e.muted = false;
-        });
+        $(vid[3]).hide();
+        vid[3].pause();
+        vid[3].src = ''
+
         vpad.hide();
         rvideo = 0;
         raudio = 0;
@@ -632,15 +629,39 @@ var vpad;
             }
 
             rvideo++;
+            $(vid[rvideo-1]).attr('id', s.id);
             $(vid[rvideo-1]).show();
             vframearrange();
             vid[rvideo-1].src = src;
         }
         else {
             raudio++;
+            $(au[raudio]).attr('id', s.id);
             au[raudio].src = src
             au[raudio].play();
         }
+    }
+
+    function removermedia(id) {
+        vid.each(function(k, e){
+            if ($(e).attr('id') ==  id) {
+                $(e).attr('id', '');
+                $(e).hide();
+                e.pause();
+                e.src = ''
+                e.muted = false;
+            }
+        });
+
+        au.forEach(function(e) {
+            if ($(e).attr(id) == id) {
+                au.forEach(function(e) {
+                    e.pause();
+                    e.src = '';
+                    e.muted = false;
+                });
+            }
+        });
     }
 
     // this function is reserved for mobile browser which requires user interaction to trigger audio play
