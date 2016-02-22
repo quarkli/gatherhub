@@ -236,7 +236,7 @@ var Gatherhub = Gatherhub || {};
                             if (peers[msg.from] === undefined) { _addPeer(msg.from, msg.data.peer, msg.data.support); }
                             peers[msg.from].sigchan.open(msg.data);
                             break;
-                        case 'media':
+                        case 'call':
                             if (pc.onmediarequest) { setTimeout(function() { pc.onmediarequest(msg.data); }, 0); }
                             if (medchans[msg.data.id]) {
                                 medchans[msg.data.id].negotiate(msg.data);
@@ -258,7 +258,7 @@ var Gatherhub = Gatherhub || {};
                             }
                             break;
                         case 'pong':
-                            peers[msg.from].td = msg.data.delay; 
+                            peers[msg.from].td = msg.data.delay;
                         default:
                             if (pc.onmessage) { setTimeout(function() { pc.onmessage(msg); }, 0); }
                             break;
@@ -367,7 +367,7 @@ var Gatherhub = Gatherhub || {};
                 if (!peers[pid]) {
                     var p = {peer: pname, sigchan: new _WPC(pid, _wcc, iceservers, support), support: spt};
                     p.sigchan.onmessage = function(msg) {
-                        if (msg.type == 'media') {
+                        if (msg.type == 'call') {
                             if (pc.onmediarequest) { setTimeout(function() { pc.onmediarequest(msg.data); }, 0); }
                             if (medchans[msg.data.id]) {
                                 medchans[msg.data.id].negotiate(msg.data);
@@ -476,13 +476,16 @@ var Gatherhub = Gatherhub || {};
             _pc.oniceconnectionstatechange =_pc.onsignalingstatechange = function(e) {
                 if (_pc && _pc.iceConnectionState == 'connected') { _changeState('open'); }
             };
-            _pc.onaddstream = function(e) { rstream = e.stream; };
+            _pc.onaddstream = function(e) {
+                rstream = e.stream;
+                if (onrstreamready) { onrstreamready(rstream); }
+            };
 
             // not used yet, just log the event for now
             _pc.onremovestream = function(e) { console.log(e); };
 
             var id, to, from, mdesc, lsdp, rsdp, lconn, rconn, lstream, rstream, muted, type, state;
-            var onstatechange;
+            var onstatechange, onlstreamready, onrstreamready;
             (function() {
                 // read-only properties
                 Object.defineProperty(wmc, 'id', {get: function() { return id; }});
@@ -505,6 +508,20 @@ var Gatherhub = Gatherhub || {};
                     set: function(x) {
                         if (typeof(x) == 'function') { onstatechange = x; }
                         else { warn(hint.fcb, 'onstatechange'); }
+                    }
+                });
+                Object.defineProperty(wmc, 'onlstreamready', {
+                    get: function() { return onlstreamready; },
+                    set: function(x) {
+                        if (typeof(x) == 'function') { onlstreamready = x; }
+                        else { warn(hint.fcb, 'onlstreamready'); }
+                    }
+                });
+                Object.defineProperty(wmc, 'onrstreamready', {
+                    get: function() { return onrstreamready; },
+                    set: function(x) {
+                        if (typeof(x) == 'function') { onrstreamready = x; }
+                        else { warn(hint.fcb, 'onrstreamready'); }
                     }
                 });
 
@@ -601,6 +618,7 @@ var Gatherhub = Gatherhub || {};
                     mdesc,
                     function(s) {
                         lstream = s;
+                        if (onlstreamready) { onlstreamready(lstream); }
                         // this does not work for firefox when request for video
                         // need a workaround if firefox needs to be supported
                         _pc.addStream(s);
@@ -617,6 +635,7 @@ var Gatherhub = Gatherhub || {};
                     mdesc,
                     function(s) {
                         lstream = s;
+                        if (onlstreamready) { onlstreamready(lstream); }
                         // this does not work for firefox when request for video
                         // need a workaround if firefox needs to be supported
                         _pc.addStream(s);
@@ -667,7 +686,7 @@ var Gatherhub = Gatherhub || {};
                 }
             }
 
-            function _dispatch() { sigchan(_res, 'media', _res.to); }
+            function _dispatch() { sigchan(_res, 'call', _res.to); }
 
             function _changeState(ste) {
                 state = ste;

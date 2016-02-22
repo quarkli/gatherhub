@@ -1,3 +1,29 @@
+/*
+gatherhub.js is distributed under the permissive MIT License:
+
+Copyright (c) 2015, Quark Li, quarkli@gmail.com
+All rights reserved.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
+PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
+FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
+OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+DEALINGS IN THE SOFTWARE.
+
+Author: quarkli@gmail.com
+*/
+
 'use strict'
 
 // declared variable in public space for the convenience of debugging
@@ -20,7 +46,6 @@ var confparty = [];
     var _peers = {};        // a shadow copy of peers for comparison for changes
     var cstate = 'idle';    // log call state
     var cparty, cid, creq;  // calling party element, peer id, request
-    var retrymedia =  0;
 
     // get the width and height (w, h) of video to better fit the device screen
     // video source is set to 320:200 (16:10) ratio, so the w:h should be 16:10 too
@@ -98,35 +123,54 @@ var confparty = [];
         switch (req.type) {
             case 'offer':
                 if (cstate == 'idle') {
-                    var ctype = req.mdesc.video ? 'video' : 'audio';
-                    reqpool.push(req);
-                    cid = req.from;
-                    cparty = $('#' + cid);
-                    cstate = 'ringing';
-                    $('.panel-success').find('button').toggle();
-                    cparty.find('.btn-group').append(btnaccept).append(btnreject);
-                    cparty.parents('.panel-success').toggle();
-                    $('.panel-success').toggle();
-                    cparty.children('span').html(cparty.children('span').html() + ' (' + ctype + ' call)');
-                    $('#host').find('.btn-success').attr('disabled', true);
-                    ring.play();
+                    if (pc.medchans[req.id]) {
+                        var ctype = req.mdesc.video ? 'video' : 'audio';
+                        // when received remote offer, rstream is ready
+                        // add onlstreamready handler which will be fired upon acceptcall()
+                        // and rstream should be added at acceptcall()
+                        pc.medchans[req.id].onlstreamready = addlmedia;
+
+                        // queue request
+                        reqpool.push(req);
+                        cid = req.from;
+                        cparty = $('#' + cid);
+
+                        // change buttons to 'accept' and 'reject'
+                        $('.panel-success').find('button').toggle();
+                        cparty.find('.btn-group').append(btnaccept).append(btnreject);
+                        // hide other peers
+                        cparty.parents('.panel-success').toggle();
+                        $('.panel-success').toggle();
+                        // show call type
+                        cparty.children('span').html(cparty.children('span').html() + ' (' + ctype + ' call)');
+                        // disable conference button
+                        $('#host').find('.btn-success').attr('disabled', true);
+
+                        // play ring tone
+                        ring.play();
+                        // change state
+                        cstate = 'ringing';
+                    }
                 }
                 break;
             case 'answer':
+                // stop ringback tone
                 ringback.pause();
+                // change buttons
                 btncancel.appendTo(drawer);
                 $('#' + req.from).find('.btn-group').append(btnmute).append(btnend);
-                creq = req;
-                addmedia();
+                // change state
                 cstate = 'busy';
                 break;
             case 'cancel':
             case 'reject':
             case 'end':
                 if (cstate == 'busy') {
+                    // end call only if the request comes from current calling party
                     if (req.from == cid) { cleanup(); }
                 }
                 else {
+                    // for other state, stop ring tone first
                     ring.pause();
                     cleanup();
                 }
@@ -372,12 +416,15 @@ var confparty = [];
     }
 
     function makecall() {
+        var req = {};
+        var mdesc = $(this).html() == 'video' ? {audio: true, video: {mandatory: {minWidth: 160, minWidth: 100, maxWidth: 160, maxHeight:100}}} : {audio: true};
+  
         // get target peer id from panel id
         cid = $(this).parents('.panel-heading').attr('id');
         cparty = $('#' + cid);
 
         // set media description by the button clicked
-        var mdesc = $(this).html() == 'video' ? {audio: true, video: {mandatory: {minWidth: 160, minWidth: 100, maxWidth: 160, maxHeight:100}}} : {audio: true};
+        req = {to: cid, mdesc: mdesc};
 
         // hide default buttons and add cancel button
         $('.panel-success').find('button').toggle();
@@ -389,20 +436,37 @@ var confparty = [];
         // hide rest peers but show only taget peer in the list
         cparty.parents('.panel-success').toggle();
         $('.panel-success').toggle();
+
+        // indicate call type
         cparty.children('span').html(cparty.children('span').html() + ' (' + $(this).html() + ' call)');
 
-        // send request through PeerCom API
-        var req = pc.mediaRequest({to: cid, mdesc: mdesc});
+        // send request through PeerCom API, if request can be made, a request id will be returned
+        req.id = pc.mediaRequest(req);
 
-        if (req) {
-            // queue reqest for later use
-            reqpool.push({id: req, to: cid, mdesc: mdesc});
+        if (req.id && pc.medchans[req.id]) {
+            // add lstream to media elements
+            if (pc.medchans[req.id].lstream) {
+                addlmedia(pc.medchans[req.id].lstream);
+            }
+            else {
+                pc.medchans[req.id].onlstreamready = addlmedia;
+            }
+
+            // add rstream ready hander
+            pc.medchans[req.id].onrstreamready = addrmedia;
+
+            // queue reqest for call trace
+            reqpool.push(req);
 
             // change state
             cstate = 'calling';
+            // play ringback tone
             ringback.play();
         }
-        else { endcall('cancel'); }
+        else {
+            // if no valid request id returned, call requuest failed, call endcall() to cleanup
+            endcall('cancel');
+        }
     }
 
     function acceptcall() {
@@ -411,10 +475,17 @@ var confparty = [];
         // pop out current request
         var req = reqpool.pop();
 
-        if (req) {
+        if (req && pc.medchans[req.id]) {
             // send response
             // req.mdesc = {audio: true}   // one-way video test
             pc.mediaResponse(req, 'accept');
+            // handle rstream
+            if (pc.medchans[req.id].rstream) {
+                addrmedia(pc.medchans[req.id].rstream);
+            }
+            else {
+                pc.medchans[req.id].onrstreamready = addrmedia;
+            }
 
             // change answering buttons to in-call buttons
             btnaccept.parent().append(btnmute);
@@ -423,7 +494,6 @@ var confparty = [];
             btnaccept.appendTo(drawer);
 
             creq = req;         // set public variable of request
-            addmedia();         // insert media element to page
             reqpool.push(req);  // put request back to queue
             cstate = 'busy';    // change call state
         }
@@ -502,9 +572,6 @@ var confparty = [];
         // disable conference button
         $('#host').find('.btn-success').attr('disabled', false);
 
-        // in case there is a addMedia retry task, clear it out
-        clearTimeout(retrymedia);
-
         // reset state
         cstate = 'idle';
 
@@ -513,35 +580,40 @@ var confparty = [];
         ringback.load();
     }
 
-    // dynamically insert media element to web page based on call type
-    function addmedia(ls, rs) {
-        var lstream = pc.medchans[creq.id].lstream;
-        var rstream = pc.medchans[creq.id].rstream;
-
-        // make sure steams are ready or wait and retry
-        if (lstream && rstream) {
-            // console.log(lstream.getTracks().length
-            //     rstream.getTracks().length)
-            if (pc.medchans[creq.id].type == 'video') {
+    function addlmedia(s) {
+        var src = URL.createObjectURL(s);
+        if (s.getVideoTracks().length) {
+            if (!cparty.parent().find(vpad).length){
                 cparty.parent().find('.panel-body').append(vpad);
-                $('.panel-body').show();
-                fullview.show();
-                fullview[0].src = URL.createObjectURL(rstream);
-
-                localview.show();
-                localview[0].muted = true;
-                localview[0].src = URL.createObjectURL(lstream);
+                $('.panel-body').show();              
             }
-            else {
-                au[1].src = URL.createObjectURL(rstream);
-                au[1].play();
 
-                au[0].src = URL.createObjectURL(lstream);
-                au[0].muted = true;
-                au[0].play();
-            }
+            localview.show();
+            localview[0].muted = true;
+            localview[0].src = src;
         }
-        else { retrymedia = setTimeout(function(){ addmedia() }, 100); }
+        else {
+            au[0].src = src;
+            au[0].muted = true;
+            au[0].play();
+        }
+    }
+
+    function addrmedia(s) {
+        var src = URL.createObjectURL(s);
+        if (s.getVideoTracks().length) {
+            if (!cparty.parent().find(vpad).length){
+                cparty.parent().find('.panel-body').append(vpad);
+                $('.panel-body').show();              
+            }
+
+            fullview.show();
+            fullview[0].src = src;
+        }
+        else {
+            au[1].src = src
+            au[1].play();
+        }
     }
 
     // this function is reserved for mobile browser which requires user interaction to trigger audio play
