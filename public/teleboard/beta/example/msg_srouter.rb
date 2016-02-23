@@ -57,7 +57,7 @@ EventMachine.run {
       begin
         c = @peers.find{|p| p[:socket] == ws}
         if (c)
-          msg = {:hub => c[:hub], :type => "bye", :from => c[:peer]}.to_json
+          msg = {:hub => c[:hub], :type => "bye", :from => c[:conn]}.to_json
           @peers.delete(c)
           @peers.each do |p| 
             if (p[:socket] !=ws && p[:hub] == c[:hub])  
@@ -65,7 +65,7 @@ EventMachine.run {
             end
           end
           @act_peers -= 1
-          puts "#{Time.now} / (#{c[:peer]})} @ #{c[:hub]} deregistered (#{@act_peers})"
+          puts "#{Time.now.strftime '%m-%d %H:%M'}(#{c[:conn]})}: #{c[:peer]}@#{c[:hub]} deregistered (#{@act_peers})"
         end
       rescue StandardError => e
         puts "Error: #{e.message}"
@@ -82,27 +82,27 @@ EventMachine.run {
         begin
           msg = JSON.parse(pmsg).symbolize_keys
           if (msg[:type] == 'hi') 
-            peer = "#{ws.ip16}#{ws.port16}"
-            p = @peers.find{|p| p[:peer] == peer}
+            conn = "#{ws.ip16}#{ws.port16}"
+            p = @peers.find{|p| p[:socket] == ws}
             if (p)  
               @peers.delete(p)
               @act_peers -= 1
             end
             @loc = geoip.city("#{ws.ip}")
-            @peers.push({:hub=>msg[:hub], :peer=>peer, :socket=>ws, :city=>@loc.city_name, :country=>@loc.country_name})
+            @peers.push({:hub=>msg[:hub], :conn=>conn, :peer=>msg[:data]['peer'], :socket=>ws, :city=>@loc.city_name, :country=>@loc.country_name})
             syncmsg = msg.clone
             syncmsg[:data][:result] = "Success"
             syncmsg[:type] = "ho"
-            syncmsg[:from] = msg[:from] = peer
+            syncmsg[:from] = msg[:from] = conn
             syncmsg[:ts] = (Time.now.getutc.to_f * 1000).to_i
             ws.send(syncmsg.to_json)
             @act_peers += 1
-            puts "#{Time.now} / (#{peer}) @ #{msg[:hub]} from #{@loc.city_name}, #{@loc.country_name} registered (#{@act_peers})"
+            puts "#{Time.now.strftime '%m-%d %H:%M'}(#{conn}): #{msg[:data]['peer']}@#{msg[:hub]} from #{@loc.city_name}, #{@loc.country_name} registered (#{@act_peers})"
           elsif (msg[:type] == 'bye') 
-            p = @peers.find{|p| p[:peer] == msg[:from]}
+            p = @peers.find{|p| p[:socket] == ws}
             if (p)  
               @act_peers -= 1
-              puts "#{Time.now} / (#{p[:peer]})} @ #{p[:hub]} deregistered (#{@act_peers})"
+              puts "#{Time.now.strftime '%m-%d %H:%M'}(#{p[:conn]})}: #{p[:peer]}@#{p[:hub]} deregistered (#{@act_peers})"
               @peers.delete(p)
             end            
           elsif (msg[:type] == 'query') 
@@ -115,13 +115,13 @@ EventMachine.run {
               syncmsg[:data][:reply] = 'false'              
             end
             ws.send(syncmsg.to_json)
-            puts "#{Time.now} / (#{msg[:from]} queried existence of Hub:#{msg[:data]['hub']}"            
+            puts "#{Time.now.strftime '%m-%d %H:%M'} / (#{msg[:from]} queried existence of Hub:#{msg[:data]['hub']}"            
           end
 
           if (msg[:type] != "beacon" && msg[:type] != "query") 
             if (msg.key?(:to)) 
               # Unicast
-              p = @peers.find{|p| p[:peer] == msg[:to]}
+              p = @peers.find{|p| p[:conn] == msg[:to]}
               if (p)  
                 p[:socket].send(msg.to_json)
               end
