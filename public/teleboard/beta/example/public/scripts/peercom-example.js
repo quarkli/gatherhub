@@ -91,6 +91,17 @@ var reqpool = [];
     ca.onconfresponse = function(res) {
         resetPeerTitle(res.from);
         setPeerTitle(res.from, getPeerTitle(res.from) + ' (' + ca.pstate[res.from] + ')');
+
+        if (res.data.pstate[res.from] == 'left') {
+            removeRemoteMedia(res.from);
+            ca.removePeer(res.from);
+
+            if (Object.keys(ca.pmedchans).length) {
+                var k = Object.keys(ca.pmedchans)[0];
+                lmediaadded = false;
+                addLocalMedia(ca.pmedchans[k].lstream);
+            }
+        }
     };
     ca.onmedchancreated = function(medchan) {
         ring.pause();
@@ -309,6 +320,7 @@ var reqpool = [];
     for (var i = 0; i < 4; i++) { $('<video autoplay>').hide().appendTo(vpad); }
     var vid = vpad.children();
     var vidLocal = vid[3];
+    var sidcache = {};        // variable to cache stream id
     // set border effect to local video element
     $(vidLocal).css(vborder);
 
@@ -657,6 +669,7 @@ var reqpool = [];
                 arrangeVideo();
                 vidLocal.muted = true;
                 vidLocal.src = src;
+                vidLocal.play();
             }
             else {
                 au[0].src = src;
@@ -685,10 +698,24 @@ var reqpool = [];
             au[raudio].src = src
             au[raudio].play();
         }
+
+        // cache stream id in sidcache with remote peer id for alternative way to search stream id when remove stream
+        Object.keys(pc.medchans).forEach(function(k) {
+            if (pc.medchans[k].rstream == s) {
+                if (pc.medchans[k].from == pc.id) { sidcache[pc.medchans[k].to] = s.id; }
+                else { sidcache[pc.medchans[k].from] = s.id; }
+            }
+        });
     }
 
     // remove/reset remote audio/video element by stream id
     function removeRemoteMedia(id) {
+        // check if id is a remote peer id, if yes, get its stream id and delete cache
+        if (sidcache[id]) {
+            id = sidcache[id];
+            delete sidcache[id];
+        }
+
         vid.each(function(k, e){
             if ($(e).attr('id') ==  id) {
                 $(e).attr('id', '');
@@ -882,6 +909,7 @@ var reqpool = [];
         }
     }
     function resetHostPanel() {
+        $('.host-panel').find('.pbody').hide();
         $('.host-panel').find('button').attr('disabled', true).hide();
         $('.host-panel').find('.btn-conf').attr('disabled', false).show();
         $('.host-panel').find('.title').html($('.host-panel').find('.title').attr('name'));

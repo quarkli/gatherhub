@@ -46,7 +46,7 @@ var Gatherhub = Gatherhub || {};
         	var ca = this;
             var peers, pstate, pmedchans, state;
             var onconfrequest, onconfresponse, onmedchancreated, onstatechange;
-            var _mdesc, _rejected;
+            var _mdesc, _muted;
             // Properties / Event Callbacks/ Methods declaration
             (function() {
                 // read-only properties
@@ -113,7 +113,8 @@ var Gatherhub = Gatherhub || {};
 				if (peers.indexOf(p) > -1) {
 					peers.splice(peers.indexOf(p), 1);
 					delete pstate[p];
-					console.log(peers, pstate)
+                    pmedchans[p] = null;
+                    delete pmedchans[p];
 				}
             }
 
@@ -177,17 +178,22 @@ var Gatherhub = Gatherhub || {};
             }
 
             function mute() {
-            	// exit conference and notify others
+            	_muted = !_muted;
             	Object.keys(pmedchans).forEach(function(k) {
-            		pmedchans[k].mute();
+            		if (pmedchans[k].muted != _muted) { pmedchans[k].mute(); }
             	});
             }
 
             function exit() {
+                pstate[peers[0]] = 'left';
+                _notifyStateChange();
+
             	// exit conference and notify others
             	Object.keys(pmedchans).forEach(function(k) {
             		pmedchans[k].end();
             	});
+
+                reset();
             }
 
             function reset() {
@@ -195,11 +201,9 @@ var Gatherhub = Gatherhub || {};
             	peers = [];
             	pstate = {};
             	pmedchans = {};
-	            _rejected = 0;
 	            
             	addPeer(pc.id, 'wait');
             	_changeState('idle');
-
             }
 
             function consumemsg(msg) {
@@ -236,11 +240,11 @@ var Gatherhub = Gatherhub || {};
 				                	var id = pc.mediaRequest({to: msg.from, mdesc: _mdesc});
 				                	if (id) {
 				                		pstate[peers[0]] = 'joined';
-				                		peers.forEach(function(p) {
-						            		pc.send({cmd: 'response', peers: peers, pstate: pstate}, 'conf', p);
-				                		});
+				                		_notifyStateChange();
+
 				                		if (!pmedchans[msg.from]) {
 					                		pmedchans[msg.from] = pc.medchans[id];
+                                            if (_muted) { pmedchans[msg.from].mute(); }
 						            		if (onmedchancreated) {
 							                    setTimeout(function() { onmedchancreated(pmedchans[msg.from]); }, 0);
 						            		}
@@ -250,16 +254,13 @@ var Gatherhub = Gatherhub || {};
 			                }
 
             				// if response is accepted, make media request
-            				if (msg.data.pstate[msg.from] == 'rejected') {
-            					_rejected++;
-            					if (_rejected == peers.length - 1) { cancel(); }
-            				}
+                            if (peers.length < 3 && 
+                                (msg.data.pstate[msg.from] == 'rejected' ||
+                                msg.data.pstate[msg.from] == 'left')) { exit(); }
             				break;
             			case 'cancel':
-            			case 'exit':
-            				// close peer media channel and raise onpeerexit event
-
-            				// check if all peers left, raise onconfend event, and call reset
+                            exit();
+                            break;
             			default:
             				reset();
             				_changeState('idle');
@@ -276,19 +277,23 @@ var Gatherhub = Gatherhub || {};
             	if (req.mdesc.confid && req.mdesc.confid == _mdesc.confid && pc.medchans[req.id]) {
             		if (req.type == 'offer' && !pmedchans[req.from]) {
 	        			pmedchans[req.from] = pc.medchans[req.id];
+                        if (_muted) { pmedchans[msg.from].mute(); }
 	        			pc.mediaResponse(req, 'accept');
 	            		if (onmedchancreated) {
 		                    setTimeout(function() { onmedchancreated(pmedchans[req.from]); }, 0);
 	            		}
+
 	            		pstate[peers[0]] = 'joined';
-	            		peers.forEach(function(p) {
-		            		pc.send({cmd: 'response', peers: peers, pstate: pstate}, 'conf', p);
-	            		});
+	            		_notifyStateChange();
             		}
 
             		return null;
             	}
             	else { return req; }
+            }
+
+            function start() {
+                reset();
             }
 
             function _changeState(ste) {
@@ -298,11 +303,14 @@ var Gatherhub = Gatherhub || {};
                 }
             }
 
-            function start() {
-            	reset();
+            function _notifyStateChange() {
+                peers.forEach(function(p) {
+                    if (pc.peers[p]) { pc.send({cmd: 'response', peers: peers, pstate: pstate}, 'conf', p); }
+                });
             }
 
             state = 'stopped';
+            _muted = false;
 		}
 	})();	
 })();

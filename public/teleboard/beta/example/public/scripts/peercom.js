@@ -49,8 +49,6 @@ var Gatherhub = Gatherhub || {};
         medchan: 'Warning: Invalid media channel id >'
     };
 
-    var localstream;    // cache local stream object for reuse in conference request
-
     // IMPORTANT: This function provides the timestamp for all message tag and timing calculation in PeerCom
     // DO NOT USE Date.now() to get a timestamp, ALWAYS call getTs() instead in PeerCOM
     // The _tsDiff will be set by WCC() when registered to WebSocket Server which correct the time difference among peers
@@ -615,20 +613,15 @@ var Gatherhub = Gatherhub || {};
 
             // Private functions
             function _makereq(isOffer) {
-                if (localstream) {
-                    _setlstream(localstream, isOffer);
-                }
-                else {
-                    getUserMedia(
-                        mdesc,
-                        function(s) { _setlstream(s, isOffer); },
-                        function(e) { _changeState('failed'); }
-                    );
-                }
+                getUserMedia(
+                    mdesc,
+                    function(s) { _setlstream(s, isOffer); },
+                    function(e) { _changeState('failed'); }
+                );
             }
 
             function _setlstream(s, isOffer) {
-                lstream = localstream = s;
+                lstream = s;
                 if (onlstreamready) { onlstreamready(lstream); }
 
                 // according to pcai, addStream does not work for firefox when request for video
@@ -658,7 +651,7 @@ var Gatherhub = Gatherhub || {};
                     lstream.getTracks().forEach(
                         function(e) { e.stop(); }
                     );
-                    localstream = lstream = null;
+                    lstream = null;
                 }
                 if (rstream) {
                     rstream.getTracks().forEach(
