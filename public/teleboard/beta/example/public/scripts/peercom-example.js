@@ -94,17 +94,19 @@ var reqpool = [];
         }
     };
     ca.onconfresponse = function(res) {
-        resetPeerTitle(res.from);
-        setPeerTitle(res.from, getPeerTitle(res.from) + ' (' + ca.pstate[res.from] + ')');
+        if (ca.pstate[res.from]) {
+            resetPeerTitle(res.from);
+            setPeerTitle(res.from, getPeerTitle(res.from) + ' (' + ca.pstate[res.from] + ')');
+        }
 
-        if (res.data.pstate[res.from] == 'left') {
+        if (res.data.pstate[res.from] == 'left' || ca.pstate[res.from] == 'left') {
             removeRemoteMedia(res.from);
             ca.removePeer(res.from);
 
             if (Object.keys(ca.pmedchans).length) {
                 var k = Object.keys(ca.pmedchans)[0];
                 lmediaadded = false;
-                addLocalMedia(ca.pmedchans[k].lstream);
+                if (ca.pmedchans[k] && ca.pmedchans[k].lstream) { addLocalMedia(ca.pmedchans[k].lstream); }
             }
         }
     };
@@ -115,22 +117,36 @@ var reqpool = [];
         recycleElement(btncancel);
         addPeerButton(getHostPanelId(), btnmute, function() {
             ca.mute();
-            if (btnmute.html() == 'mute') { btnmute.removeClass('btn-warning').addClass('btn-success').html('unmute'); }
+            if (ca.muted) { btnmute.removeClass('btn-warning').addClass('btn-success').html('unmute'); }
             else { btnmute.removeClass('btn-success').addClass('btn-warning').html('mute'); }
         });
         addPeerButton(getHostPanelId(), btnend, endConf);
 
         cid = pc.id;
 
-        medchan.onlstreamready = addLocalMedia;
-        medchan.onrstreamready = addRemoteMedia;
-        if (medchan.lstream) {
-            addLocalMedia(medchan.lstream);
-        }
+        var mc = medchan;
+        var tConfMedia = setInterval(function() {
+            var rmediaadded = false;
+            if (mc.type == 'video') {
+                for (var i = 0; i < 3; i++) {
+                    if (mc.rstream && mc.rstream.id == $(vid[i]).attr('id')) { rmediaadded = true; }
+                }
+            }
+            else {
+                au.forEach(function(e) {
+                    if (mc.rstream && mc.rstream.id == $(e).attr('id')) { rmediaadded = true; }
+                });
+            }
 
-        if (medchan.rstream) {
-            addRemoteMedia(medchan.rstream);
-        }
+            if (lmediaadded && rmediaadded) {
+                clearInterval(tConfMedia);
+            }
+            else {
+                if (!lmediaadded && mc.lstream) { addLocalMedia(mc.lstream); }
+                if (!rmediaadded && mc.rstream) { addRemoteMedia(mc.rstream); }
+            }
+        }, 20);
+        cstate = 'conferencing';
     };
     ca.onstatechange = function(s) {
         if (s == 'idle') { resetDefault(); }
@@ -174,6 +190,7 @@ var reqpool = [];
         keys.forEach(function(i) {
             // if the left peer is currently on a call, end the call
             if (cid == i) { endCall('end'); }      // if the left peer is current call party, end the call
+            if (cstate == 'conferencing') { ca.close(i); }
             $('#' + i).remove();
             delete _peers[i];
         });
