@@ -49,6 +49,8 @@ var Gatherhub = Gatherhub || {};
         medchan: 'Warning: Invalid media channel id >'
     };
 
+    var localstream = null;
+
     // IMPORTANT: This function provides the timestamp for all message tag and timing calculation in PeerCom
     // DO NOT USE Date.now() to get a timestamp, ALWAYS call getTs() instead in PeerCOM
     // The _tsDiff will be set by WCC() when registered to WebSocket Server which correct the time difference among peers
@@ -245,14 +247,7 @@ var Gatherhub = Gatherhub || {};
                             else if (msg.data.type == 'offer') {
                                 if (peers[msg.from].sigchan.state == 'open') {
                                     var wmc = new _WMC(msg.data, pc.send, iceservers);
-                                    wmc.onstatechange = function(s) {
-                                        console.log('medchans[' + wmc.id + '].state:', s);
-                                        if (s == 'closed') {
-                                            delete medchans[wmc.id];
-                                            wmc = null;
-                                        }
-                                    };
-
+                                    wmc.onstatechange = _wmcStateHandler;
                                     medchans[wmc.id] = wmc;
                                 }
                                 else { logErr({name: 'Ice connection failed'}); }
@@ -335,14 +330,7 @@ var Gatherhub = Gatherhub || {};
                     if (peers[req.to].sigchan.state == 'open') {
                         req.from = id;
                         var wmc = new _WMC(req, pc.send, iceservers);
-                        wmc.onstatechange = function(s) {
-                            console.log('medchans[' + wmc.id + '].state:', s);
-                            if (s == 'closed') {
-                                delete medchans[wmc.id];
-                                wmc = null;
-                            }
-                        };
-
+                        wmc.onstatechange = _wmcStateHandler;
                         medchans[wmc.id] = wmc;
                         return wmc.id;
                     }
@@ -375,14 +363,7 @@ var Gatherhub = Gatherhub || {};
                             }
                             else if (msg.data.type == 'offer') {
                                 var wmc = new _WMC(msg.data, pc.send, iceservers);
-                                wmc.onstatechange = function(s) {
-                                    console.log('medchans[' + wmc.id + '].state:', s);
-                                    if (s == 'closed') {
-                                        delete medchans[wmc.id];
-                                        wmc = null;
-                                    }
-                                };
-
+                                wmc.onstatechange = _wmcStateHandler;
                                 medchans[wmc.id] = wmc;
                             }
                         }
@@ -418,6 +399,20 @@ var Gatherhub = Gatherhub || {};
                 state = ste;
                 if (pc.onstatechange) {
                     setTimeout(function() { pc.onstatechange(state); }, 0);
+                }
+            }
+
+            function _wmcStateHandler(wmc) {
+                console.log('medchans[' + wmc.id + '].state:', wmc.state);
+                if (wmc.state == 'closed') {
+                    delete medchans[wmc.id];
+                    wmc = null;
+                    if (localstream && Object.keys(medchans).length == 0) {
+                        localstream.getTracks().forEach(
+                            function(e) { e.stop(); }
+                        );
+                        localstream = null;
+                    }
                 }
             }
 
@@ -613,15 +608,20 @@ var Gatherhub = Gatherhub || {};
 
             // Private functions
             function _makereq(isOffer) {
-                getUserMedia(
-                    mdesc,
-                    function(s) { _setlstream(s, isOffer); },
-                    function(e) { _changeState('failed'); }
-                );
+                if (localstream) {
+                    _setlstream(localstream, isOffer);
+                }
+                else {
+                    getUserMedia(
+                        mdesc,
+                        function(s) { _setlstream(s, isOffer); },
+                        function(e) { _changeState('failed'); }
+                    );
+                }
             }
 
             function _setlstream(s, isOffer) {
-                lstream = s;
+                localstream = lstream = s;
                 if (onlstreamready) { onlstreamready(lstream); }
 
                 // according to pcai, addStream does not work for firefox when request for video
@@ -647,12 +647,12 @@ var Gatherhub = Gatherhub || {};
             }
 
             function _closechan() {
-                if (lstream) {
-                    lstream.getTracks().forEach(
-                        function(e) { e.stop(); }
-                    );
-                    lstream = null;
-                }
+                // if (lstream) {
+                //     lstream.getTracks().forEach(
+                //         function(e) { e.stop(); }
+                //     );
+                //     // lstream = null;
+                // }
                 if (rstream) {
                     rstream.getTracks().forEach(
                         function(e) { e.stop(); }
@@ -661,7 +661,7 @@ var Gatherhub = Gatherhub || {};
                 }
 
                 setTimeout(function() {
-                    _pc.close();
+                    if (_pc) { _pc.close(); }
                     _pc = null;
                     _changeState('closed');
                 }, 500);
@@ -681,7 +681,7 @@ var Gatherhub = Gatherhub || {};
 
             function _changeState(ste) {
                 state = ste;
-                if (wmc.onstatechange) { setTimeout(function() { wmc.onstatechange(state); }, 0); }
+                if (wmc.onstatechange) { setTimeout(function() { wmc.onstatechange(wmc); }, 0); }
             }
 
             function _init() {
