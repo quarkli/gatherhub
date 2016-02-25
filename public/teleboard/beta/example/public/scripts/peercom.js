@@ -441,7 +441,7 @@ var Gatherhub = Gatherhub || {};
             else {
                 setTimeout(function() {
                     if (pc.onerror) { pc.onerror({code: -1, reason: 'Browser does not support WebRTC'}); }
-                }, 500);
+                }, 0);
             }
         }
     })();
@@ -594,16 +594,8 @@ var Gatherhub = Gatherhub || {};
             }
 
             function mute() {
-                var aud = lstream.getTracks().find(
-                    function(e) {
-                        return e.kind == 'audio';
-                    }
-                );
-
-                if (aud) {
-                    aud.enabled = muted;
-                    muted = !muted;
-                }
+                muted = !muted;
+                if (lstream) { lstream.getAudioTracks()[0].enabled = !muted; }
             }
 
             // Private functions
@@ -622,6 +614,7 @@ var Gatherhub = Gatherhub || {};
 
             function _setlstream(s, isOffer) {
                 localstream = lstream = s;
+                lstream.getAudioTracks()[0].enabled = !muted;
                 if (onlstreamready) { onlstreamready(lstream); }
 
                 // according to pcai, addStream does not work for firefox when request for video
@@ -664,7 +657,7 @@ var Gatherhub = Gatherhub || {};
                     if (_pc) { _pc.close(); }
                     _pc = null;
                     _changeState('closed');
-                }, 500);
+                }, 100);
             }
 
             function _timeout() {
