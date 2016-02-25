@@ -277,7 +277,7 @@ var Gatherhub = Gatherhub || {};
             	if (req.mdesc.confid && req.mdesc.confid == _mdesc.confid && pc.medchans[req.id]) {
             		if (req.type == 'offer' && !pmedchans[req.from]) {
 	        			pmedchans[req.from] = pc.medchans[req.id];
-                        if (_muted) { pmedchans[msg.from].mute(); }
+                        if (_muted) { pmedchans[req.from].mute(); }
 	        			pc.mediaResponse(req, 'accept');
 	            		if (onmedchancreated) {
 		                    setTimeout(function() { onmedchancreated(pmedchans[req.from]); }, 0);

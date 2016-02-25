@@ -57,6 +57,11 @@ var reqpool = [];
     var pc = mpc = new Gatherhub.PeerCom({peer: peer, hub: hub, servers: servers, iceservers: iceservers});
     var ca = mca = new Gatherhub.ConfAgent(pc);
 
+    // Check browser, currently only support Google Chrome
+    var isChrome = !!window.chrome;
+
+    if (!isChrome) { alert('Sorry! Your browser does not support HTML5. This application is now running in Google Chrome browser (PC/Mobile).'); }
+
     ca.onconfrequest = function(req) {
         if (cstate == 'idle' || cstate == 'confprep') {
             var ctype = req.mdesc.video ? 'video' : 'audio';
@@ -117,18 +122,14 @@ var reqpool = [];
 
         cid = pc.id;
 
+        medchan.onlstreamready = addLocalMedia;
+        medchan.onrstreamready = addRemoteMedia;
         if (medchan.lstream) {
             addLocalMedia(medchan.lstream);
-        }
-        else {
-            medchan.onlstreamready = addLocalMedia;
         }
 
         if (medchan.rstream) {
             addRemoteMedia(medchan.rstream);
-        }
-        else {
-            medchan.onrstreamready = addRemoteMedia;
         }
     };
     ca.onstatechange = function(s) {
@@ -300,6 +301,7 @@ var reqpool = [];
     var vborder = {'border-style': 'solid', 'border-width': 1, 'border-color': 'grey'};
 
     // ringtone element
+    var ding = new Audio('http://gatherhub.com/ding.mp3');
     var ring = new Audio('http://gatherhub.com/ring.mp3');
     var ringback = new Audio('http://gatherhub.com/ringback.mp3');
     ring.load();
@@ -379,6 +381,7 @@ var reqpool = [];
             }
             else if (cstate != 'idle') { hidePeerPanel(peer.id); }
         }
+        ding.play();
     }
 
     function prepConf() {
@@ -490,7 +493,7 @@ var reqpool = [];
         }
         else { ca.removePeer(cpid); }
 
-        if (ca.peers.length) {
+        if (ca.peers.length > 2) {
             enablePeerButton(getHostPanelId(), '.btn-video', true);
             enablePeerButton(getHostPanelId(), '.btn-audio', true);
         }
@@ -841,6 +844,8 @@ var reqpool = [];
 
     // we need this function for mobile browser which requires user interaction to trigger audio play
     function svcStart() {
+        ding.play();
+        ding.pause();
         ring.play();
         ring.pause();
         ringback.play();
