@@ -4,19 +4,24 @@ require 'rails'
 require 'json'
 require 'erb'
 require 'geoip'
+require 'logger'
 include ERB::Util
+
+load '/home/ubuntu/node-https/config.rb'
+
+log = Logger.new("#{LOGFILE}")
 
 wssCfg = {
   :host => "0.0.0.0",
   :port => 55555,
   :secure => true,
   :tls_options => {
-    :private_key_file => "./gatherhub.key",
-    :cert_chain_file => "./gatherhub.crt"
+    :private_key_file => "#{PRIVATEKEY}",
+    :cert_chain_file => "#{CERTIFICATE}"
   }
 };
 
-geoip = GeoIP.new('GeoLiteCity.dat')
+geoip = GeoIP.new("#{GEOFILE}")
 
 class EventMachine::WebSocket::Connection
   def ip
@@ -42,14 +47,15 @@ EventMachine.run {
   if ARGV[0]
     wssCfg[:port] = ARGV[0]
   end
-  puts "#{wssCfg}"
+  puts "msg_srouter starting"
+  log.info "#{wssCfg}"
     
   EventMachine::WebSocket.start(wssCfg) do |ws|
     ws.onopen do 
       begin
-        # puts "#{ws.ip}:#{ws.port} connected!"
+        # log.info "#{ws.ip}:#{ws.port} connected!"
       rescue StandardError => e
-        puts "Error: #{e.backtrace}"
+        log.error "Error: #{e.backtrace}"
       end
     end
 
@@ -65,16 +71,16 @@ EventMachine.run {
             end
           end
           @act_peers -= 1
-          puts "#{Time.now.strftime '%m-%d %H:%M'}(#{c[:conn]})}: #{c[:peer]}@#{c[:hub]} deregistered (#{@act_peers})"
+          log.info "(#{c[:conn]})}: #{c[:peer]}@#{c[:hub]} deregistered (#{@act_peers})"
         end
       rescue StandardError => e
-        puts "Error: #{e.message}"
-        puts "Trace: #{e.backtrace}"
+        log.error "Error: #{e.message}"
+        log.error "Trace: #{e.backtrace}"
       end
     end
 
     ws.onerror do |err|
-      puts "WS_ERROR! #{err.message}"
+      log.error "WS_ERROR! #{err.message}"
     end
     
     ws.onmessage do |pmsg|
@@ -97,12 +103,12 @@ EventMachine.run {
             syncmsg[:ts] = (Time.now.getutc.to_f * 1000).to_i
             ws.send(syncmsg.to_json)
             @act_peers += 1
-            puts "#{Time.now.strftime '%m-%d %H:%M'}(#{conn}): #{msg[:data]['peer']}@#{msg[:hub]} from #{@loc.city_name}, #{@loc.country_name} registered (#{@act_peers})"
+            log.info "(#{conn}): #{msg[:data]['peer']}@#{msg[:hub]} from #{@loc.city_name}, #{@loc.country_name} registered (#{@act_peers})"
           elsif (msg[:type] == 'bye') 
             p = @peers.find{|p| p[:socket] == ws}
             if (p)  
               @act_peers -= 1
-              puts "#{Time.now.strftime '%m-%d %H:%M'}(#{p[:conn]})}: #{p[:peer]}@#{p[:hub]} deregistered (#{@act_peers})"
+              log.info "(#{p[:conn]})}: #{p[:peer]}@#{p[:hub]} deregistered (#{@act_peers})"
               @peers.delete(p)
             end            
           elsif (msg[:type] == 'query') 
@@ -115,7 +121,7 @@ EventMachine.run {
               syncmsg[:data][:reply] = 'false'              
             end
             ws.send(syncmsg.to_json)
-            puts "#{Time.now.strftime '%m-%d %H:%M'} / (#{msg[:from]} queried existence of Hub:#{msg[:data]['hub']}"            
+            log.info "(#{msg[:from]} queried existence of Hub:#{msg[:data]['hub']}"            
           end
 
           if (msg[:type] != "beacon" && msg[:type] != "query") 
@@ -135,8 +141,8 @@ EventMachine.run {
             end
           end 
         rescue StandardError => e
-          puts "Error: #{e.message}"
-          puts "Trace: #{e.backtrace}"
+          log.error "Error: #{e.message}"
+          log.error "Trace: #{e.backtrace}"
         end
       end
     end
