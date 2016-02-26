@@ -38,6 +38,7 @@ var Gatherhub = Gatherhub || {};
     var getUserMedia = (navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia).bind(navigator);
     var warn = (console.error).bind(console);
 
+    // global variables
     var hint = {
         fpeer: 'Warning: PeerCom.peer must be String >',
         fhub: 'Warning: PeerCom.hub must be String >',
@@ -47,6 +48,8 @@ var Gatherhub = Gatherhub || {};
         peer: 'Warning: Peer does not exist >',
         medchan: 'Warning: Invalid media channel id >'
     };
+
+    var localstream = null;
 
     // IMPORTANT: This function provides the timestamp for all message tag and timing calculation in PeerCom
     // DO NOT USE Date.now() to get a timestamp, ALWAYS call getTs() instead in PeerCOM
@@ -236,7 +239,7 @@ var Gatherhub = Gatherhub || {};
                             if (peers[msg.from] === undefined) { _addPeer(msg.from, msg.data.peer, msg.data.support); }
                             peers[msg.from].sigchan.open(msg.data);
                             break;
-                        case 'media':
+                        case 'call':
                             if (pc.onmediarequest) { setTimeout(function() { pc.onmediarequest(msg.data); }, 0); }
                             if (medchans[msg.data.id]) {
                                 medchans[msg.data.id].negotiate(msg.data);
@@ -244,21 +247,14 @@ var Gatherhub = Gatherhub || {};
                             else if (msg.data.type == 'offer') {
                                 if (peers[msg.from].sigchan.state == 'open') {
                                     var wmc = new _WMC(msg.data, pc.send, iceservers);
-                                    wmc.onstatechange = function(s) {
-                                        console.log('medchans[' + wmc.id + '].state:', s);
-                                        if (s == 'closed') {
-                                            delete medchans[wmc.id];
-                                            wmc = null;
-                                        }
-                                    };
-
+                                    wmc.onstatechange = _wmcStateHandler;
                                     medchans[wmc.id] = wmc;
                                 }
                                 else { logErr({name: 'Ice connection failed'}); }
                             }
                             break;
                         case 'pong':
-                            peers[msg.from].td = msg.data.delay; 
+                            peers[msg.from].td = msg.data.delay;
                         default:
                             if (pc.onmessage) { setTimeout(function() { pc.onmessage(msg); }, 0); }
                             break;
@@ -334,14 +330,7 @@ var Gatherhub = Gatherhub || {};
                     if (peers[req.to].sigchan.state == 'open') {
                         req.from = id;
                         var wmc = new _WMC(req, pc.send, iceservers);
-                        wmc.onstatechange = function(s) {
-                            console.log('medchans[' + wmc.id + '].state:', s);
-                            if (s == 'closed') {
-                                delete medchans[wmc.id];
-                                wmc = null;
-                            }
-                        };
-
+                        wmc.onstatechange = _wmcStateHandler;
                         medchans[wmc.id] = wmc;
                         return wmc.id;
                     }
@@ -367,21 +356,14 @@ var Gatherhub = Gatherhub || {};
                 if (!peers[pid]) {
                     var p = {peer: pname, sigchan: new _WPC(pid, _wcc, iceservers, support), support: spt};
                     p.sigchan.onmessage = function(msg) {
-                        if (msg.type == 'media') {
+                        if (msg.type == 'call') {
                             if (pc.onmediarequest) { setTimeout(function() { pc.onmediarequest(msg.data); }, 0); }
                             if (medchans[msg.data.id]) {
                                 medchans[msg.data.id].negotiate(msg.data);
                             }
                             else if (msg.data.type == 'offer') {
                                 var wmc = new _WMC(msg.data, pc.send, iceservers);
-                                wmc.onstatechange = function(s) {
-                                    console.log('medchans[' + wmc.id + '].state:', s);
-                                    if (s == 'closed') {
-                                        delete medchans[wmc.id];
-                                        wmc = null;
-                                    }
-                                };
-
+                                wmc.onstatechange = _wmcStateHandler;
                                 medchans[wmc.id] = wmc;
                             }
                         }
@@ -420,6 +402,20 @@ var Gatherhub = Gatherhub || {};
                 }
             }
 
+            function _wmcStateHandler(wmc) {
+                console.log('medchans[' + wmc.id + '].state:', wmc.state);
+                if (wmc.state == 'closed') {
+                    delete medchans[wmc.id];
+                    wmc = null;
+                    if (localstream && Object.keys(medchans).length == 0) {
+                        localstream.getTracks().forEach(
+                            function(e) { e.stop(); }
+                        );
+                        localstream = null;
+                    }
+                }
+            }
+
             // Main process
             id = '';
             peer = '';
@@ -445,7 +441,7 @@ var Gatherhub = Gatherhub || {};
             else {
                 setTimeout(function() {
                     if (pc.onerror) { pc.onerror({code: -1, reason: 'Browser does not support WebRTC'}); }
-                }, 500);
+                }, 0);
             }
         }
     })();
@@ -476,13 +472,16 @@ var Gatherhub = Gatherhub || {};
             _pc.oniceconnectionstatechange =_pc.onsignalingstatechange = function(e) {
                 if (_pc && _pc.iceConnectionState == 'connected') { _changeState('open'); }
             };
-            _pc.onaddstream = function(e) { rstream = e.stream; };
+            _pc.onaddstream = function(e) {
+                rstream = e.stream;
+                if (onrstreamready) { onrstreamready(rstream); }
+            };
 
             // not used yet, just log the event for now
             _pc.onremovestream = function(e) { console.log(e); };
 
             var id, to, from, mdesc, lsdp, rsdp, lconn, rconn, lstream, rstream, muted, type, state;
-            var onstatechange;
+            var onstatechange, onlstreamready, onrstreamready;
             (function() {
                 // read-only properties
                 Object.defineProperty(wmc, 'id', {get: function() { return id; }});
@@ -507,6 +506,20 @@ var Gatherhub = Gatherhub || {};
                         else { warn(hint.fcb, 'onstatechange'); }
                     }
                 });
+                Object.defineProperty(wmc, 'onlstreamready', {
+                    get: function() { return onlstreamready; },
+                    set: function(x) {
+                        if (typeof(x) == 'function') { onlstreamready = x; }
+                        else { warn(hint.fcb, 'onlstreamready'); }
+                    }
+                });
+                Object.defineProperty(wmc, 'onrstreamready', {
+                    get: function() { return onrstreamready; },
+                    set: function(x) {
+                        if (typeof(x) == 'function') { onrstreamready = x; }
+                        else { warn(hint.fcb, 'onrstreamready'); }
+                    }
+                });
 
                  // Methods declaration, read-only
                 Object.defineProperty(wmc, 'accept', { value: accept });
@@ -522,7 +535,7 @@ var Gatherhub = Gatherhub || {};
                 mdesc = desc;
                 rsdp = new RTCSessionDescription(req.sdp);
                 _pc.setRemoteDescription(rsdp);
-                _makeres();
+                _makereq(false);
             }
 
             function reject() {
@@ -581,51 +594,41 @@ var Gatherhub = Gatherhub || {};
             }
 
             function mute() {
-                var aud = lstream.getTracks().find(
-                    function(e) {
-                        return e.kind == 'audio';
-                    }
-                );
-
-                if (aud) {
-                    aud.enabled = muted;
-                    muted = !muted;
-                }
+                muted = !muted;
+                if (lstream) { lstream.getAudioTracks()[0].enabled = !muted; }
             }
 
             // Private functions
-            function _makereq() {
-                _changeState('requesting');
-
-                getUserMedia(
-                    mdesc,
-                    function(s) {
-                        lstream = s;
-                        // this does not work for firefox when request for video
-                        // need a workaround if firefox needs to be supported
-                        _pc.addStream(s);
-                        _pc.createOffer(_negotiation, logErr);
-                    },
-                    function(e) {
-                        _changeState('failed');
-                    }
-                );
+            function _makereq(isOffer) {
+                if (localstream) {
+                    _setlstream(localstream, isOffer);
+                }
+                else {
+                    getUserMedia(
+                        mdesc,
+                        function(s) { _setlstream(s, isOffer); },
+                        function(e) { _changeState('failed'); }
+                    );
+                }
             }
 
-            function _makeres() {
-                getUserMedia(
-                    mdesc,
-                    function(s) {
-                        lstream = s;
-                        // this does not work for firefox when request for video
-                        // need a workaround if firefox needs to be supported
-                        _pc.addStream(s);
-                        _pc.createAnswer(_negotiation, logErr);
-                    },
-                    function(e) {
-                        _changeState('failed');
-                    }
-                );
+            function _setlstream(s, isOffer) {
+                localstream = lstream = s;
+                lstream.getAudioTracks()[0].enabled = !muted;
+                if (onlstreamready) { onlstreamready(lstream); }
+
+                // according to pcai, addStream does not work for firefox when request for video
+                // need a workaround if firefox needs to be supported
+                _pc.addStream(lstream);
+
+                if (isOffer) {
+                    _changeState('requesting');
+                    _pc.createOffer(_negotiation, logErr);
+                }
+                else {
+                    _changeState('accepting');
+                    _pc.createAnswer(_negotiation, logErr);
+                }
             }
 
             function _negotiation(sdp) {
@@ -637,12 +640,12 @@ var Gatherhub = Gatherhub || {};
             }
 
             function _closechan() {
-                if (lstream) {
-                    lstream.getTracks().forEach(
-                        function(e) { e.stop(); }
-                    );
-                    lstream = null;
-                }
+                // if (lstream) {
+                //     lstream.getTracks().forEach(
+                //         function(e) { e.stop(); }
+                //     );
+                //     // lstream = null;
+                // }
                 if (rstream) {
                     rstream.getTracks().forEach(
                         function(e) { e.stop(); }
@@ -651,10 +654,10 @@ var Gatherhub = Gatherhub || {};
                 }
 
                 setTimeout(function() {
-                    _pc.close();
+                    if (_pc) { _pc.close(); }
                     _pc = null;
                     _changeState('closed');
-                }, 500);
+                }, 100);
             }
 
             function _timeout() {
@@ -667,11 +670,11 @@ var Gatherhub = Gatherhub || {};
                 }
             }
 
-            function _dispatch() { sigchan(_res, 'media', _res.to); }
+            function _dispatch() { sigchan(_res, 'call', _res.to); }
 
             function _changeState(ste) {
                 state = ste;
-                if (wmc.onstatechange) { setTimeout(function() { wmc.onstatechange(state); }, 0); }
+                if (wmc.onstatechange) { setTimeout(function() { wmc.onstatechange(wmc); }, 0); }
             }
 
             function _init() {
@@ -698,7 +701,7 @@ var Gatherhub = Gatherhub || {};
                 // This is an new request, initiate make request
                 else {
                     _res.type = 'offer';
-                    _makereq();
+                    _makereq(true);
                 }
                 // Prepare a timeout method when request cannot be completed
                 // setTimeout(
